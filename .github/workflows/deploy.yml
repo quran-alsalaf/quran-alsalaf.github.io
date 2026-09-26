@@ -28,7 +28,7 @@ jobs:
       - run: npm run build
         env:
           # الرابط يكون username.github.io/اسم-المستودع، فيلزم مسار فرعي
-          VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_BASE: ${{ endsWith(github.event.repository.name, '.github.io') && '/' || format('/{0}/', github.event.repository.name) }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
