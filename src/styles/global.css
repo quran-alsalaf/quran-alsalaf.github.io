@@ -1,0 +1,124 @@
+/* خط الرسم العثماني (رواية حفص) العام — من مجمع الملك فهد لطباعة المصحف الشريف */
+@font-face {
+  font-family: 'UthmanicHafs';
+  src: url('/fonts/uthmanic_hafs_v20.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+/* إطار اسم السورة — خط عناوين السور لمجمع الملك فهد، رمز لكل سورة (نُسخة مقتصرة على الـ١١٤) */
+@font-face {
+  font-family: 'SurahHeader';
+  src: url('/fonts/surah-header.woff2') format('woff2');
+  font-display: block;
+}
+
+/* البسملة — كلماتها الأربع من خط البسملة لمجمع الملك فهد (الإصدار الرابع) */
+@font-face {
+  font-family: 'QCF4Basmala';
+  src: url('/fonts/basmala.woff2') format('woff2');
+  font-display: block;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+
+  /* التصفح بالسحب فقط، بلا تمرير رأسي في صفحة المصحف (الفصل ٢) */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* نص القرآن لا يُحدَّد بالسحب، لأن الضغط المطوّل عليه محجوز
+   لفتح بطاقة خيارات الآية (الفصل ٤) */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+:where(button, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* يحترم تفضيل من يطلب تقليل الحركة */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== طبقة الشاشة الرأسية =====
+   المواصفة تنصّ على قفل الوضع الرأسي دائمًا. عند التثبيت يتكفّل بذلك
+   بيان التطبيق، وفي المتصفح لا يملك الويب فرض القفل، فتظهر هذه الطبقة
+   بديلًا مؤدَّبًا بدل تشويه التخطيط. */
+.orientation-guard {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .orientation-guard {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 14px;
+    padding: 24px;
+    text-align: center;
+    background: var(--bg);
+    color: var(--ink);
+  }
+
+  .orientation-guard__icon {
+    width: 44px;
+    height: 44px;
+    color: var(--accent);
+  }
+
+  .orientation-guard__text {
+    font-size: var(--text-lg);
+    font-weight: 600;
+  }
+
+  .orientation-guard__hint {
+    font-size: var(--text-sm);
+    color: var(--ink-muted);
+    max-width: 30ch;
+  }
+}

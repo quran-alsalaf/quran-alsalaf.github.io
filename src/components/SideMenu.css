@@ -1,0 +1,289 @@
+/* درج جانبي من اليمين (أيقونته هناك بالشريط العلوي)، لا صفحة كاملة (بطلب صاحب المشروع
+   ٢٠٢٦-٠٩-٢٤): عرضه أغلب الشاشة لا كلّها، وما تبقّى منها خلفية معتمة تُغلقه بلمسها */
+.sidemenu {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  visibility: hidden;
+  transition: visibility 0s linear 260ms;
+}
+
+.sidemenu--open {
+  visibility: visible;
+  transition: visibility 0s;
+}
+
+.sidemenu__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.28);
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+
+.sidemenu--open .sidemenu__backdrop {
+  opacity: 1;
+}
+
+.sidemenu__card {
+  position: absolute;
+  inset-block: 0;
+  right: 0;
+  width: min(84%, 360px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  box-shadow: -8px 0 28px rgb(0 0 0 / 0.18);
+  transform: translateX(100%);
+  transition: transform 260ms cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+.sidemenu--open .sidemenu__card {
+  transform: none;
+}
+
+.sidemenu__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(10px + var(--safe-top)) 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidemenu__head h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 600;
+}
+
+.sidemenu__close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.sidemenu__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sidemenu__tabs {
+  flex: none;
+  display: flex;
+  padding: 4px 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidemenu__tabs button {
+  flex: 1;
+  padding: 10px 4px 11px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink-muted);
+  border-bottom: 2.5px solid transparent;
+  margin-bottom: -1px;
+}
+
+.sidemenu__tabs button[aria-selected='true'] {
+  color: var(--accent);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+.sidemenu__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: var(--safe-bottom);
+}
+
+/* تبويب السور: فهرس بسيط */
+.sidemenu__suras {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidemenu__suras button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+}
+
+.sidemenu__suras button:active {
+  background: var(--accent-soft);
+}
+
+.sidemenu__suraNum {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.sidemenu__suraName {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.sidemenu__suraMeta {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+/* تبويبا الملاحظات والعلامات: صفّ لكل عنصر */
+.sidemenu__list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.sidemenu__empty {
+  margin: 28px 20px;
+  text-align: center;
+  font-size: var(--text-sm);
+  line-height: 1.9;
+  color: var(--ink-muted);
+}
+
+.sidemenu__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 10px 10px 6px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.sidemenu__rowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: start;
+}
+
+.sidemenu__dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.sidemenu__rowLabel {
+  flex: none;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.sidemenu__rowText {
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidemenu__rowActions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sidemenu__rowActions > button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--ink-muted);
+}
+
+.sidemenu__rowActions > button:active {
+  background: var(--surface-2);
+}
+
+.sidemenu__rowActions svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sidemenu__save {
+  width: auto !important;
+  padding: 0 12px;
+  border-radius: 999px !important;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.sidemenu__input {
+  flex: none;
+  width: 40%;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.sidemenu__row--edit {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.sidemenu__textarea {
+  min-height: 70px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  resize: vertical;
+}
+
+.sidemenu__row--edit .sidemenu__rowActions {
+  justify-content: flex-end;
+}
+
+.sidemenu__row--edit .sidemenu__rowActions > button {
+  width: auto;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  background: var(--surface-2);
+}

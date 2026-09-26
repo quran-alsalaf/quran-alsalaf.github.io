@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover ليمتد المصحف حافةً إلى حافة تحت النتوء والحواف المنحنية -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#FFFFFF" />
+    <meta name="description" content="المصحف كاملًا للقراءة والاستماع، مع تفسير الآيات ومعاني كلماتها والعمل بها." />
+
+    <!-- تشغيل بملء الشاشة عند التثبيت على آيفون -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="قرآن السلف" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" href="icons/favicon-64.png" />
+
+    <title>قرآن السلف</title>
+
+    <script>
+      /*
+        يُطبَّق وضع العرض قبل رسم الصفحة، لئلا تومض بلونٍ ثم تنقلب إلى آخر.
+        ولهذا هو هنا مكتوبًا داخل الصفحة، لا في ملف يُحمَّل بعدها.
+
+        القاعدة (بطلب صاحب المشروع):
+          • الخياران فاتح وداكن فقط، بلا خيار ثالث يتبع النظام.
+          • عند أول فتحة على الإطلاق فقط، يُنظر إلى إعداد نظام الجهاز
+            فيُتَّخذ وضعًا افتدائيًّا، ثم يُحفظ فورًا.
+          • بعدها يبقى اختيار المستخدم هو المعتمد دائمًا، ولو تغيّر
+            إعداد النظام — فالمتابعة التلقائية تقع مرة واحدة لا باستمرار.
+      */
+      (function () {
+        var KEY = 'hq.theme';
+        var theme;
+        try {
+          theme = localStorage.getItem(KEY);
+        } catch (e) {}
+
+        if (theme !== 'light' && theme !== 'dark') {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+          try {
+            localStorage.setItem(KEY, theme);
+          } catch (e) {}
+        }
+
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

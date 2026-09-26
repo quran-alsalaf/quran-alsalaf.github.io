@@ -1,0 +1,261 @@
+/* المصحف يملأ الشاشة كلها (سوى ترويسة الصفحة)، والأزرار عائمة فوقه تظهر باللمس */
+.app {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+  padding-top: var(--safe-top);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* ===== الشريط العلوي العائم =====
+   مخفي فوق حافة الشاشة، وينزلق عند اللمس بعرض عمود الآيات (--col-w من Reader):
+   القائمة عند حافة الآيات اليمنى، والإعدادات عند اليسرى، والبحث بينهما.
+   ما بين الأزرار شفّاف، واللمس فيه يصل إلى الصفحة */
+.topbar {
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+  width: var(--col-w, 100%);
+  margin-inline: auto;
+  padding-top: calc(8px + var(--safe-top));
+  pointer-events: none;
+  transform: translateY(calc(-100% - 8px));
+  visibility: hidden;
+  transition: transform 240ms cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s linear 240ms;
+}
+
+.topbar--open {
+  transform: none;
+  visibility: visible;
+  transition: transform 240ms cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s;
+}
+
+/* الأزرار مربعات عائمة كالخانتين السفليتين */
+.topbar__icon,
+.topbar__search {
+  pointer-events: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.14), 0 1px 3px rgb(0 0 0 / 0.08);
+}
+
+.topbar__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  color: #000;
+}
+
+:root[data-theme='dark'] .topbar__icon {
+  color: #fff;
+}
+
+.topbar__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.topbar__icon:disabled {
+  cursor: default;
+}
+
+.topbar__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: var(--r-md);
+  color: var(--ink-faint);
+  font-size: var(--text-sm);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.topbar__search svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+}
+
+/* ===== منطقة المصحف ===== */
+.app__main {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.load-error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 28px;
+  text-align: center;
+}
+
+.load-error__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.load-error__hint {
+  margin: 0;
+  max-width: 34ch;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.load-error__retry {
+  margin-top: 6px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+/* ===== الخانتان السفليتان =====
+   مخفيتان تحت حافة الشاشة، وتنزلقان عند اللمس خانتين عائمتين فوق أسفل الصفحة:
+   بلا شريط يجمعهما، فتبقى الآيات ظاهرة حولهما وبينهما، ولا يُحجب إلا ما خلفهما */
+.dock {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 10px 14px 14px;
+  padding-bottom: calc(14px + var(--safe-bottom));
+  /* ما بين الخانتين وحولهما شفّاف، واللمس فيه يصل إلى الصفحة */
+  pointer-events: none;
+  transform: translateY(calc(100% + 8px));
+  visibility: hidden;
+  transition: transform 240ms cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s linear 240ms;
+}
+
+.dock--open {
+  transform: none;
+  visibility: visible;
+  transition: transform 240ms cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s;
+}
+
+.dock__slot {
+  display: grid;
+  place-items: center;
+  height: 46px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  /* بالأسود تمامًا في الوضع الفاتح، وبالأبيض في الداكن (أدناه) — بطلب صاحب المشروع */
+  color: #000;
+  pointer-events: auto;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.14), 0 1px 3px rgb(0 0 0 / 0.08);
+  transition: background 160ms ease;
+}
+
+.dock__slot:disabled {
+  cursor: default;
+}
+
+/* في الوضع الداكن تُكتب الخانتان بالأبيض لتوضح (بطلب صاحب المشروع) */
+:root[data-theme='dark'] .dock__slot {
+  color: #fff;
+}
+
+/* خانة النطاق المكتمل: ملخصه وزرّ ✕ لمسحه */
+.dock__slot--range {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding-inline: 10px;
+  background: var(--accent-soft-strong);
+  border-color: var(--accent);
+}
+
+.dock__clear {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg);
+  color: inherit;
+}
+
+.dock__clear svg {
+  width: 16px;
+  height: 16px;
+}
+
+.dock__label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.dock__label--row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* خانة الاستماع أثناء التشغيل: التشغيل/الإيقاف المؤقت، والإعدادات، والإيقاف التام —
+   بلا اسم آية ولا قارئ (بطلب صاحب المشروع)، فتُعرض الثلاثة في وسط الخانة */
+.dock__slot--player {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.dock__ctl {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: inherit;
+}
+
+.dock__ctl svg {
+  width: 19px;
+  height: 19px;
+}
+
+.dock__ctl--main {
+  width: 36px;
+  height: 36px;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* ريثما يُحمَّل الصوت */
+.dock__spin {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  animation: dock-spin 0.8s linear infinite;
+}
+
+@keyframes dock-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,226 @@
+import { useMemo, useState } from 'react';
+import { toArabicDigits } from '../data/quran.js';
+import { verseLabel } from '../lib/study.js';
+import { BOOKMARK_COLORS, moveBookmark, removeBookmark, renameBookmark, setNote, useUserData } from '../lib/userdata.js';
+import RangePicker from './RangePicker.jsx';
+import './SideMenu.css';
+
+/*
+  القائمة الجانبية (الفصل ٧): صفحة كاملة تنزلق من اليمين (أيقونتها في الشريط العلوي هناك)،
+  بثلاثة تبويبات: السور (فهرس)، الملاحظات (بترتيب ورودها في المصحف)، العلامات المرجعية.
+  الضغط على سورة أو علامة ينقل مباشرة إلى موضعها ويُغلق القائمة.
+*/
+export default function SideMenu({ quran, open, onGoto, onClose }) {
+  const [tab, setTab] = useState('suras');
+  const user = useUserData();
+  // الملاحظات مرتبة بترتيب الآيات في المصحف لا بوقت إضافتها
+  const noteEntries = useMemo(
+    () => Object.entries(user.notes ?? {}).map(([v, text]) => ({ v: Number(v), text })).sort((a, b) => a.v - b.v),
+    [user.notes]
+  );
+  const bookmarks = useMemo(() => [...(user.bookmarks ?? [])].sort((a, b) => a.v - b.v), [user.bookmarks]);
+
+  const goto = (v) => {
+    onGoto(quran.verses[v].p);
+    onClose();
+  };
+
+  return (
+    <div className={`sidemenu${open ? ' sidemenu--open' : ''}`} aria-hidden={!open} inert={open ? undefined : ''}>
+      <div className="sidemenu__backdrop" onClick={onClose} />
+      <section className="sidemenu__card" role="dialog" aria-modal="true" aria-label="القائمة">
+        <header className="sidemenu__head">
+          <h2>القائمة</h2>
+          <button className="sidemenu__close" type="button" onClick={onClose} aria-label="إغلاق">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+        </header>
+
+        <div className="sidemenu__tabs" role="tablist">
+          <button type="button" role="tab" aria-selected={tab === 'suras'} onClick={() => setTab('suras')}>
+            السور
+          </button>
+          <button type="button" role="tab" aria-selected={tab === 'notes'} onClick={() => setTab('notes')}>
+            الملاحظات
+          </button>
+          <button type="button" role="tab" aria-selected={tab === 'bookmarks'} onClick={() => setTab('bookmarks')}>
+            العلامات
+          </button>
+        </div>
+
+        <div className="sidemenu__body">
+          {tab === 'suras' && (
+            <ul className="sidemenu__suras">
+              {quran.suras.map((s) => (
+                <li key={s.n}>
+                  <button type="button" onClick={() => goto(quran.verses.findIndex((v) => v.s === s.n))}>
+                    <span className="sidemenu__suraNum">{toArabicDigits(s.n)}</span>
+                    <span className="sidemenu__suraName">سورة {s.name}</span>
+                    <span className="sidemenu__suraMeta">{toArabicDigits(s.count)} آية</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {tab === 'notes' &&
+            (noteEntries.length ? (
+              <ul className="sidemenu__list">
+                {noteEntries.map(({ v, text }) => (
+                  <NoteRow key={v} quran={quran} v={v} text={text} onGoto={() => goto(v)} />
+                ))}
+              </ul>
+            ) : (
+              <p className="sidemenu__empty">لا توجد ملاحظات بعد. اضغط ضغطًا مطوّلًا على أي آية لإضافة واحدة.</p>
+            ))}
+
+          {tab === 'bookmarks' &&
+            (bookmarks.length ? (
+              <ul className="sidemenu__list">
+                {bookmarks.map((b) => (
+                  <BookmarkRow key={b.id} quran={quran} b={b} onGoto={() => goto(b.v)} />
+                ))}
+              </ul>
+            ) : (
+              <p className="sidemenu__empty">لا توجد علامات مرجعية بعد. اضغط ضغطًا مطوّلًا على آية ثم «علامة».</p>
+            ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// صفّ ملاحظة: يُنقل بالضغط على نصّها، وتُعدَّل بزرّ القلم وتُحذف بزرّ السلة
+function NoteRow({ quran, v, text, onGoto }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(text);
+
+  if (editing) {
+    return (
+      <li className="sidemenu__row sidemenu__row--edit">
+        <span className="sidemenu__rowLabel">{verseLabel(quran, [v])}</span>
+        <textarea className="sidemenu__textarea" value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus />
+        <div className="sidemenu__rowActions">
+          <button type="button" onClick={() => setEditing(false)}>
+            إلغاء
+          </button>
+          <button
+            type="button"
+            className="sidemenu__save"
+            onClick={() => {
+              setNote(v, draft);
+              setEditing(false);
+            }}
+          >
+            حفظ
+          </button>
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li className="sidemenu__row">
+      <button type="button" className="sidemenu__rowMain" onClick={onGoto}>
+        <span className="sidemenu__rowLabel">{verseLabel(quran, [v])}</span>
+        <span className="sidemenu__rowText">{text}</span>
+      </button>
+      <div className="sidemenu__rowActions">
+        <button type="button" aria-label="تعديل الملاحظة" onClick={() => setEditing(true)}>
+          <PencilIcon />
+        </button>
+        <button type="button" aria-label="حذف الملاحظة" onClick={() => setNote(v, '')}>
+          <TrashIcon />
+        </button>
+      </div>
+    </li>
+  );
+}
+
+// صفّ علامة مرجعية: نقطة بلونها، اسم قابل لإعادة التسمية، ونقل إلى آية أخرى، وحذف
+function BookmarkRow({ quran, b, onGoto }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(b.name);
+  const [moving, setMoving] = useState(false);
+
+  return (
+    <li className="sidemenu__row">
+      <button type="button" className="sidemenu__rowMain" onClick={onGoto}>
+        <span className="sidemenu__dot" style={{ background: BOOKMARK_COLORS[b.color] }} />
+        {editing ? (
+          <input
+            className="sidemenu__input"
+            value={draft}
+            autoFocus
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (renameBookmark(b.id, draft), setEditing(false))}
+          />
+        ) : (
+          <span className="sidemenu__rowLabel">{b.name}</span>
+        )}
+        <span className="sidemenu__rowText">{verseLabel(quran, [b.v])}</span>
+      </button>
+      <div className="sidemenu__rowActions">
+        {editing ? (
+          <button
+            type="button"
+            className="sidemenu__save"
+            onClick={() => {
+              renameBookmark(b.id, draft);
+              setEditing(false);
+            }}
+          >
+            حفظ
+          </button>
+        ) : (
+          <button type="button" aria-label="إعادة تسمية العلامة" onClick={() => setEditing(true)}>
+            <PencilIcon />
+          </button>
+        )}
+        <button type="button" aria-label="نقل العلامة إلى آية أخرى" onClick={() => setMoving(true)}>
+          <MoveIcon />
+        </button>
+        <button type="button" aria-label="حذف العلامة" onClick={() => removeBookmark(b.id)}>
+          <TrashIcon />
+        </button>
+      </div>
+      {moving && (
+        <RangePicker
+          quran={quran}
+          mode="start"
+          near={b.v}
+          title="انقلها إلى آية أخرى"
+          onPick={(v) => (moveBookmark(b.id, v), setMoving(false))}
+          onClose={() => setMoving(false)}
+        />
+      )}
+    </li>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 19h3.5L18.5 9a2.1 2.1 0 0 0-3-3L5.5 16v3ZM13.5 8l3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function MoveIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M8 7l4-4 4 4M12 3v12M8 17l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

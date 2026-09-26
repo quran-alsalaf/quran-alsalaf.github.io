@@ -1,0 +1,318 @@
+/* صفحة كاملة تحت صفحة المصحف: موضعها يضبطه App بالسحب (translateY)، وتبدأ تحت حافة الشاشة */
+.study {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--safe-top);
+  background: var(--bg);
+  transform: translate3d(0, 100%, 0);
+  will-change: transform;
+}
+
+/* التبويبات: من اليمين تفسير ثم المعاني ثم العمل، والنشط بخط تحته ولون التمييز */
+.study__tabs {
+  flex: none;
+  display: flex;
+  padding: 4px 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.study__tab {
+  flex: 1;
+  padding: 10px 4px 11px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink-muted);
+  border-bottom: 2.5px solid transparent;
+  margin-bottom: -1px;
+}
+
+.study__tab[aria-selected='true'] {
+  color: var(--accent);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+.study__body {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 14px calc(24px + var(--safe-bottom));
+}
+
+.study__source {
+  display: flex;
+  width: fit-content;
+  margin: 4px auto 12px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.study__source button {
+  min-width: 84px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.study__source button[aria-checked='true'] {
+  background: var(--bg);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+}
+
+/* صفّ النسخ: زرّ صغير على كل جانب — المحتوى يمينًا والآيات يسارًا — وما بينهما في الوسط */
+.study__copy {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 12px;
+}
+
+.study__copy > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.study__copy > button:first-child {
+  justify-self: start;
+}
+
+.study__copy > button:last-child {
+  justify-self: end;
+}
+
+.study__copy > button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.study__copy > button svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* مبدّل المصدر في وسط صفّ النسخ */
+.study__copy .study__source {
+  margin: 0;
+}
+
+.study__copy .study__source button {
+  min-width: 62px;
+  padding: 5px 10px;
+}
+
+.study__item {
+  margin-bottom: 18px;
+}
+
+.study__sura {
+  margin: 6px 0 10px;
+  text-align: center;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* بطاقة الآية، وتحتها مباشرة بطاقة الشرح بلون أفتح (مرجع «آية») */
+.study__box {
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  line-height: 1.9;
+}
+
+.study__box p {
+  margin: 0;
+}
+
+.study__box h3 {
+  margin: 0 0 4px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.study__box ul {
+  margin: 0;
+  padding-inline-start: 20px;
+}
+
+.study__box li + li {
+  margin-top: 6px;
+}
+
+.study__box--verse {
+  background: var(--accent-soft-strong);
+  font-family: var(--font-quran);
+  font-size: 1.3rem;
+  line-height: 2.1;
+  color: var(--ink);
+}
+
+/* محتوى الشرح بخط Rubik */
+.study__box--explain,
+.study__box--note,
+.study__box--action,
+.study__words td {
+  font-family: var(--font-content);
+  font-size: calc(var(--text-base) / var(--boost));
+}
+
+.study__words td {
+  font-size: calc(var(--text-sm) / var(--boost));
+}
+
+.study__box--explain {
+  margin-top: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.study__box--note {
+  margin: 0 0 12px;
+  background: var(--surface-2);
+}
+
+.study__box--action {
+  margin-bottom: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.study__quote {
+  font-family: var(--font-quran);
+  color: var(--accent);
+}
+
+.study__ref {
+  display: block;
+  margin-top: 6px;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+/* جدول المعاني لكل آية: العمود الأيمن الكلمة بلفظها من المصحف (خط المصحف ولون التمييز)،
+   والأيسر معناها */
+.study__words {
+  width: 100%;
+  margin-top: 6px;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.study__words th,
+.study__words td {
+  padding: 8px 12px;
+  vertical-align: middle;
+  text-align: start;
+}
+
+.study__words tr + tr th,
+.study__words tr + tr td {
+  border-top: 1px solid var(--border);
+}
+
+.study__words th {
+  width: 38%;
+  font-family: var(--font-quran);
+  font-size: 1.15rem;
+  font-weight: normal;
+  line-height: 2;
+  color: var(--accent);
+  background: var(--surface-2);
+  border-inline-end: 1px solid var(--border);
+}
+
+.study__words td {
+  font-size: var(--text-sm);
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+/* حركة المحتوى عند الانتقال بين التبويبات: يدخل من جهة التبويب المنتقَل إليه */
+.study__content--next {
+  animation: study-from-left 220ms cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+.study__content--prev {
+  animation: study-from-right 220ms cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+@keyframes study-from-left {
+  from {
+    transform: translateX(-24%);
+    opacity: 0;
+  }
+}
+
+@keyframes study-from-right {
+  from {
+    transform: translateX(24%);
+    opacity: 0;
+  }
+}
+
+.study__empty,
+.study__note {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.study__note {
+  margin: 24px 8px;
+  text-align: center;
+  line-height: 1.9;
+}
+
+.study__links {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.study__link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.study__link svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+.study__credit {
+  margin: 18px 0 0;
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}

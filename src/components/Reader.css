@@ -1,0 +1,99 @@
+.reader {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  /* التنقل بالسحب الأفقي وحده، بلا تمرير رأسي ولا تكبير بالإصبعين (الفصل ٢) */
+  touch-action: none;
+}
+
+.reader__track {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+/* هامش جانبي يسير جدًّا ليملأ المصحف الشاشة (بطلب صاحب المشروع) */
+.sheet {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: var(--meta-h) minmax(0, 1fr);
+  padding: 0 var(--pad-x);
+  background: var(--bg);
+}
+
+/* الترويسة: الجزء في أولها (يمينًا)، ورقم الصفحة في وسطها، والسورة في آخرها (يسارًا).
+   وعرضها عرض عمود الأسطر (يُضبط في Reader)، فتحاذي حافتاها حافتي الآيات */
+.sheet__meta {
+  justify-self: center;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-header);
+  font-size: calc(var(--text-sm) * 1.05);
+  /* وزن عادي لا غامق (بطلب صاحب المشروع ٢٠٢٦-٠٩-٢٥) لوضوح القراءة */
+  font-weight: 400;
+  /* أسود صريح في الفاتح، وأبيض في الداكن (بطلب صاحب المشروع) — لا رمادي */
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.sheet__juz {
+  justify-self: start;
+}
+
+.sheet__sura {
+  justify-self: end;
+}
+
+.sheet__num {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* رقم الصفحة بخط الترويسة الزخرفي: أرقامه أطول من بقية السطر (نزول ظاهر)، فيُرفع قليلًا */
+.sheet__num > span {
+  display: inline-block;
+  transform: translateY(-0.14em);
+}
+
+/* المصحف المفتوح: الصفحة الحالية مشرّبة بلون التمييز خفيفًا وأسطرها وإطارها بلونه،
+   والأخرى بلون الخلفية وإطارها وأسطرها خافتة */
+.page-side {
+  width: 30px;
+  height: 15px;
+  flex: none;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.page-side__sheet {
+  fill: var(--bg);
+  stroke: var(--ink-faint);
+  stroke-width: 1.1;
+}
+
+.page-side__lines {
+  stroke: var(--ink-faint);
+  stroke-width: 0.9;
+  opacity: 0.55;
+}
+
+.page-side__page--on .page-side__sheet {
+  fill: color-mix(in srgb, #fe7d1b 16%, var(--bg));
+  stroke: #fe7d1b;
+}
+
+.page-side__page--on .page-side__lines {
+  stroke: #fe7d1b;
+  opacity: 0.9;
+}
+
+.page-side__spine {
+  stroke: var(--ink-muted);
+  stroke-width: 1.1;
+}

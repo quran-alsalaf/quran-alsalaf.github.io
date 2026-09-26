@@ -1,0 +1,161 @@
+/*
+  الصفحة شبكة من ١٥ صفًّا متساوية تملأ الارتفاع المتاح، فتتوزع الأسطر على
+  الصفحة كما في المطبوع. وحجم الخط يأتي من الخارج في --fs.
+
+  لا إطار ولا زخرفة حول الصفحة، ويشمل ذلك الفاتحة وأول البقرة (بقرار صاحب المشروع).
+  والزخرفة الوحيدة إطار اسم السورة (خط عناوين السور للمجمع).
+*/
+.mushaf-page {
+  height: 100%;
+  justify-self: center;
+  display: grid;
+  grid-template-rows: repeat(15, minmax(0, 1fr));
+  align-items: center;
+  font-size: var(--fs);
+  line-height: 1;
+  color: var(--ink);
+  direction: rtl;
+}
+
+/* كل سطر ممتدّ حافة إلى حافة كما رسمه الخطّاط: الكلمة الأولى عند اليمين والأخيرة
+   عند اليسار. والفراغ بين الكلمات يسير، لأن المدّ في الكلمات نفسها.
+
+   والسطر بارتفاع صفّه كاملًا، وكل كلمة تتسع لتلاصق جارتها: فالفراغ الزائد يُقسم داخل
+   صناديق الكلمات لا بينها — للكلمة الأولى والأخيرة حصة، ولما بينهما حصتان، والنص في
+   وسط صندوقه (والأولى عند حافتها اليمنى، والأخيرة عند اليسرى). فتقع الكلمات حيث تقع
+   بتوزيع «space-between» سواءً، لكن صناديقها متلاصقة تملأ السطر طولًا وعرضًا — فيمتدّ
+   لون مقرر الأسبوع خلفها متصلًا، سطرًا بعد سطر. */
+.line {
+  display: flex;
+  align-self: stretch;
+  align-items: stretch;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.w {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 2 1 auto;
+}
+
+.w:first-child {
+  flex-grow: 1;
+  justify-content: flex-start;
+}
+
+.w:last-child {
+  flex-grow: 1;
+  justify-content: flex-end;
+}
+
+.w:only-child {
+  justify-content: flex-start;
+}
+
+/* السطر الذي لا يملأ العمود (كآخر سطر في السورة): في الوسط، وكلماته متقاربة */
+.line--centered {
+  justify-content: center;
+}
+
+.line--centered .w {
+  flex: 0 0 auto;
+  padding-inline: 0.06em;
+}
+
+/* مقرر الأسبوع الملوّن (src/lib/weeks.js)، ويُخفى لونه إن ألغى المستخدم التمييز من الإعدادات */
+.w--week {
+  background: var(--week-tint);
+}
+
+:root[data-weeks='off'] .w--week {
+  background: none;
+}
+
+.w {
+  position: relative;
+}
+
+/* ما خارج النطاق المحدد يظهر بإخفات (الفصل ٤) */
+.w--out {
+  opacity: 0.3;
+}
+
+/* الآية المضغوط عليها ضغطًا مطوّلًا، ما دامت بطاقتها مفتوحة */
+.w--selected,
+:root[data-weeks='off'] .w--selected {
+  background: var(--accent-soft-strong);
+}
+
+/* الآية الجاري تلاوتها: تظليل خفيف (الفصل ٦) */
+.w--playing,
+:root[data-weeks='off'] .w--playing {
+  background: var(--accent-soft);
+}
+
+/* علامة آية لها علامة مرجعية أو ملاحظة: علامة الآية ورقمها كما هما، وفوقها إشارتان صغيرتان —
+   الملاحظة دفتر ملاحظات صغير بلون التمييز أعلاها يمينًا، والعلامة رمز شريطتها بلونها أعلاها يسارًا.
+   ولكلٍّ حدّ رفيع بلون الورق، فتنفصل عن زخرفة العلامة */
+.w__end {
+  position: relative;
+  display: inline-block;
+}
+
+/* الملاحظة: دفتر ملاحظات صغير بلون التمييز (بطلب صاحب المشروع) */
+.w__notebook {
+  position: absolute;
+  top: -20%;
+  right: -12%;
+  width: 0.32em;
+  height: 0.38em;
+  /* أسود (وأبيض في الوضع الداكن ليظهر) — بطلب صاحب المشروع */
+  color: #000;
+  filter: drop-shadow(0 0 1px var(--bg)) drop-shadow(0 0 1px var(--bg));
+  pointer-events: none;
+}
+
+.w__ribbon {
+  position: absolute;
+  top: -2%;
+  left: 2%;
+  width: 0.26em;
+  height: 0.34em;
+  filter: drop-shadow(0 0 1px var(--bg)) drop-shadow(0 0 1px var(--bg));
+  pointer-events: none;
+}
+
+:root[data-theme='dark'] .w__notebook {
+  color: #fff;
+}
+
+/* اسم السورة في إطاره: رمز واحد، يُضبط حجمه ليكون بعرض العمود (يُحسب في MushafPage) */
+.line--sura {
+  justify-content: center;
+  align-items: center;
+  font-family: 'SurahHeader';
+}
+
+/* البسملة: رموزها من المنطقة الخاصة في يونيكود، والمتصفح يعدّها يسارية الاتجاه فيقلب
+   ترتيبها؛ فيُفرض الاتجاه من اليمين («بسم» أولًا). وخطها يحجز فوق رموزه فراغًا كبيرًا
+   فتعلو في سطرها، فتُنزَّل ٠٫٣ من حجم الخط ليتساوى فراغها من إطار السورة ومن الآيات. */
+.line--basmala {
+  justify-content: center;
+  align-items: center;
+  font-family: 'QCF4Basmala';
+  unicode-bidi: bidi-override;
+  direction: rtl;
+  transform: translateY(0.3em);
+}
+
+/* ريثما يُنزَّل خط الصفحة (أول فتح لها فقط) */
+.mushaf-page--pending {
+  display: grid;
+  place-content: center;
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: 1.8;
+  color: var(--ink-muted);
+  padding-inline: 12%;
+}
