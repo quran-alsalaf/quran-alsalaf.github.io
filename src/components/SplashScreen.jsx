@@ -28,7 +28,6 @@ export default function SplashScreen({ leaving }) {
           decoding="async"
           fetchpriority="high"
         />
-        <span className="splash__name">قرآن السلف</span>
       </div>
       <span className="splash__sr">جارٍ التحميل</span>
       <div className="splash__bar" aria-hidden="true">
