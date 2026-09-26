@@ -22,7 +22,7 @@ export default defineConfig({
         name: 'قرآن السلف',
         short_name: 'قرآن السلف',
         description:
-          'مصحف كامل للقراءة والاستماع، مع تفسير الآيات ومعاني كلماتها والعمل بها. إنشاء: سامي أبصار الإسلام.',
+          'إنشاء: سامي أبصار الإسلام',
         lang: 'ar',
         dir: 'rtl',
         start_url: base,
