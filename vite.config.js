@@ -31,7 +31,7 @@ export default defineConfig({
         orientation: 'portrait',
         // خلفية الشاشة التي يعرضها النظام لحظة الإقلاع — كحلية لتتصل
         // بأيقونة التطبيق وبشاشة الافتتاح بلا وميض أبيض بينها
-        background_color: '#1A0165',
+        background_color: '#1B0968',
         theme_color: '#FFFFFF',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -48,7 +48,7 @@ export default defineConfig({
         // المواصفة تنصّ على تحميل كامل عند أول فتح ثم عمل تام بلا إنترنت،
         // فتُخزَّن كل أصول التطبيق مسبقًا. حدُّ الحجم مرفوع لأجل ملفات
         // بيانات المصحف والتفسير التي تُضاف في المرحلة الثانية.
-        globPatterns: ['**/*.{js,css,html,woff2,ttf,png,svg,json}'],
+        globPatterns: ['**/*.{js,css,html,woff2,ttf,png,svg,json,mp4}'],
         // خطوط الصفحات الـ٦٠٤ (نحو ٤٨ ميغابايت) لا تُنزَّل كلها عند التثبيت:
         // تُنزَّل كل صفحة عند أول فتح لها وتُحفظ (أدناه)، فتعمل بعدها بلا إنترنت
         globIgnores: ['fonts/qcf4/**'],

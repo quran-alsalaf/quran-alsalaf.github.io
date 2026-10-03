@@ -1,22 +1,14 @@
 /*
-  شاشة الافتتاح مبنيّة على هوية أيقونة التطبيق: خلفية كحلية وشعار
-  بنصّ أبيض وكتاب برتقالي. فحين يضغط المستخدم الأيقونة الكحلية على
-  شاشته، تفتح على الشاشة نفسها لونًا وروحًا، بلا انقطاع بصري.
-
-  ولذلك تبقى كحلية في الوضعين النهاري والليلي معًا — فهي لحظة هوية
-  لا جزء من واجهة القراءة.
+  شاشة الافتتاح: مقطع موشن لشعار التطبيق بملء الشاشة. وخلفيتها بلون حواف المقطع نفسه
+  (#1b0968)، فلا يظهر وميض قبل بدئه ولا بعد انتهائه، وتبقى كحلية في الوضعين النهاري
+  والليلي معًا — فهي لحظة هوية لا جزء من واجهة القراءة.
 */
 .splash {
   position: fixed;
   inset: 0;
   z-index: 100;
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 40px;
-  background: #1a0165;
-  padding-top: var(--safe-top);
-  padding-bottom: var(--safe-bottom);
+  background: #1b0968;
+  overflow: hidden;
   transition: opacity 420ms ease, visibility 420ms ease;
 }
 
@@ -26,40 +18,13 @@
   pointer-events: none;
 }
 
-.splash__logo {
-  display: grid;
-  justify-items: center;
-  width: min(50vw, 200px);
-  animation: splash-in 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.splash__book {
+.splash__video {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: auto;
-}
-
-/* شريط تحميل رفيع بلون الكتاب — إشارة إلى أن العمل جارٍ، بلا ضجيج */
-.splash__bar {
-  /* تحت الشعار بلا أن يُزيحه عن منتصف الشاشة */
-  position: absolute;
-  top: calc(50% + 70px);
-  left: 50%;
-  margin-left: -52px;
-  width: 104px;
-  height: 2px;
-  overflow: hidden;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.16);
-  animation: splash-in 640ms 140ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.splash__bar span {
-  position: absolute;
-  inset-block: 0;
-  width: 42%;
-  border-radius: inherit;
-  background: #fe7d1b;
-  animation: splash-sweep 1150ms ease-in-out infinite;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
 }
 
 .splash__sr {
@@ -69,25 +34,4 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
-}
-
-@keyframes splash-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.975);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* يتحرك من اليمين إلى اليسار موافقةً لاتجاه القراءة */
-@keyframes splash-sweep {
-  0% {
-    transform: translateX(140%);
-  }
-  100% {
-    transform: translateX(-140%);
-  }
 }

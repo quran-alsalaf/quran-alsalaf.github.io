@@ -24,7 +24,9 @@ import './App.css';
 // أقصر مدّة تبقى فيها شاشة الافتتاح ولو كانت البيانات جاهزة فورًا من ذاكرة
 // الجهاز، ليُرى الشعار لحظةً عند كل فتح كما نصّت المواصفة (الفصل ١١) لا وميضًا.
 // وتبقى أطول من ذلك إن طال تحميل المصحف أول مرة.
-const SPLASH_MIN_MS = 0; // لا شعار يُعرض هنا، فلا داعي لإطالة الانتظار
+// تنتهي شاشة الافتتاح بنهاية مقطع الموشن (أو لمسته، أو تعذّره) — يحلّ وعدُها هنا مرة واحدة لكل فتح
+let finishSplashVideo;
+const splashVideoDone = new Promise((r) => (finishSplashVideo = r));
 const SPLASH_FADE_MS = 420;
 
 export default function App() {
@@ -166,7 +168,6 @@ export default function App() {
 
   useEffect(() => {
     let alive = true;
-    const minDelay = new Promise((r) => setTimeout(r, SPLASH_MIN_MS));
     // يُنتظر خط الصفحة التي يُفتح عليها المصحف، وخطّا إطار السورة والبسملة، لتظهر الصفحة
     // كاملة من أول إطار. وإن تعذّر خط الصفحة (لا اتصال في أول فتح لها) لا يُعطَّل الافتتاح.
     const fonts = Promise.all([
@@ -174,7 +175,7 @@ export default function App() {
       document.fonts.load('32px "SurahHeader"'),
       document.fonts.load('32px "QCF4Basmala"'),
     ]).catch(() => {});
-    Promise.all([loadQuran(), fonts, minDelay])
+    Promise.all([loadQuran(), fonts, splashVideoDone])
       .then(([data]) => {
         if (alive) setQuran(data);
       })
@@ -204,7 +205,7 @@ export default function App() {
 
   return (
     <>
-      {!splashDone && <SplashScreen leaving={splashLeaving} />}
+      {!splashDone && <SplashScreen leaving={splashLeaving} onDone={finishSplashVideo} />}
 
       <div
         ref={appRef}
