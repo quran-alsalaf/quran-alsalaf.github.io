@@ -5,7 +5,7 @@ import './SettingsSheet.css';
 
 /*
   الإعدادات: صفحة كاملة مستقلة تغطي المصحف، يُرجع منها بسهم الرجوع (بطلب صاحب المشروع).
-  الوضع، تمييز مقررات الأسابيع، إعادة عرض الدليل التعريفي، وعن التطبيق.
+  الوضع، تمييز مقررات الأسابيع، إعادة عرض الفيديو التعريفي، وعن التطبيق.
   (حجم خط التطبيق أُلغي ٢٠٢٦-٠٩-٢٥ بطلب صاحب المشروع: خط واحد ثابت لا خيار فيه)
 */
 export default function SettingsSheet({ open, onClose, onThemeChange, onShowOnboarding, onShowAbout }) {
@@ -71,7 +71,7 @@ export default function SettingsSheet({ open, onClose, onThemeChange, onShowOnbo
         </div>
 
         <button type="button" className="settings__link" onClick={onShowOnboarding}>
-          <span className="settings__label">الدليل التعريفي</span>
+          <span className="settings__label">الفيديو التعريفي</span>
           <ChevronIcon />
         </button>
 

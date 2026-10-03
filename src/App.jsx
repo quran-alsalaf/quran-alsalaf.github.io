@@ -13,7 +13,7 @@ import SideMenu from './components/SideMenu.jsx';
 import RangeMenu from './components/RangeMenu.jsx';
 import SearchOverlay from './components/SearchOverlay.jsx';
 import AboutPage from './components/AboutPage.jsx';
-import OnboardingGuide from './components/OnboardingGuide.jsx';
+import IntroVideo from './components/IntroVideo.jsx';
 import { pause, play, resume, stop, usePlayer } from './lib/player.js';
 import { toArabicDigits } from './data/quran.js';
 import { pageVerses, verseLabel } from './lib/study.js';
@@ -24,7 +24,7 @@ import './App.css';
 // أقصر مدّة تبقى فيها شاشة الافتتاح ولو كانت البيانات جاهزة فورًا من ذاكرة
 // الجهاز، ليُرى الشعار لحظةً عند كل فتح كما نصّت المواصفة (الفصل ١١) لا وميضًا.
 // وتبقى أطول من ذلك إن طال تحميل المصحف أول مرة.
-const SPLASH_MIN_MS = 0; // لا شعار يُعرض هنا، فلا داعي لإطالة الانتظار
+const SPLASH_MIN_MS = 900;
 const SPLASH_FADE_MS = 420;
 
 export default function App() {
@@ -191,7 +191,7 @@ export default function App() {
     };
   }, []);
 
-  // الدليل التعريفي: يظهر تلقائيًّا في أول فتحتين فقط، بعد شاشة الافتتاح
+  // الفيديو التعريفي: يظهر تلقائيًّا في أول فتحتين فقط، بعد شاشة الافتتاح
   useEffect(() => {
     if (splashDone && shouldAutoShowOnboarding()) {
       markOnboardingSeen();
@@ -339,7 +339,7 @@ export default function App() {
       {quran && <SideMenu quran={quran} open={sideMenuOpen} onGoto={gotoPageNumber} onClose={() => setSideMenuOpen(false)} />}
       {quran && searchOpen && <SearchOverlay quran={quran} onGoto={gotoPageNumber} onClose={() => setSearchOpen(false)} />}
       <AboutPage open={aboutOpen} onClose={() => setAboutOpen(false)} />
-      <OnboardingGuide open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
+      <IntroVideo open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
       {quran && (
         <StudySheet
           ref={studyRef}
