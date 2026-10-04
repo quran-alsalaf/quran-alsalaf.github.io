@@ -50,6 +50,10 @@
         document.documentElement.setAttribute('data-theme', theme);
       })();
     </script>
+    <style>
+      /* قبل أن يرسم React شيئًا: كحلي بلون شاشة النظام، فلا يومض الأبيض بينها وبين التطبيق */
+      #root:empty { position: fixed; inset: 0; background: #1a0165; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

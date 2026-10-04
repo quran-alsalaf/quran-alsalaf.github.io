@@ -1,32 +1,33 @@
+/* شاشة كاملة للمقطع، خلفيتها بلون حوافه (#1b0968) فلا تُرى حدود له على الشاشات الأطول منه */
 .intro {
   position: fixed;
   inset: 0;
   z-index: 60;
-  display: flex;
-  flex-direction: column;
-  padding: calc(16px + var(--safe-top)) 16px calc(16px + var(--safe-bottom));
-  background: var(--bg);
-}
-
-.intro__skip {
-  align-self: flex-end;
-  padding: 6px 8px;
-  font-size: var(--text-base);
-  color: var(--ink-muted);
-}
-
-.intro__stage {
-  flex: 1;
-  min-height: 0;
   display: grid;
   place-items: center;
+  background: #1b0968;
+  overflow: hidden;
 }
 
 .intro__video {
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: var(--r-lg);
-  background: #000;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.intro__skip {
+  position: absolute;
+  top: calc(14px + var(--safe-top));
+  right: 16px;
+  z-index: 1;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: var(--text-sm);
+  color: #fff;
 }
 
 .intro__note {
@@ -34,5 +35,5 @@
   margin: 0;
   text-align: center;
   line-height: 2;
-  color: var(--ink-muted);
+  color: rgba(255, 255, 255, 0.8);
 }
