@@ -13,12 +13,10 @@ import SideMenu from './components/SideMenu.jsx';
 import RangeMenu from './components/RangeMenu.jsx';
 import SearchOverlay from './components/SearchOverlay.jsx';
 import AboutPage from './components/AboutPage.jsx';
-import IntroVideo from './components/IntroVideo.jsx';
 import { pause, play, resume, stop, usePlayer } from './lib/player.js';
 import { toArabicDigits } from './data/quran.js';
 import { pageVerses, verseLabel } from './lib/study.js';
 import { saveRange, useUserData } from './lib/userdata.js';
-import { markOnboardingSeen, shouldAutoShowOnboarding } from './lib/settings.js';
 import './App.css';
 
 // أقصر مدّة تبقى فيها شاشة الافتتاح ولو كانت البيانات جاهزة فورًا من ذاكرة
@@ -39,7 +37,6 @@ export default function App() {
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [onboardingOpen, setOnboardingOpen] = useState(false);
   // الصفحات السفلية: صفحة كاملة تحت المصحف. نطاقها النطاق المحدد في الخانة اليسرى إن
   // اكتمل، وإلا آيات الصفحة الحالية (الفصل ٥)
   const [studyOpen, setStudyOpen] = useState(false);
@@ -191,14 +188,6 @@ export default function App() {
     };
   }, []);
 
-  // الفيديو التعريفي: يظهر تلقائيًّا في أول فتحتين فقط، بعد شاشة الافتتاح
-  useEffect(() => {
-    if (splashDone && shouldAutoShowOnboarding()) {
-      markOnboardingSeen();
-      setOnboardingOpen(true);
-    }
-  }, [splashDone]);
-
   // الانتقال إلى صفحة من القائمة الجانبية أو البحث
   const gotoPageNumber = useCallback((p) => setGotoPage({ page: p, n: Date.now() }), []);
 
@@ -327,10 +316,6 @@ export default function App() {
       <SettingsSheet
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        onShowOnboarding={() => {
-          setSettingsOpen(false);
-          setOnboardingOpen(true);
-        }}
         onShowAbout={() => {
           setSettingsOpen(false);
           setAboutOpen(true);
@@ -339,7 +324,6 @@ export default function App() {
       {quran && <SideMenu quran={quran} open={sideMenuOpen} onGoto={gotoPageNumber} onClose={() => setSideMenuOpen(false)} />}
       {quran && searchOpen && <SearchOverlay quran={quran} onGoto={gotoPageNumber} onClose={() => setSearchOpen(false)} />}
       <AboutPage open={aboutOpen} onClose={() => setAboutOpen(false)} />
-      <IntroVideo open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
       {quran && (
         <StudySheet
           ref={studyRef}

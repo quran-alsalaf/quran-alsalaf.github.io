@@ -29,24 +29,3 @@ export function setWeeksTint(on) {
 
 // حجم خط عناصر الواجهة: خط واحد ثابت لا يتحكم به المستخدم (بقرار صاحب المشروع ٢٠٢٦-٠٩-٢٥،
 // يُلغي ميزة اختيار الحجم). --ui-scale يبقى ثابتًا على ١ في src/styles/tokens.css.
-
-// ---------- الفيديو التعريفي (الفصل ١١): يظهر تلقائيًّا في أول فتحتين فقط ----------
-const ONBOARDING_KEY = 'hq.onboardingSeen';
-
-export function shouldAutoShowOnboarding() {
-  try {
-    const seen = parseInt(localStorage.getItem(ONBOARDING_KEY) || '0', 10);
-    return seen < 2;
-  } catch {
-    return false;
-  }
-}
-
-export function markOnboardingSeen() {
-  try {
-    const seen = parseInt(localStorage.getItem(ONBOARDING_KEY) || '0', 10);
-    localStorage.setItem(ONBOARDING_KEY, String(seen + 1));
-  } catch {
-    // لا يلزم أكثر من عدم الإزعاج المتكرر؛ يُتجاهل إن تعذّر الحفظ
-  }
-}
