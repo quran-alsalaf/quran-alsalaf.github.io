@@ -114,3 +114,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* الجوال الأفقي: رأس أقصر */
+@media (orientation: landscape) and (max-height: 540px) {
+  .rpick__head {
+    padding: 6px 12px;
+  }
+
+  .rpick__close {
+    width: 30px;
+    height: 30px;
+  }
+}

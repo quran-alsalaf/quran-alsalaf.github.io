@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom';
 import MushafPage from './MushafPage.jsx';
 import { pageInfo, toArabicDigits } from '../data/quran.js';
 import { SURA_NAMES_VOWELED } from '../data/suraNamesVoweled.js';
-import { pageLayout } from '../lib/layout.js';
+import { isScrollMode, pageLayout } from '../lib/layout.js';
 import { prefetchPageFonts, usePageFont } from '../lib/qcfFonts.js';
 import { FIRST_PAGE, LAST_PAGE, readLastPage, saveLastPage } from '../lib/position.js';
 import './Reader.css';
@@ -52,6 +52,8 @@ const LONG_PRESS_MS = 450;
 export default function Reader({ quran, onTap, onColumn, onPage, onVDrag, onVDragEnd, onLongPress, goto, marks }) {
   const [page, setPage] = useState(readLastPage);
   const [box, setBox] = useState(null);
+  // الجوال الأفقي (٢٠٢٦-١٠-١٧): تملأ الصفحةُ العرضَ وتُمرَّر رأسيًّا داخل نفسها (src/lib/layout.js)
+  const scroll = isScrollMode(box);
 
   useEffect(() => {
     if (goto?.page) setPage(goto.page);
@@ -176,7 +178,8 @@ export default function Reader({ quran, onTap, onColumn, onPage, onVDrag, onVDra
       if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
       if (d.longPressed) return;
       clearTimeout(d.press);
-      d.axis = Math.abs(mx) > Math.abs(my) ? 'x' : 'y';
+      // في التمرير الرأسي تُشترط غلبة الأفقي بوضوح، فلا تنقلب الصفحة بالخطأ أثناء النزول بالإصبع
+      d.axis = Math.abs(mx) > Math.abs(my) * (scroll ? 1.5 : 1) ? 'x' : 'y';
       if (d.axis) {
         try {
           viewRef.current.setPointerCapture(e.pointerId);
@@ -186,7 +189,8 @@ export default function Reader({ quran, onTap, onColumn, onPage, onVDrag, onVDra
       }
     }
     if (d.axis === 'y') {
-      onVDrag?.(my);
+      // في وضع التمرير يتولّى المتصفح السحب الرأسي (تمريرًا)، وفتح الصفحات السفلية له طريقه أدناه
+      if (!scroll) onVDrag?.(my);
       return;
     }
     if (d.axis !== 'x') return;
@@ -213,7 +217,7 @@ export default function Reader({ quran, onTap, onColumn, onPage, onVDrag, onVDra
       return;
     }
     if (d.axis === 'y') {
-      onVDragEnd?.(e.type === 'pointerup' ? e.clientY - d.y : 0, e.timeStamp - d.t0);
+      if (!scroll) onVDragEnd?.(e.type === 'pointerup' ? e.clientY - d.y : 0, e.timeStamp - d.t0);
       return;
     }
     if (d.axis !== 'x') return;
@@ -229,6 +233,64 @@ export default function Reader({ quran, onTap, onColumn, onPage, onVDrag, onVDra
     settle(dir);
   };
 
+  // ---------- فتح الصفحات السفلية في وضع التمرير ----------
+  // السحب لأعلى يتعارض هنا مع تمرير الصفحة، فيعمل فقط إن كانت الصفحة مُمرَّرة إلى آخرها ثم
+  // زاد المستخدم سحبه (pull past the end)؛ وإلا فهو تمرير عادي. وتُرصد اللمسات بأحداث اللمس
+  // لأن المتصفح يلغي أحداث المؤشر (pointercancel) متى تولّى التمرير. وللحاسوب عجلة الفأرة بالمثل.
+  useEffect(() => {
+    const el = viewRef.current;
+    if (!scroll || !el) return undefined;
+    const atEnd = () => {
+      const s = el.querySelector('.sheet--current');
+      return !!s && s.scrollTop + s.clientHeight >= s.scrollHeight - 2;
+    };
+    let t = null;
+    const start = (e) => {
+      t = e.touches.length === 1 ? { y: e.touches[0].clientY, t0: e.timeStamp, pull: 0 } : null;
+    };
+    const move = (e) => {
+      if (!t || drag.current?.axis === 'x') return;
+      const y = e.touches[0].clientY;
+      const dy = y - t.y;
+      t.y = y;
+      if (dy < 0 && atEnd()) t.pull += -dy;
+      else if (dy > 0 && t.pull > 0) t.pull = Math.max(0, t.pull - dy);
+      if (t.pull > 0) onVDrag?.(-t.pull);
+    };
+    const end = (e) => {
+      if (t && t.pull > 0) onVDragEnd?.(-t.pull, Math.max(1, e.timeStamp - t.t0));
+      t = null;
+    };
+    let acc = 0;
+    let timer = 0;
+    const wheel = (e) => {
+      if (!atEnd() || e.deltaY <= 0) {
+        acc = 0;
+        return;
+      }
+      acc += e.deltaY;
+      onVDrag?.(-Math.min(acc, 400));
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        onVDragEnd?.(-acc, 400);
+        acc = 0;
+      }, 160);
+    };
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchmove', move, { passive: true });
+    el.addEventListener('touchend', end, { passive: true });
+    el.addEventListener('touchcancel', end, { passive: true });
+    el.addEventListener('wheel', wheel, { passive: true });
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener('touchstart', start);
+      el.removeEventListener('touchmove', move);
+      el.removeEventListener('touchend', end);
+      el.removeEventListener('touchcancel', end);
+      el.removeEventListener('wheel', wheel);
+    };
+  }, [scroll, onVDrag, onVDragEnd]);
+
   // ---------- لوحة المفاتيح (للحاسوب): السهم الأيسر للتالية كموضعها ----------
   useEffect(() => {
     const onKey = (e) => {
@@ -242,7 +304,7 @@ export default function Reader({ quran, onTap, onColumn, onPage, onVDrag, onVDra
 
   const area = box && { w: box.w - PAD_X * 2, h: box.h - META_H };
   // عرض العمود واحد لكل الصفحات (حجم الخط واحد)، فيكفي أخذه من الصفحة الحالية
-  const column = area ? pageLayout(quran, page, area).width : 0;
+  const column = area ? pageLayout(quran, page, area, scroll).width : 0;
   useEffect(() => {
     if (column) onColumn?.(column);
   }, [column, onColumn]);
@@ -251,7 +313,7 @@ export default function Reader({ quran, onTap, onColumn, onPage, onVDrag, onVDra
   return (
     <div
       ref={viewRef}
-      className="reader"
+      className={`reader${scroll ? ' reader--scroll' : ''}`}
       style={{ '--meta-h': `${META_H}px`, '--pad-x': `${PAD_X}px` }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -266,7 +328,8 @@ export default function Reader({ quran, onTap, onColumn, onPage, onVDrag, onVDra
               key={p}
               quran={quran}
               page={p}
-              layout={pageLayout(quran, p, area)}
+              layout={pageLayout(quran, p, area, scroll)}
+              scroll={scroll}
               shift={page - p}
               current={p === page}
               marks={marks}
@@ -280,12 +343,12 @@ export default function Reader({ quran, onTap, onColumn, onPage, onVDrag, onVDra
 
 // ورقة الصفحة: الترويسة فوق الأسطر — الجزء يمينًا، ورقم الصفحة في الوسط، والسورة يسارًا.
 // والترويسة جزء من الورقة، فتتحرك معها عند السحب.
-function Sheet({ quran, page, layout, shift, current, marks }) {
+function Sheet({ quran, page, layout, scroll, shift, current, marks }) {
   const { sura, juz } = pageInfo(quran, page);
   const font = usePageFont(page);
   return (
     <section
-      className="sheet"
+      className={`sheet${scroll ? ' sheet--scroll' : ''}${current ? ' sheet--current' : ''}`}
       style={{ transform: `translate3d(${shift * 100}%, 0, 0)` }}
       aria-hidden={!current}
       aria-label={`الصفحة ${toArabicDigits(page)}`}
@@ -306,6 +369,7 @@ function Sheet({ quran, page, layout, shift, current, marks }) {
           page={page}
           fontSize={layout.fontSize}
           width={layout.width}
+          height={scroll ? layout.pageHeight : undefined}
           shortLines={layout.shortLines}
           marks={marks}
         />

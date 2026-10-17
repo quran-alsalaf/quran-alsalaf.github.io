@@ -28,7 +28,7 @@ export default defineConfig({
         start_url: base,
         scope: base,
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'any',
         // خلفية الشاشة التي يعرضها النظام لحظة الإقلاع — كحلية لتتصل
         // بأيقونة التطبيق وبشاشة الافتتاح بلا وميض أبيض بينها
         background_color: '#1A0165',

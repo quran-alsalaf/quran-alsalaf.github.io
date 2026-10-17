@@ -19,7 +19,7 @@ const SAFETY = 0.99;
 // أسطر الخطّاط الكاملة تملأ ٩٦٪ فأكثر من أعرض سطر في صفحتها، فما دون ٩٣٪ ناقص.
 const SHORT_FILL = 0.93;
 
-const sizes = new Map(); // "عرض|ارتفاع" → { fontSize, width }
+const sizes = new Map(); // "عرض|ارتفاع|تمرير" → { fontSize, width, pageHeight }
 const shorts = new Map(); // صفحة → أرقام الأسطر الموسّطة
 
 function shortLinesOf(quran, page) {
@@ -36,19 +36,29 @@ function shortLinesOf(quran, page) {
   return set;
 }
 
-// area: عرض منطقة الأسطر وارتفاعها بالبكسل
-export function pageLayout(quran, page, area) {
-  const key = `${area.w}|${area.h}`;
+// وضع التمرير (الجوال الأفقي، بقرار صاحب المشروع ٢٠٢٦-١٠-١٧): يملأ عرضُ الصفحة عرضَ الشاشة،
+// ويُحسب الخط من العرض وحده — فتكون الصفحة أطول من الشاشة وتُمرَّر رأسيًّا — بدل أن يقيّده الارتفاع.
+// وعدد الأسطر ١٥ وكسرها كما هما في المطبوع، فالتخطيط هو هو، لا يتغير إلا الحجم.
+export function isScrollMode(box) {
+  return !!box && box.w > box.h && box.h <= SCROLL_MAX_HEIGHT;
+}
+
+// أطول ارتفاع شاشة أفقيّ يُعدّ جوّالًا فيُمرَّر. وما فوقه (لوح) تتسع فيه الصفحة كاملة فيبقى سلوكه كما هو
+const SCROLL_MAX_HEIGHT = 540;
+
+// area: عرض منطقة الأسطر وارتفاعها بالبكسل. scroll: وضع التمرير أعلاه
+export function pageLayout(quran, page, area, scroll = false) {
+  const key = `${area.w}|${area.h}|${scroll ? 1 : 0}`;
   let size = sizes.get(key);
   if (!size) {
     const widest = quran.qcf.widest;
     const fitWidth = (area.w * SAFETY) / widest;
     const fitHeight = area.h / 15 / LINE_EM;
-    const fontSize = Math.floor(Math.min(fitWidth, fitHeight) * 100) / 100;
+    const fontSize = Math.floor((scroll ? fitWidth : Math.min(fitWidth, fitHeight)) * 100) / 100;
     // حين يحكم الارتفاعُ لا العرضُ (كشاشة الجهاز اللوحي)، يضيق عمود الأسطر إلى عرضه الطبيعي
     // ويتوسط الشاشة كصفحة كتاب لها حواشٍ. وعلى الجوال يحكم العرض، فيبقى العمود بعرض الشاشة.
     const width = Math.min(area.w, Math.ceil((fontSize * widest) / SAFETY));
-    size = { fontSize, width };
+    size = { fontSize, width, pageHeight: Math.ceil(15 * LINE_EM * fontSize) };
     sizes.set(key, size);
   }
   return { ...size, shortLines: shortLinesOf(quran, page) };

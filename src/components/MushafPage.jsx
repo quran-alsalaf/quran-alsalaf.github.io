@@ -21,7 +21,7 @@ const OPENING_HEADER_ROW = OPENING_TEXT_ROW - 1;
 // marks: ما يُرسم فوق الآيات من بيانات المستخدم —
 //   notes { آية: نص }، bookmarks [{ v, color }]، range [أول، آخر] (يُخفت ما خارجه)،
 //   selected الآية المضغوط عليها ضغطًا مطوّلًا، playing الآية الجاري تلاوتها
-function MushafPage({ quran, page, fontSize, width, shortLines, marks }) {
+function MushafPage({ quran, page, fontSize, width, height, shortLines, marks }) {
   const lines = quran.pages[page - 1];
   const glyphs = quran.qcf.pages[page - 1];
   const opening = page <= 2;
@@ -31,7 +31,7 @@ function MushafPage({ quran, page, fontSize, width, shortLines, marks }) {
   return (
     <div
       className={`mushaf-page no-select${opening ? ' mushaf-page--opening' : ''}`}
-      style={{ '--fs': `${fontSize}px`, width: `${width}px` }}
+      style={{ '--fs': `${fontSize}px`, width: `${width}px`, ...(height ? { height: `${height}px` } : {}) }}
       lang="ar"
     >
       {lines.map((line, i) => (

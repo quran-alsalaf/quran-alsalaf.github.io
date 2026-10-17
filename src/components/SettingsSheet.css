@@ -173,3 +173,15 @@
 .settings__switch[aria-checked='true'] span {
   transform: translateX(-20px);
 }
+
+/* الجوال الأفقي: رأس أقصر */
+@media (orientation: landscape) and (max-height: 540px) {
+  .settings__head {
+    padding: 4px 12px;
+  }
+
+  .settings__back {
+    width: 34px;
+    height: 34px;
+  }
+}

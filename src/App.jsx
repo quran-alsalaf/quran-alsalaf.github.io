@@ -144,6 +144,11 @@ export default function App() {
     },
     [setLift]
   );
+  const openStudy = useCallback(() => {
+    setChromeOpen(false);
+    setStudyOpen(true);
+    setLift(window.innerHeight, true);
+  }, [setLift]);
   const onStudyDrag = useCallback((dy) => setLift(window.innerHeight - dy, false), [setLift]);
   const onStudyDragEnd = useCallback(
     (dy, ms) => {
@@ -242,6 +247,14 @@ export default function App() {
         </header>
 
         <main className="app__main">
+          {/* الجوال الأفقي: طريقة ظاهرة لفتح التفسير والمعاني والعمل، لأن سحب الصفحة لأعلى
+              تمريرٌ هناك ولا يفتحها إلا بعد آخر الصفحة (يظهر بالـCSS في الأفقي وحده) */}
+          <button className="study-open" type="button" onClick={openStudy} aria-label="فتح التفسير ومعاني الكلمات والعمل بالآيات" disabled={!quran}>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M6 15l6-6 6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>التفسير</span>
+          </button>
           {quran && (
             <Reader
               quran={quran}
@@ -388,18 +401,6 @@ export default function App() {
           {toast.text}
         </div>
       )}
-
-      {/* تظهر في الوضع الأفقي داخل المتصفح فقط، حيث يتعذّر فرض القفل */}
-      <div className="orientation-guard">
-        <svg className="orientation-guard__icon" viewBox="0 0 24 24" fill="none">
-          <rect x="7" y="2.5" width="10" height="19" rx="2.2" stroke="currentColor" strokeWidth="1.6" />
-          <path d="M11 18.6h2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-        </svg>
-        <p className="orientation-guard__text">أدر الجهاز رأسيًّا</p>
-        <p className="orientation-guard__hint">
-          صفحة المصحف مصمَّمة للعرض الرأسي، لتحافظ كل صفحة على عدد أسطرها كما في المصحف المطبوع.
-        </p>
-      </div>
     </>
   );
 }

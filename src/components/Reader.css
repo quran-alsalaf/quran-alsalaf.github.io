@@ -6,6 +6,11 @@
   touch-action: none;
 }
 
+/* الجوال الأفقي: التمرير الرأسي للمتصفح، والسحب الأفقي لنا */
+.reader--scroll {
+  touch-action: pan-y;
+}
+
 .reader__track {
   position: absolute;
   inset: 0;
@@ -20,6 +25,29 @@
   grid-template-rows: var(--meta-h) minmax(0, 1fr);
   padding: 0 var(--pad-x);
   background: var(--bg);
+}
+
+/* وضع التمرير: ورقة الصفحة (الترويسة ثم الأسطر) تمرّ معًا، فلا تأكل الترويسة ارتفاعًا ثابتًا */
+.sheet--scroll {
+  display: block;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+}
+
+.sheet--scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.sheet--scroll .sheet__meta {
+  height: var(--meta-h);
+  margin-inline: auto;
+}
+
+.sheet--scroll .mushaf-page {
+  height: auto;
+  margin-inline: auto;
 }
 
 /* الترويسة: الجزء في أولها (يمينًا)، ورقم الصفحة في وسطها، والسورة في آخرها (يسارًا).

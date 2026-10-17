@@ -16,11 +16,9 @@ import './styles/tokens.css';
 import './styles/global.css';
 import App from './App.jsx';
 import { initTheme } from './lib/theme.js';
-import { lockPortrait } from './lib/orientation.js';
 import { applyWeeksTint } from './lib/settings.js';
 
 initTheme();
-lockPortrait();
 applyWeeksTint(); // تمييز مقررات الأسابيع كما اختاره المستخدم في الإعدادات (ملغى افتراضيًّا)
 
 createRoot(document.getElementById('root')).render(

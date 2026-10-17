@@ -227,3 +227,15 @@
   width: 17px;
   height: 17px;
 }
+
+/* الجوال الأفقي (٢٠٢٦-١٠-١٧): ارتفاع قصير — لا يُقصّ شيء من البطاقة، وتُمرَّر داخليًّا عند الحاجة */
+@media (orientation: landscape) and (max-height: 540px) {
+  .listen__card {
+    bottom: calc(6px + var(--safe-bottom));
+    max-height: calc(100% - 12px - var(--safe-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 10px 14px 12px;
+    gap: 8px;
+  }
+}

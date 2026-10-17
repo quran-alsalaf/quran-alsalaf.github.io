@@ -287,3 +287,19 @@
   font-weight: 600;
   background: var(--surface-2);
 }
+
+/* الجوال الأفقي (٢٠٢٦-١٠-١٧): ارتفاع قصير، فيُضغط الرأس والتبويبات ليبقى للقائمة مكان */
+@media (orientation: landscape) and (max-height: 540px) {
+  .sidemenu__head {
+    padding: calc(4px + var(--safe-top)) 12px 4px;
+  }
+
+  .sidemenu__close {
+    width: 30px;
+    height: 30px;
+  }
+
+  .sidemenu__tabs button {
+    padding: 6px 4px 7px;
+  }
+}
