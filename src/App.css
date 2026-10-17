@@ -261,46 +261,8 @@
 }
 
 /* ===== الجوال الأفقي (٢٠٢٦-١٠-١٧) =====
-   ارتفاع الشاشة قصير: تُدمج الخانتان والشريط العلوي، ويظهر زر فتح الصفحات السفلية */
-.study-open {
-  display: none;
-}
-
+   ارتفاع الشاشة قصير: تُدمج الخانتان والشريط العلوي */
 @media (orientation: landscape) and (max-height: 540px) {
-  .study-open {
-    position: absolute;
-    bottom: calc(8px + var(--safe-bottom));
-    inset-inline-start: 50%;
-    z-index: 9;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    height: 30px;
-    padding: 0 12px 0 8px;
-    border-radius: 999px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    box-shadow: 0 4px 12px rgb(0 0 0 / 0.18);
-    color: var(--ink);
-    font-size: var(--text-xs);
-    font-weight: 500;
-    transform: translateX(50%);
-  }
-
-  .study-open svg {
-    width: 16px;
-    height: 16px;
-  }
-
-  .study-open:disabled {
-    display: none;
-  }
-
-  /* حين تظهر الخانتان يختفي الزر ليحلّا محلّه */
-  .app:has(.dock--open) .study-open {
-    display: none;
-  }
-
   .topbar {
     gap: 8px;
     padding-top: calc(4px + var(--safe-top));

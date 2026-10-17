@@ -144,11 +144,6 @@ export default function App() {
     },
     [setLift]
   );
-  const openStudy = useCallback(() => {
-    setChromeOpen(false);
-    setStudyOpen(true);
-    setLift(window.innerHeight, true);
-  }, [setLift]);
   const onStudyDrag = useCallback((dy) => setLift(window.innerHeight - dy, false), [setLift]);
   const onStudyDragEnd = useCallback(
     (dy, ms) => {
@@ -247,14 +242,6 @@ export default function App() {
         </header>
 
         <main className="app__main">
-          {/* الجوال الأفقي: طريقة ظاهرة لفتح التفسير والمعاني والعمل، لأن سحب الصفحة لأعلى
-              تمريرٌ هناك ولا يفتحها إلا بعد آخر الصفحة (يظهر بالـCSS في الأفقي وحده) */}
-          <button className="study-open" type="button" onClick={openStudy} aria-label="فتح التفسير ومعاني الكلمات والعمل بالآيات" disabled={!quran}>
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M6 15l6-6 6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span>التفسير</span>
-          </button>
           {quran && (
             <Reader
               quran={quran}
