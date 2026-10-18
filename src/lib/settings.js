@@ -29,3 +29,30 @@ export function setWeeksTint(on) {
 
 // حجم خط عناصر الواجهة: خط واحد ثابت لا يتحكم به المستخدم (بقرار صاحب المشروع ٢٠٢٦-٠٩-٢٥،
 // يُلغي ميزة اختيار الحجم). --ui-scale يبقى ثابتًا على ١ في src/styles/tokens.css.
+
+// ---------- وضع القراءة (٢٠٢٦-١٠-١٨) ----------
+// سرعة التمرير التلقائي بوحدة «أسطر في الدقيقة» لا بالبكسل، فتبقى وتيرة القراءة واحدة على كل
+// الشاشات وأحجام الخط. وآخر سرعة اختارها المستخدم تُحفظ وتُستعمل في المرة القادمة.
+// أما الوضع نفسه فلا يُحفظ: يفتح التطبيق دائمًا بالوضع العادي.
+export const READ_SPEED_MIN = 2;
+export const READ_SPEED_MAX = 30;
+export const READ_SPEED_DEFAULT = 8;
+const READ_SPEED_KEY = 'hq.readSpeed';
+
+export function readReadingSpeed() {
+  try {
+    const n = parseFloat(localStorage.getItem(READ_SPEED_KEY));
+    if (n >= READ_SPEED_MIN && n <= READ_SPEED_MAX) return n;
+  } catch {
+    // يُستعمل الافتراضي
+  }
+  return READ_SPEED_DEFAULT;
+}
+
+export function saveReadingSpeed(n) {
+  try {
+    localStorage.setItem(READ_SPEED_KEY, String(n));
+  } catch {
+    // تبقى السرعة سارية في هذه الجلسة ولو تعذّر حفظها
+  }
+}

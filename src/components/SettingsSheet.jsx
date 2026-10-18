@@ -5,10 +5,10 @@ import './SettingsSheet.css';
 
 /*
   الإعدادات: صفحة كاملة مستقلة تغطي المصحف، يُرجع منها بسهم الرجوع (بطلب صاحب المشروع).
-  الوضع، تمييز مقررات الأسابيع، وعن التطبيق.
+  الوضع، تمييز مقررات الأسابيع، وضع القراءة، وعن التطبيق.
   (حجم خط التطبيق أُلغي ٢٠٢٦-٠٩-٢٥ بطلب صاحب المشروع: خط واحد ثابت لا خيار فيه)
 */
-export default function SettingsSheet({ open, onClose, onThemeChange, onShowAbout }) {
+export default function SettingsSheet({ open, onClose, onThemeChange, onStartReading, onShowAbout }) {
   const [theme, setThemeState] = useState(readTheme);
   const [weeks, setWeeks] = useState(readWeeksTint);
 
@@ -69,6 +69,11 @@ export default function SettingsSheet({ open, onClose, onThemeChange, onShowAbou
             <span />
           </button>
         </div>
+
+        <button type="button" className="settings__link" onClick={onStartReading}>
+          <span className="settings__label">وضع القراءة</span>
+          <ChevronIcon />
+        </button>
 
         <button type="button" className="settings__link" onClick={onShowAbout}>
           <span className="settings__label">عن التطبيق</span>

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import SplashScreen from './components/SplashScreen.jsx';
 import Reader from './components/Reader.jsx';
+import ReadingMode from './components/ReadingMode.jsx';
 import { loadQuran } from './data/quran.js';
 import { loadPageFont } from './lib/qcfFonts.js';
-import { readLastPage } from './lib/position.js';
+import { readLastPage, saveLastPage } from './lib/position.js';
 import SettingsSheet from './components/SettingsSheet.jsx';
 import StudySheet from './components/StudySheet.jsx';
 import VerseMenu from './components/VerseMenu.jsx';
@@ -40,6 +41,8 @@ export default function App() {
   // الصفحات السفلية: صفحة كاملة تحت المصحف. نطاقها النطاق المحدد في الخانة اليسرى إن
   // اكتمل، وإلا آيات الصفحة الحالية (الفصل ٥)
   const [studyOpen, setStudyOpen] = useState(false);
+  // وضع القراءة (٢٠٢٦-١٠-١٨): تدفّق رأسي بتمرير تلقائي. لا يُحفظ بين الجلسات: يفتح التطبيق بالعادي دائمًا
+  const [reading, setReading] = useState(false);
   const [page, setPage] = useState(readLastPage);
   const user = useUserData();
   const selection = user.range?.length === 2 ? user.range : null;
@@ -89,6 +92,22 @@ export default function App() {
     () => ({ notes: user.notes, bookmarks: user.bookmarks, range: selection, selected: pressed?.v ?? null, playing: player.v }),
     [user.notes, user.bookmarks, selection?.[0], selection?.[1], pressed?.v, player.v]
   );
+
+  // دخول وضع القراءة من الإعدادات: يُوقَف الصوت بهدوء (الاستماع وتحديد المقدار لا يعملان فيه)،
+  // ثم يبدأ التدفق من الصفحة الحالية. والخروج يعيد المصحف العادي على الصفحة التي في منتصف الشاشة
+  const startReading = () => {
+    setSettingsOpen(false);
+    setChromeOpen(false);
+    if (player.status !== 'idle') stop();
+    setReading(true);
+  };
+  const exitReading = (p) => {
+    saveLastPage(p);
+    setPage(p);
+    setGotoPage({ page: p, n: Date.now() });
+    setReading(false);
+  };
+  const readingMarks = useMemo(() => ({ ...marks, range: null, playing: null }), [marks]);
 
   const onLongPress = useCallback((v, rect) => {
     setChromeOpen(false);
@@ -231,7 +250,17 @@ export default function App() {
         </header>
 
         <main className="app__main">
-          {quran && (
+          {quran && reading && (
+            <ReadingMode
+              quran={quran}
+              startPage={page}
+              marks={readingMarks}
+              cardOpen={!!pressed}
+              onLongPress={onLongPress}
+              onExit={exitReading}
+            />
+          )}
+          {quran && !reading && (
             <Reader
               quran={quran}
               onTap={() => setChromeOpen((open) => !open)}
@@ -253,69 +282,72 @@ export default function App() {
             مطابقةً لنصّ المواصفة.
             وهما مخفيتان أصلًا (بطلب صاحب المشروع)، تنزلقان من الأسفل فوق الصفحة عند اللمس،
             فلا يتغير حجم خط المصحف بظهورهما. */}
-        <footer
-          className={`dock${chromeOpen ? ' dock--open' : ''}`}
-          aria-hidden={!chromeOpen}
-          inert={chromeOpen ? undefined : ''}
-        >
-          {/* الاستماع: قبل التشغيل تفتح إعداداته، وأثناءه تصير الخانة أزرار التحكم كلها
-              (إيقاف مؤقت/استئناف، والإعدادات، والإيقاف التام) — بلا شريط صوت منفصل */}
-          {player.status === 'idle' || !quran ? (
-            <button className="dock__slot" type="button" disabled={!quran} onClick={() => setListenOpen(true)}>
-              {player.download?.active ? (
-                <span className="dock__label dock__label--row">
-                  <span className="dock__spin" />
-                  جارٍ تنزيل الصوت{player.download.pct != null ? ` — ${toArabicDigits(player.download.pct)}٪` : ''}
-                </span>
-              ) : (
-                <span className="dock__label">الاستماع للمقدار المحدد</span>
-              )}
-            </button>
-          ) : (
-            <div className="dock__slot dock__slot--player">
-              <button
-                type="button"
-                className="dock__ctl dock__ctl--main"
-                onClick={player.status === 'paused' ? resume : pause}
-                aria-label={player.status === 'paused' ? 'استئناف' : 'إيقاف مؤقت'}
-              >
-                {player.status === 'paused' ? <PlayIcon /> : player.status === 'loading' ? <span className="dock__spin" /> : <PauseIcon />}
+        {!reading && (
+          <footer
+            className={`dock${chromeOpen ? ' dock--open' : ''}`}
+            aria-hidden={!chromeOpen}
+            inert={chromeOpen ? undefined : ''}
+          >
+            {/* الاستماع: قبل التشغيل تفتح إعداداته، وأثناءه تصير الخانة أزرار التحكم كلها
+                (إيقاف مؤقت/استئناف، والإعدادات، والإيقاف التام) — بلا شريط صوت منفصل */}
+            {player.status === 'idle' || !quran ? (
+              <button className="dock__slot" type="button" disabled={!quran} onClick={() => setListenOpen(true)}>
+                {player.download?.active ? (
+                  <span className="dock__label dock__label--row">
+                    <span className="dock__spin" />
+                    جارٍ تنزيل الصوت{player.download.pct != null ? ` — ${toArabicDigits(player.download.pct)}٪` : ''}
+                  </span>
+                ) : (
+                  <span className="dock__label">الاستماع للمقدار المحدد</span>
+                )}
               </button>
-              <button type="button" className="dock__ctl" onClick={() => setListenOpen(true)} aria-label="إعدادات الاستماع">
-                <SettingsIcon />
+            ) : (
+              <div className="dock__slot dock__slot--player">
+                <button
+                  type="button"
+                  className="dock__ctl dock__ctl--main"
+                  onClick={player.status === 'paused' ? resume : pause}
+                  aria-label={player.status === 'paused' ? 'استئناف' : 'إيقاف مؤقت'}
+                >
+                  {player.status === 'paused' ? <PlayIcon /> : player.status === 'loading' ? <span className="dock__spin" /> : <PauseIcon />}
+                </button>
+                <button type="button" className="dock__ctl" onClick={() => setListenOpen(true)} aria-label="إعدادات الاستماع">
+                  <SettingsIcon />
+                </button>
+                <button type="button" className="dock__ctl" onClick={stop} aria-label="إيقاف">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            {/* تحديد مقدار الآيات: فارغة ⇐ «تحديد مقدار الآيات»، وإلا ملخص المقدار مع ✕ لمسحه.
+                كلاهما يفتح قائمة البداية والنهاية (RangeMenu) — ملخص المقدار يحتاج بيانات
+                المصحف: فلا يُكتب قبل تحميلها (وإلا تعطّل الفتح إن كان محفوظًا من قبل) */}
+            {selection && quran ? (
+              <div className="dock__slot dock__slot--range">
+                <button type="button" className="dock__label dock__rangeLabel" onClick={() => setRangeMenuOpen(true)}>
+                  {verseLabel(quran, selection)}
+                </button>
+                <button type="button" className="dock__clear" onClick={() => saveRange(null)} aria-label="مسح المقدار">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <button className="dock__slot" type="button" disabled={!quran} onClick={() => setRangeMenuOpen(true)}>
+                <span className="dock__label">تحديد مقدار الآيات</span>
               </button>
-              <button type="button" className="dock__ctl" onClick={stop} aria-label="إيقاف">
-                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-          )}
-          {/* تحديد مقدار الآيات: فارغة ⇐ «تحديد مقدار الآيات»، وإلا ملخص المقدار مع ✕ لمسحه.
-              كلاهما يفتح قائمة البداية والنهاية (RangeMenu) — ملخص المقدار يحتاج بيانات
-              المصحف: فلا يُكتب قبل تحميلها (وإلا تعطّل الفتح إن كان محفوظًا من قبل) */}
-          {selection && quran ? (
-            <div className="dock__slot dock__slot--range">
-              <button type="button" className="dock__label dock__rangeLabel" onClick={() => setRangeMenuOpen(true)}>
-                {verseLabel(quran, selection)}
-              </button>
-              <button type="button" className="dock__clear" onClick={() => saveRange(null)} aria-label="مسح المقدار">
-                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-          ) : (
-            <button className="dock__slot" type="button" disabled={!quran} onClick={() => setRangeMenuOpen(true)}>
-              <span className="dock__label">تحديد مقدار الآيات</span>
-            </button>
-          )}
-        </footer>
+            )}
+          </footer>
+        )}
       </div>
 
       <SettingsSheet
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+        onStartReading={startReading}
         onShowAbout={() => {
           setSettingsOpen(false);
           setAboutOpen(true);
