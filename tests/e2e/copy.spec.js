@@ -1,5 +1,5 @@
-// أزرار النسخ: «نسخ المحتوى» في صفحات المحتوى (آية ثم محتواها)، ومربع «نسخ» للآية، وبطاقة التفسير (الآية والتفسير
-// ومشاركتهما)، وبطاقات المعاني والعمل والملاحظة (المحتوى وحده).
+// أزرار النسخ: «نسخ المحتوى» في صفحات المحتوى (آية ثم محتواها)، ومربع «نسخ» للآية، وبطاقات التفسير والمعاني
+// والعمل والملاحظة (المحتوى وحده).
 // الحافظة محاكاة (helpers.js): يُقرأ ما نسخه التطبيق نصًّا كما سيُلصق
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -139,19 +139,19 @@ test('مربع «نسخ» في مربع الآية: ينسخ الآية ﴿…�
   expect(await copied(page)).toBe(oneVerse(2));
 });
 
-test('بطاقة الآية: نسخ الآية، ونسخ التفسير المختار، ونسخ المعاني والعمل وحدها بلا الآية', async ({ page }) => {
+test('بطاقة الآية: نسخ التفسير المختار والمعاني والعمل، كلٌّ وحده بلا الآية', async ({ page }) => {
   await longPress(page, 1);
   await page.getByRole('menuitem', { name: 'تفسير' }).click();
   const card = page.getByRole('dialog', { name: 'التفسير' });
-  await card.getByRole('button', { name: 'نسخ الآية' }).click();
-  await expect(toast(page)).toHaveText('نُسخ الآية');
-  expect(await copied(page)).toBe(oneVerse(1));
-  await card.getByRole('button', { name: 'نسخ التفسير' }).click();
-  await expect(toast(page)).toHaveText('نُسخ التفسير');
-  expect(await copied(page)).toBe(`التفسير الميسّر:\n${para(muyassar(1))}`);
+  // زرّ نسخ واحد في رأس البطاقة، بلا «نسخ الآية» ولا «مشاركة» (للآية مربع «نسخ» خاص بها)
+  await expect(card.getByRole('button', { name: 'نسخ الآية' })).toHaveCount(0);
+  await expect(card.getByRole('button', { name: 'مشاركة' })).toHaveCount(0);
+  await card.getByRole('button', { name: 'نسخ', exact: true }).click();
+  await expect(toast(page)).toHaveText('نُسخ النص');
+  expect(await copied(page)).toBe(para(muyassar(1)));
   await chooseTafsir(card, 'السعدي');
-  await card.getByRole('button', { name: 'نسخ التفسير' }).click();
-  expect(await copied(page)).toBe(`تيسير الكريم الرحمن في تفسير كلام المنان (تفسير السعدي):\n${para(SAADI.verses[1])}`);
+  await card.getByRole('button', { name: 'نسخ', exact: true }).click();
+  expect(await copied(page)).toBe(para(SAADI.verses[1]));
   await page.keyboard.press('Escape');
 
   await longPress(page, 1);
@@ -192,39 +192,4 @@ test('بلا واجهة الحافظة: يُنسخ بالطريقة البديل
   await page.evaluate(() => (window.__execOk = false));
   await study(page).getByRole('button', { name: 'نسخ المحتوى' }).click();
   await expect(toast(page)).toHaveText('تعذّر النسخ');
-});
-
-test('بطاقة الآية: مشاركة الآية مع تفسيرها بقائمة المشاركة في الجهاز', async ({ page }) => {
-  await page.evaluate(() => {
-    window.__shared = [];
-    navigator.share = (data) => (window.__shared.push(data), Promise.resolve());
-  });
-  await longPress(page, 1);
-  await page.getByRole('menuitem', { name: 'تفسير' }).click();
-  const card = page.getByRole('dialog', { name: 'التفسير' });
-  await card.getByRole('button', { name: 'مشاركة' }).click();
-  await expect.poll(() => page.evaluate(() => window.__shared.length)).toBe(1);
-  const shared = await page.evaluate(() => window.__shared[0]);
-  expect(shared.text).toBe(`${oneVerse(1)}\n\nالتفسير الميسّر:\n${para(muyassar(1))}`);
-  await expect(toast(page)).toHaveCount(0);
-
-  // أغلق المستخدم قائمة المشاركة: لا رسالة
-  await page.evaluate(() => {
-    navigator.share = () => Promise.reject(new DOMException('cancel', 'AbortError'));
-  });
-  await card.getByRole('button', { name: 'مشاركة' }).click();
-  await expect(toast(page)).toHaveCount(0);
-});
-
-test('بطاقة الآية: حيث لا مشاركة في المتصفح تُنسخ الآية مع تفسيرها', async ({ page }) => {
-  await page.evaluate(() => {
-    delete Navigator.prototype.share;
-    delete navigator.share;
-  });
-  await longPress(page, 1);
-  await page.getByRole('menuitem', { name: 'تفسير' }).click();
-  const card = page.getByRole('dialog', { name: 'التفسير' });
-  await card.getByRole('button', { name: 'مشاركة' }).click();
-  await expect(toast(page)).toHaveText('نُسخت الآية مع تفسيرها؛ الصقها حيث تريد');
-  expect(await copied(page)).toBe(`${oneVerse(1)}\n\nالتفسير الميسّر:\n${para(muyassar(1))}`);
 });
