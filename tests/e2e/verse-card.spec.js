@@ -1,6 +1,6 @@
 // الضغط المطوّل على آية وبطاقتها وكل خيار فيها
 import { test, expect } from '@playwright/test';
-import { longPress, openApp, stored, word } from './helpers.js';
+import { clickDock, longPress, openApp, stored, word } from './helpers.js';
 
 test.beforeEach(async ({ page }) => {
   await openApp(page, { 'hq.page': '1' });
@@ -73,15 +73,33 @@ test('الزر الأيمن على آية يفتح بطاقتها، وEsc يغل
   await expect(page.locator('.vmenu')).toHaveCount(0);
 });
 
-test('تفسير: المختصر ثم الميسّر للآية وحدها', async ({ page }) => {
+test('تفسير: التفسير المختار وحده للآية، والتبديل من أعلى البطاقة يتبعه صفحات المحتوى', async ({ page }) => {
   await longPress(page, 1);
   await page.getByRole('menuitem', { name: 'تفسير' }).click();
   const card = page.getByRole('dialog', { name: 'التفسير' });
-  await expect(card).toContainText('المختصر في تفسير القرآن الكريم');
-  await expect(card).toContainText('التفسير الميسّر');
   await expect(card.locator('.vcard__head')).toContainText('الفاتحة: ٢');
+  // الميسّر افتراضيًّا، تفسير واحد
+  await expect(card.locator('.tpick__btn')).toHaveText('الميسّر');
+  await expect(card.locator('.vcard__credit')).toHaveText('التفسير الميسّر');
+  await expect(card).not.toContainText('المختصر في تفسير القرآن الكريم');
+
+  await card.locator('.tpick__btn').click();
+  await card.getByRole('option', { name: /السعدي/ }).click();
+  await expect(card.locator('.tpick__btn')).toHaveText('السعدي');
+  await expect(card.locator('.vcard__content')).toContainText('الثناء على الله');
+  await expect(card).not.toContainText('التفسير الميسّر');
+
+  // Esc يغلق القائمة وحدها أولًا
+  await card.locator('.tpick__btn').click();
+  await page.keyboard.press('Escape');
+  await expect(card.getByRole('listbox')).toHaveCount(0);
+  await expect(card).toBeVisible();
   await card.getByRole('button', { name: 'إغلاق' }).click();
   await expect(page.locator('.vmenu')).toHaveCount(0);
+
+  // الاختيار نفسه في صفحات المحتوى، والمرة القادمة تُفتح البطاقة عليه
+  await clickDock(page, 'صفحات المحتوى');
+  await expect(page.locator('section.study .tpick__btn')).toHaveText('السعدي');
 });
 
 test('معاني الكلمات والعمل بالآيات (متوفران للفاتحة)', async ({ page }) => {

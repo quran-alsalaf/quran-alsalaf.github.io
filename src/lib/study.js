@@ -1,30 +1,102 @@
 // بيانات صفحات المحتوى (تفسير · معاني الكلمات · العمل بالآيات) لنطاق من الآيات.
 //
-// التفسيران يُحمَّلان عند أول فتح للصفحات السفلية لا عند فتح التطبيق (نحو ٤ ميغابايت)،
-// وعامل الخدمة يحفظهما، فيعملان بعدها بلا إنترنت.
+// التفاسير المبنية مع التطبيق تُحمَّل عند أول فتح لها لا عند فتح التطبيق (نحو ١٠ ميغابايت معًا)،
+// وعامل الخدمة يحفظها مسبقًا، فتعمل بلا إنترنت.
+import { useEffect, useState } from 'react';
 
-const BASE = import.meta.env.BASE_URL;
+// (import.meta.env غائب خارج Vite، كاختبارات المتصفح التي تستورد paragraphs)
+const BASE = import.meta.env?.BASE_URL ?? '/';
 const TAFSIR_KEY = 'hq.tafsir';
+// بترتيب قائمة الاختيار. name: في زرّ الاختيار، title: اسم الكتاب أسفل التفسير وفي النسخ
 export const TAFSIR_SOURCES = [
-  { id: 'mukhtasar', name: 'المختصر', title: 'المختصر في تفسير القرآن الكريم' },
   { id: 'muyassar', name: 'الميسّر', title: 'التفسير الميسّر' },
+  { id: 'mukhtasar', name: 'المختصر', title: 'المختصر في تفسير القرآن الكريم' },
+  { id: 'saadi', name: 'السعدي', title: 'تيسير الكريم الرحمن في تفسير كلام المنان (تفسير السعدي)' },
 ];
+const DEFAULT_TAFSIR = 'muyassar';
+export const tafsirInfo = (id) => TAFSIR_SOURCES.find((s) => s.id === id);
 
-// مصدر التفسير المختار: يُحفظ ويبقى في كل فتح لاحق، والافتراضي المختصر
+// الاختيار في الجلسة إن تعذّر التخزين، ومن يتابعه (صفحات المحتوى وبطاقة الآية معًا)
+let sessionChoice = null;
+const listeners = new Set();
+
+// مصدر التفسير المختار: يُحفظ ويبقى في كل فتح لاحق، والافتراضي الميسّر (٢٠٢٦-١١-١٤، كان المختصر)
 export function readTafsirSource() {
+  let id = sessionChoice;
   try {
-    return localStorage.getItem(TAFSIR_KEY) === 'muyassar' ? 'muyassar' : 'mukhtasar';
+    id = localStorage.getItem(TAFSIR_KEY) ?? id;
   } catch {
-    return 'mukhtasar';
+    // التخزين غير متاح
   }
+  return tafsirInfo(id) ? id : DEFAULT_TAFSIR;
 }
 
 export function saveTafsirSource(id) {
+  sessionChoice = id;
   try {
     localStorage.setItem(TAFSIR_KEY, id);
   } catch {
     // التخزين غير متاح: يسري في هذه الجلسة وحدها
   }
+  for (const f of listeners) f(id);
+}
+
+// [المصدر المختار، تغييره]: اختيار واحد في صفحات المحتوى وبطاقة الآية، يتبعه كلاهما فورًا
+export function useTafsirSource() {
+  const [source, setSource] = useState(readTafsirSource);
+  useEffect(() => {
+    listeners.add(setSource);
+    return () => listeners.delete(setSource);
+  }, []);
+  return [source, saveTafsirSource];
+}
+
+// آيات لم يُفرد لها السعدي كلامًا (يفسّر الآيات مجموعاتٍ، فتأتي آية منها أحيانًا بلا كلام خاص بها)
+export const SAADI_SHARED = 'لم يُفرد السعدي لهذه الآية كلامًا، وتفسيرها داخل في كلامه على الآيات التي حولها.';
+
+// تقسيم نص التفسير فقرات للقراءة (٢٠٢٦-١١-١٤): التفسير الطويل (السعدي خاصة) كتلة واحدة يصعب تتبّعها،
+// فيبدأ سطر جديد عند نهاية جملة («.» أو «؟» أو «!» ثم مسافة، لا داخل اقتباس ﴿…﴾ ولا في «...») متى بلغت
+// الفقرة نحو target حرفًا (وإن طالت بلا نهاية جملة فعند «؛» بعد ضعفيه، ثم «،» بعد ثلاثة أمثاله)، وعند كل بند مرقّم («1 - …» في المختصر)، وتبقى فقرات الأصل (السطر الجديد) كما هي.
+// والفقرة الأخيرة القصيرة جدًّا تُضمّ إلى ما قبلها. النص نفسه لا يتغير، فقط مواضع الأسطر.
+export function paragraphs(text, target = 260) {
+  const out = [];
+  for (const block of text.split('\n')) {
+    const start = out.length;
+    for (const part of block.split(/ (?=[\d٠-٩]{1,2} - )/)) {
+      let cur = '';
+      let depth = 0;
+      for (let i = 0; i < part.length; i++) {
+        const c = part[i];
+        cur += c;
+        if (c === '﴿') depth++;
+        else if (c === '﴾') depth = Math.max(0, depth - 1);
+        else if (
+          depth === 0 &&
+          part[i + 1] === ' ' &&
+          // نهاية جملة؛ فإن طالت الفقرة جدًّا بلا نهاية جملة (السعدي يصل جمله بالفواصل) فعند «؛» ثم «،»
+          ((('.؟!'.includes(c) && part[i - 1] !== '.') && cur.trim().length >= target) ||
+            (c === '؛' && cur.trim().length >= target * 2) ||
+            (c === '،' && cur.trim().length >= target * 3))
+        ) {
+          out.push(cur.trim());
+          cur = '';
+        }
+      }
+      if (cur.trim()) out.push(cur.trim());
+    }
+    // ذيل قصير جدًّا من الكتلة نفسها يُضمّ إلى ما قبله
+    if (out.length - start > 1 && out.at(-1).length < 60 && !/^[\d٠-٩]{1,2} - /.test(out.at(-1))) {
+      const tail = out.pop();
+      out[out.length - 1] += ` ${tail}`;
+    }
+  }
+  return out.filter(Boolean);
+}
+
+// نص تفسير الآية v من المصدر id (البيانات t)، نصًّا عاديًّا؛ '' إن لم يكن لها كلام خاص بها
+export function tafsirText(id, t, v) {
+  const raw = t.verses[v] ?? '';
+  return id === 'muyassar' ? muyassarPlain(raw, t.quote) : raw;
 }
 
 const tafsirs = new Map();
