@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { toArabicDigits } from '../data/quran.js';
 import { FOREVER } from '../lib/player.js';
-import { copyVerse, loadTafsir, memoIndex, tafsirInfo, tafsirText, useTafsirSource, verseLabel } from '../lib/study.js';
+import { copyVerse, loadTafsir, memoIndex, paragraphs, tafsirInfo, tafsirText, useTafsirSource, verseLabel } from '../lib/study.js';
 import {
   bookmarksAt,
   copyText,
@@ -11,6 +11,7 @@ import {
   placeBookmark,
   readNotes,
   setNote,
+  shareText,
   unplaceBookmark,
   useUserData,
 } from '../lib/userdata.js';
@@ -292,6 +293,17 @@ function CardHead({ quran, v, title, children, onClose }) {
   );
 }
 
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="17.5" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="6.5" cy="12" r="2.5" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="17.5" cy="18.5" r="2.5" stroke="currentColor" strokeWidth="1.7" />
+      <path d="m8.7 10.7 6.6-3.9M8.7 13.3l6.6 3.9" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
 function CopyButton({ onCopy }) {
   return (
     <button type="button" className="vcard__btn" onClick={onCopy} aria-label="نسخ">
@@ -331,8 +343,15 @@ function DetailCard({ quran, v, kind, onClose, onToast }) {
     const t = tafsirs[source];
     const text = t ? tafsirText(source, t, v) : '';
     const name = tafsirInfo(source).title;
-    const copyOne = async () =>
-      onToast((await copyText(`${copyVerse(quran, v)}\n\n${name}:\n${text}`)) ? `نُسخ ${name}` : 'تعذّر النسخ');
+    // النسخ والمشاركة (٢٠٢٦-١١-١٤): الآية وحدها، والتفسير وحده باسم كتابه، والآية مع تفسيرها
+    // بقائمة المشاركة في الجهاز (واتساب وغيره)، والتفسير بفقراته كما يُعرض
+    const tafsirPlain = text ? `${name}:\n${paragraphs(text).join('\n')}` : '';
+    const copyOne = async (what, value) => onToast((await copyText(value)) ? `نُسخ ${what}` : 'تعذّر النسخ');
+    const share = async () => {
+      const result = await shareText(`${copyVerse(quran, v)}\n\n${tafsirPlain}`);
+      if (result === 'copied') onToast('نُسخت الآية مع تفسيرها؛ الصقها حيث تريد');
+      else if (result === 'failed') onToast('تعذّرت المشاركة');
+    };
     let content;
     if (failed) content = <p className="study__note">تعذّر تحميل التفسير. يُحمَّل مرة واحدة، ويحتاج لذلك اتصالًا بالإنترنت.</p>;
     else if (!t) content = <p className="study__note">جارٍ تحميل التفسير…</p>;
@@ -342,12 +361,22 @@ function DetailCard({ quran, v, kind, onClose, onToast }) {
       <>
         <div className="vcard__source">
           <TafsirPicker value={source} onChange={setSource} align="start" />
-          <button type="button" className="vcard__copy" disabled={!text} onClick={copyOne}>
+        </div>
+        <div className="vcard__tools">
+          <button type="button" className="vcard__copy" onClick={() => copyOne('الآية', copyVerse(quran, v))}>
             <CopyIcon />
-            نسخ
+            نسخ الآية
+          </button>
+          <button type="button" className="vcard__copy" disabled={!text} onClick={() => copyOne('التفسير', tafsirPlain)}>
+            <CopyIcon />
+            نسخ التفسير
+          </button>
+          <button type="button" className="vcard__copy vcard__share" disabled={!t} onClick={share}>
+            <ShareIcon />
+            مشاركة
           </button>
         </div>
-        {content}
+        <div className="vcard__tafsir">{content}</div>
         <p className="vcard__credit">{name}</p>
       </>
     );

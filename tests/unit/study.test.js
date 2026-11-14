@@ -8,6 +8,7 @@ import {
   copyVerses,
   muyassarPlain,
   pageVerses,
+  paragraphs,
   tafsirInfo,
   tafsirText,
   verseLabel,
@@ -15,7 +16,7 @@ import {
   actionsInRange,
   memoIndex,
 } from '../../src/lib/study.js';
-import { copyText } from '../../src/lib/userdata.js';
+import { copyText, shareText } from '../../src/lib/userdata.js';
 import { weekMap } from '../../src/lib/weeks.js';
 import { RECITERS, ayahUrl, groupReciters, reciterById, reciterTitle, covers } from '../../src/lib/reciters.js';
 
@@ -59,6 +60,38 @@ describe('صيغ النسخ', () => {
     expect(tafsirText('saadi', { verses: ['أ\nب', ''] }, 1)).toBe('');
   });
 
+  it('فقرات التفسير: سطر جديد عند نهاية جملة بعد نحو ٢٦٠ حرفًا، وعند البنود المرقّمة، والنص نفسه لا يتغير', () => {
+    const s = (n, end = '.') => 'كلمة '.repeat(n).trim() + end;
+    // قصير: فقرة واحدة
+    expect(paragraphs(`${s(10)} ${s(10)}`)).toEqual([`${s(10)} ${s(10)}`]);
+    // طويل: يُقطع عند أول نهاية جملة بعد الحد، لا قبله
+    const long = `${s(60)} ${s(30)} ${s(30)}`;
+    const ps = paragraphs(long);
+    expect(ps).toEqual([`${s(60)}`, `${s(30)} ${s(30)}`]);
+    expect(ps.join(' ')).toBe(long);
+    // لا قطع داخل اقتباس الآية، ولا عند «...»
+    const quoted = `${s(60, '')} ﴿آية. آية﴾ وبعدها... ثم ${s(5)}`;
+    expect(paragraphs(quoted)).toEqual([quoted]);
+    // البنود المرقّمة (المختصر)، وفقرات الأصل
+    expect(paragraphs('وهي: 1 - (الله)؛ أي: المعبود. 2 - (الرحمن)؛ أي: ذو الرحمة.')).toEqual([
+      'وهي:',
+      '1 - (الله)؛ أي: المعبود.',
+      '2 - (الرحمن)؛ أي: ذو الرحمة.',
+    ]);
+    expect(paragraphs('أ.\nب.')).toEqual(['أ.', 'ب.']);
+    // الذيل القصير جدًّا يُضمّ إلى ما قبله
+    expect(paragraphs(`${s(60)} ${s(3)}`)).toEqual([`${s(60)} ${s(3)}`]);
+  });
+
+  it('فقرات السعدي: لا فقرة تتجاوز نحو ١٣٠٠ حرف، ولا يضيع شيء من النص', () => {
+    const SA = JSON.parse(readFileSync('public/data/tafsir-saadi.json', 'utf8'));
+    for (const t of SA.verses.filter(Boolean)) {
+      const ps = paragraphs(t);
+      expect(ps.join(' ').replace(/\s+/g, '')).toBe(t.replace(/\s+/g, ''));
+      for (const p of ps) expect(p.length).toBeLessThan(1300);
+    }
+  });
+
   it('التفاسير بترتيب القائمة، ولكلٍّ اسم واسم كتاب', () => {
     expect(TAFSIR_SOURCES.map((s) => s.id)).toEqual(['muyassar', 'mukhtasar', 'saadi']);
     expect(tafsirInfo('saadi').name).toBe('السعدي');
@@ -97,6 +130,23 @@ describe('النسخ إلى الحافظة', () => {
     expect(document.querySelector('textarea')).toBeNull(); // لا يبقى أثر
     document.execCommand = vi.fn().mockReturnValue(false);
     expect(await copyText('نص')).toBe(false);
+  });
+
+  it('المشاركة: بقائمة الجهاز إن وُجدت، ولا شيء إن أغلقها المستخدم، وإلا فالنسخ', async () => {
+    const share = vi.fn().mockResolvedValue();
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+    expect(await shareText('نص')).toBe('shared');
+    expect(share).toHaveBeenCalledWith({ text: 'نص' });
+    Object.defineProperty(navigator, 'share', { value: () => Promise.reject(new DOMException('x', 'AbortError')), configurable: true });
+    expect(await shareText('نص')).toBe('cancelled');
+
+    const writeText = vi.fn().mockResolvedValue();
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    Object.defineProperty(navigator, 'share', { value: () => Promise.reject(new DOMException('x', 'NotAllowedError')), configurable: true });
+    expect(await shareText('نص')).toBe('copied');
+    Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
+    expect(await shareText('نص ٢')).toBe('copied');
+    expect(writeText).toHaveBeenLastCalledWith('نص ٢');
   });
 });
 

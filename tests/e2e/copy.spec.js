@@ -1,13 +1,16 @@
-// أزرار النسخ: في صفحات المحتوى (المحتوى والآيات) وفي بطاقة الآية (التفسيران والمعاني والعمل والملاحظة).
+// أزرار النسخ: في صفحات المحتوى (المحتوى والآيات) وفي بطاقة الآية (الآية والتفسير ومشاركتهما، والمعاني والعمل والملاحظة).
 // الحافظة محاكاة (helpers.js): يُقرأ ما نسخه التطبيق نصًّا كما سيُلصق
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { QURAN, clickDock, copied, isLaptop, longPress, openApp, pageVerses, toArabic } from './helpers.js';
+import { paragraphs } from '../../src/lib/study.js';
 
 const MUKHTASAR = JSON.parse(readFileSync('public/data/tafsir-mukhtasar.json', 'utf8'));
 const MUYASSAR = JSON.parse(readFileSync('public/data/tafsir-muyassar.json', 'utf8'));
 const SAADI = JSON.parse(readFileSync('public/data/tafsir-saadi.json', 'utf8'));
 const muyassar = (v) => MUYASSAR.verses[v].split(MUYASSAR.quote[0]).join('﴿').split(MUYASSAR.quote[1]).join('﴾');
+// التفسير يُنسخ بفقراته كما يُعرض
+const para = (text) => paragraphs(text).join('\n');
 const chooseTafsir = async (scope, name) => {
   await scope.locator('.tpick__btn').click();
   await scope.getByRole('option', { name: new RegExp(name) }).click();
@@ -56,17 +59,19 @@ test('صفحات المحتوى: نسخ التفسير (الميسّر والم�
   // الميسّر افتراضيًّا
   await study(page).getByRole('button', { name: 'نسخ التفسير' }).click();
   await expect(toast(page)).toHaveText('نُسخ النص');
-  expect(await copied(page)).toBe([1, 2, 3].map(muyassar).join('\n\n'));
+  expect(await copied(page)).toBe([1, 2, 3].map((v) => para(muyassar(v))).join('\n\n'));
 
   await chooseTafsir(study(page), 'المختصر');
   await study(page).getByRole('button', { name: 'نسخ التفسير' }).click();
   const mk = [];
   for (const v of [1, 2, 3]) if (mk.at(-1) !== MUKHTASAR.verses[v]) mk.push(MUKHTASAR.verses[v]);
-  expect(await copied(page)).toBe(mk.join('\n\n'));
+  expect(await copied(page)).toBe(mk.map(para).join('\n\n'));
 
   await chooseTafsir(study(page), 'السعدي');
   await study(page).getByRole('button', { name: 'نسخ التفسير' }).click();
-  expect(await copied(page)).toBe([1, 2, 3].map((v) => SAADI.verses[v]).join('\n\n'));
+  expect(await copied(page)).toBe([1, 2, 3].map((v) => para(SAADI.verses[v])).join('\n\n'));
+  // السعدي طويل: يُنسخ فقرات
+  expect(await copied(page)).toMatch(/\.\n/);
 
   await study(page).getByRole('tab', { name: 'معاني الكلمات' }).click();
   await study(page).getByRole('button', { name: 'نسخ المعاني' }).click();
@@ -92,17 +97,19 @@ test('خارج نطاق المذكرات: زر نسخ المحتوى معطّل 
   await expect(toast(page)).toHaveText('نُسخ النص');
 });
 
-test('بطاقة الآية: نسخ التفسير المختار مع الآية، ونسخ المعاني والعمل', async ({ page }) => {
+test('بطاقة الآية: نسخ الآية، ونسخ التفسير المختار، ونسخ المعاني والعمل', async ({ page }) => {
   await longPress(page, 1);
   await page.getByRole('menuitem', { name: 'تفسير' }).click();
   const card = page.getByRole('dialog', { name: 'التفسير' });
-  await card.locator('.vcard__copy').click();
-  await expect(toast(page)).toHaveText('نُسخ التفسير الميسّر');
-  expect(await copied(page)).toBe(`${oneVerse(1)}\n\nالتفسير الميسّر:\n${muyassar(1)}`);
-  await chooseTafsir(card, 'المختصر');
-  await card.locator('.vcard__copy').click();
-  await expect(toast(page)).toHaveText('نُسخ المختصر في تفسير القرآن الكريم');
-  expect(await copied(page)).toBe(`${oneVerse(1)}\n\nالمختصر في تفسير القرآن الكريم:\n${MUKHTASAR.verses[1]}`);
+  await card.getByRole('button', { name: 'نسخ الآية' }).click();
+  await expect(toast(page)).toHaveText('نُسخ الآية');
+  expect(await copied(page)).toBe(oneVerse(1));
+  await card.getByRole('button', { name: 'نسخ التفسير' }).click();
+  await expect(toast(page)).toHaveText('نُسخ التفسير');
+  expect(await copied(page)).toBe(`التفسير الميسّر:\n${para(muyassar(1))}`);
+  await chooseTafsir(card, 'السعدي');
+  await card.getByRole('button', { name: 'نسخ التفسير' }).click();
+  expect(await copied(page)).toBe(`تيسير الكريم الرحمن في تفسير كلام المنان (تفسير السعدي):\n${para(SAADI.verses[1])}`);
   await page.keyboard.press('Escape');
 
   await longPress(page, 1);
@@ -141,4 +148,39 @@ test('بلا واجهة الحافظة: يُنسخ بالطريقة البديل
   await page.evaluate(() => (window.__execOk = false));
   await study(page).getByRole('button', { name: 'نسخ التفسير' }).click();
   await expect(toast(page)).toHaveText('تعذّر النسخ');
+});
+
+test('بطاقة الآية: مشاركة الآية مع تفسيرها بقائمة المشاركة في الجهاز', async ({ page }) => {
+  await page.evaluate(() => {
+    window.__shared = [];
+    navigator.share = (data) => (window.__shared.push(data), Promise.resolve());
+  });
+  await longPress(page, 1);
+  await page.getByRole('menuitem', { name: 'تفسير' }).click();
+  const card = page.getByRole('dialog', { name: 'التفسير' });
+  await card.getByRole('button', { name: 'مشاركة' }).click();
+  await expect.poll(() => page.evaluate(() => window.__shared.length)).toBe(1);
+  const shared = await page.evaluate(() => window.__shared[0]);
+  expect(shared.text).toBe(`${oneVerse(1)}\n\nالتفسير الميسّر:\n${para(muyassar(1))}`);
+  await expect(toast(page)).toHaveCount(0);
+
+  // أغلق المستخدم قائمة المشاركة: لا رسالة
+  await page.evaluate(() => {
+    navigator.share = () => Promise.reject(new DOMException('cancel', 'AbortError'));
+  });
+  await card.getByRole('button', { name: 'مشاركة' }).click();
+  await expect(toast(page)).toHaveCount(0);
+});
+
+test('بطاقة الآية: حيث لا مشاركة في المتصفح تُنسخ الآية مع تفسيرها', async ({ page }) => {
+  await page.evaluate(() => {
+    delete Navigator.prototype.share;
+    delete navigator.share;
+  });
+  await longPress(page, 1);
+  await page.getByRole('menuitem', { name: 'تفسير' }).click();
+  const card = page.getByRole('dialog', { name: 'التفسير' });
+  await card.getByRole('button', { name: 'مشاركة' }).click();
+  await expect(toast(page)).toHaveText('نُسخت الآية مع تفسيرها؛ الصقها حيث تريد');
+  expect(await copied(page)).toBe(`${oneVerse(1)}\n\nالتفسير الميسّر:\n${para(muyassar(1))}`);
 });

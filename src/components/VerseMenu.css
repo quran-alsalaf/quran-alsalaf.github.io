@@ -288,6 +288,33 @@
   margin-top: 8px;
 }
 
+/* نسخ الآية · نسخ التفسير · مشاركة: ثلاثة بعرض متساوٍ تحت اختيار التفسير */
+.vcard__tools {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.vcard__tools .vcard__copy {
+  justify-content: center;
+  min-height: 36px;
+  padding: 4px 6px;
+}
+
+.vcard__copy.vcard__share {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* نص التفسير في البطاقة بخط صفحات المحتوى وحجمه */
+.vcard__tafsir {
+  margin-top: 12px;
+  font-family: var(--font-content);
+  font-size: var(--text-base);
+  line-height: 2;
+}
+
 .vcard__copy:disabled {
   opacity: 0.5;
 }

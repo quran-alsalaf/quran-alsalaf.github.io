@@ -4,6 +4,7 @@ import {
   actionsInRange,
   loadTafsir,
   memoIndex,
+  paragraphs,
   sectionLabel,
   sectionsInRange,
   copyVerses,
@@ -206,7 +207,7 @@ function TafsirTab({ quran, verses, pages, onToast }) {
       const text = tafsirText(source, t, v);
       if (text && out.at(-1) !== text) out.push(text);
     }
-    return out.join('\n\n');
+    return out.map((text) => paragraphs(text).join('\n')).join('\n\n');
   };
 
   return (
@@ -257,10 +258,10 @@ function TafsirTab({ quran, verses, pages, onToast }) {
   );
 }
 
-// نص تفسير آية: فقرة أو أكثر (السعدي فيه فقرات)، أو تنبيه آية السعدي التي لا كلام خاصًّا بها
+// نص تفسير آية مقسّمًا فقرات للقراءة (paragraphs)، أو تنبيه آية السعدي التي لا كلام خاصًّا بها
 export function TafsirBody({ text }) {
   if (!text) return <p className="study__shared">{SAADI_SHARED}</p>;
-  return text.split('\n').map((p, i) => <p key={i}>{p}</p>);
+  return paragraphs(text).map((p, i) => <p key={i}>{p}</p>);
 }
 
 // ---------- معاني الكلمات: جدول لكل آية — الكلمة بلفظها من المصحف، ومعناها ----------

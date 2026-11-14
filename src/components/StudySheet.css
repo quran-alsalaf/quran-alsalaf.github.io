@@ -207,7 +207,7 @@
 /* فقرات التفسير الواحد (السعدي فيه فقرات) */
 .study__box p + p,
 .vcard__content p + p {
-  margin-top: 0.5em;
+  margin-top: 0.7em;
 }
 
 /* آية السعدي التي لا كلام خاصًّا بها */
@@ -241,12 +241,17 @@
 }
 
 /* محتوى الشرح بخط Rubik */
+/* وأكبر قليلًا للقراءة الطويلة (٢٠٢٦-١١-١٤، كان بلا تكبير الواجهة) */
 .study__box--explain,
 .study__box--note,
 .study__box--action,
 .study__words td {
   font-family: var(--font-content);
-  font-size: calc(var(--text-base) / var(--boost));
+  font-size: var(--text-base);
+}
+
+.study__box--explain {
+  line-height: 2;
 }
 
 .study__words td {
