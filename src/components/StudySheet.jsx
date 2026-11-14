@@ -1,22 +1,24 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  TAFSIR_SOURCES,
+  SAADI_SHARED,
   actionsInRange,
   loadTafsir,
   memoIndex,
-  readTafsirSource,
-  saveTafsirSource,
+  paragraphs,
   sectionLabel,
   sectionsInRange,
   copyContent,
-  muyassarPlain,
   tafsirBlocks,
+  tafsirInfo,
+  tafsirText,
+  useTafsirSource,
   verseLabel,
   verseText,
 } from '../lib/study.js';
 import { copyText } from '../lib/userdata.js';
 import { useLayer } from '../lib/layers.js';
 import RangeBar from './RangeBar.jsx';
+import TafsirPicker from './TafsirPicker.jsx';
 import './StudySheet.css';
 
 /*
@@ -177,7 +179,7 @@ export default StudySheet;
 
 // ---------- تفسير ----------
 function TafsirTab({ quran, verses, pages, onToast }) {
-  const [source, setSource] = useState(readTafsirSource);
+  const [source, setSource] = useTafsirSource();
   const [data, setData] = useState({});
   const [failed, setFailed] = useState(false);
 
@@ -194,34 +196,26 @@ function TafsirTab({ quran, verses, pages, onToast }) {
     };
   }, [source, data]);
 
-  const choose = (id) => {
-    saveTafsirSource(id);
-    setSource(id);
-  };
-
   const t = data[source];
   const mukhtasar = source === 'mukhtasar';
   const shown = t ? verses : [];
   const fawaid = mukhtasar && t ? pages.flatMap((p) => t.fawaid[p] ?? []) : [];
-  // اسم التفسير، ثم كل آية وتفسيرها (والمختصر يجمع أحيانًا آيتين بتفسير واحد، فتُكتبان معًا ثم تفسيرهما)
-  const tafsirText = () =>
+  // تفسير آيات النطاق متتاليًا (والمختصر يجمع أحيانًا آيتين بتفسير واحد، فلا يُكرَّر؛
+  // وآية السعدي التي لا كلام خاصًّا بها لا يُنسخ لها شيء)
+  // اسم التفسير، ثم كل آية وتفسيرها بفقراته (والمختصر يجمع أحيانًا آيتين بتفسير واحد فتُكتبان معًا ثم
+  // تفسيرهما؛ وآية السعدي التي لا كلام خاصًّا بها تُكتب مع الآيات التي قبلها)
+  const copyTafsir = () =>
     copyContent(
       quran,
-      TAFSIR_SOURCES.find((s) => s.id === source).title,
-      tafsirBlocks(verses, (v) => (mukhtasar ? t.verses[v] : muyassarPlain(t.verses[v], t.quote)))
+      tafsirInfo(source).title,
+      tafsirBlocks(verses, (v) => tafsirText(source, t, v)).map((b) => ({ ...b, text: paragraphs(b.text).join('\n') }))
     );
 
   return (
     <>
-      {/* صفّ واحد: نسخ المحتوى يمينًا، ومبدّل المصدر في الوسط */}
-      <CopyBar getText={t ? tafsirText : null} onToast={onToast}>
-        <div className="study__source" role="radiogroup" aria-label="مصدر التفسير">
-          {TAFSIR_SOURCES.map((s) => (
-            <button key={s.id} type="button" role="radio" aria-checked={source === s.id} onClick={() => choose(s.id)}>
-              {s.name}
-            </button>
-          ))}
-        </div>
+      {/* صفّ واحد: نسخ المحتوى يمينًا، واختيار التفسير في الوسط */}
+      <CopyBar getText={t ? copyTafsir : null} onToast={onToast}>
+        <TafsirPicker value={source} onChange={setSource} />
       </CopyBar>
 
       {!t && !failed && <p className="study__note">جارٍ تحميل التفسير…</p>}
@@ -241,7 +235,7 @@ function TafsirTab({ quran, verses, pages, onToast }) {
               )}
               <VerseCard quran={quran} v={v} />
               <div className="study__box study__box--explain">
-                <p>{mukhtasar ? t.verses[v] : muyassarPlain(t.verses[v], t.quote)}</p>
+                <TafsirBody text={tafsirText(source, t, v)} />
               </div>
             </div>
           );
@@ -260,9 +254,15 @@ function TafsirTab({ quran, verses, pages, onToast }) {
 
       {/* رابط يوتيوب قسم التفسير في المذكرات — مع المختصر وحده (الميسّر بلا روابط) */}
       {t && mukhtasar && <Links quran={quran} kind="t" verses={verses} />}
-      <p className="study__credit">{TAFSIR_SOURCES.find((s) => s.id === source).title}</p>
+      <p className="study__credit">{tafsirInfo(source).title}</p>
     </>
   );
+}
+
+// نص تفسير آية مقسّمًا فقرات للقراءة (paragraphs)، أو تنبيه آية السعدي التي لا كلام خاصًّا بها
+export function TafsirBody({ text }) {
+  if (!text) return <p className="study__shared">{SAADI_SHARED}</p>;
+  return paragraphs(text).map((p, i) => <p key={i}>{p}</p>);
 }
 
 // ---------- معاني الكلمات: جدول لكل آية — الكلمة بلفظها من المصحف، ومعناها ----------
@@ -417,7 +417,7 @@ function Links({ quran, kind, verses }) {
 }
 
 // زرّ «نسخ المحتوى» الصغير أعلى كل تبويب يمينًا (٢٠٢٦-١١-١٤، أُلغي «نسخ الآيات» بطلب صاحب
-// المشروع)، وما بعده (مبدّل المصدر) في الوسط
+// المشروع)، وما بعده (اختيار التفسير) في الوسط
 function CopyBar({ getText, onToast, children }) {
   const copy = async (text) => onToast?.((await copyText(text)) ? 'نُسخ النص' : 'تعذّر النسخ');
   return (
