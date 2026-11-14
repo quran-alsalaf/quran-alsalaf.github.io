@@ -9,8 +9,10 @@ import {
   READ_SPEED_MIN,
   ratioToSpeed,
   readReadingSpeed,
+  readRubAlert,
   readWeeksTint,
   saveReadingSpeed,
+  setRubAlert,
   setWeeksTint,
   speedToRatio,
   stepSpeed,
@@ -236,6 +238,15 @@ describe('إعدادات أخرى', () => {
     setWeeksTint(true);
     expect(readWeeksTint()).toBe(true);
     expect(document.documentElement.getAttribute('data-weeks')).toBe('on');
+  });
+
+  it('التنبيه ببداية الربع مفعَّل افتراضيًّا، وإلغاؤه يُحفظ', () => {
+    expect(readRubAlert()).toBe(true);
+    setRubAlert(false);
+    expect(readRubAlert()).toBe(false);
+    expect(localStorage.getItem('hq.rubAlert')).toBe('off');
+    setRubAlert(true);
+    expect(readRubAlert()).toBe(true);
   });
 
   it('مصدر التفسير: المختصر افتراضيًّا، والميسّر يُحفظ', () => {
