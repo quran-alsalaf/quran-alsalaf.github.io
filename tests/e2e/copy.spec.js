@@ -6,6 +6,12 @@ import { QURAN, clickDock, copied, isLaptop, longPress, openApp, pageVerses, toA
 
 const MUKHTASAR = JSON.parse(readFileSync('public/data/tafsir-mukhtasar.json', 'utf8'));
 const MUYASSAR = JSON.parse(readFileSync('public/data/tafsir-muyassar.json', 'utf8'));
+const SAADI = JSON.parse(readFileSync('public/data/tafsir-saadi.json', 'utf8'));
+const muyassar = (v) => MUYASSAR.verses[v].split(MUYASSAR.quote[0]).join('﴿').split(MUYASSAR.quote[1]).join('﴾');
+const chooseTafsir = async (scope, name) => {
+  await scope.locator('.tpick__btn').click();
+  await scope.getByRole('option', { name: new RegExp(name) }).click();
+};
 const plain = (v) => QURAN.verses[v].t.slice(0, -1).join(' ');
 const sura = (v) => QURAN.suras[QURAN.verses[v].s - 1].name;
 // ﴿آية (١) آية (٢)﴾ [السورة: ١–٢] لكل سورة، مفصولة بسطر فارغ
@@ -42,21 +48,25 @@ test('صفحات المحتوى: «نسخ الآيات» ينسخ آيات ال�
   for (const v of shown) expect(text).not.toContain(QURAN.verses[v].t.at(-1));
 });
 
-test('صفحات المحتوى: نسخ التفسير (المختصر والميسّر) والمعاني والعمل للمقدار المحدد', async ({ page }) => {
+test('صفحات المحتوى: نسخ التفسير (الميسّر والمختصر والسعدي) والمعاني والعمل للمقدار المحدد', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem('hq.contentRange', '[1,3]'));
   await page.reload();
   await clickDock(page, 'صفحات المحتوى');
 
+  // الميسّر افتراضيًّا
   await study(page).getByRole('button', { name: 'نسخ التفسير' }).click();
   await expect(toast(page)).toHaveText('نُسخ النص');
+  expect(await copied(page)).toBe([1, 2, 3].map(muyassar).join('\n\n'));
+
+  await chooseTafsir(study(page), 'المختصر');
+  await study(page).getByRole('button', { name: 'نسخ التفسير' }).click();
   const mk = [];
   for (const v of [1, 2, 3]) if (mk.at(-1) !== MUKHTASAR.verses[v]) mk.push(MUKHTASAR.verses[v]);
   expect(await copied(page)).toBe(mk.join('\n\n'));
 
-  await study(page).getByRole('radio', { name: 'الميسّر' }).click();
+  await chooseTafsir(study(page), 'السعدي');
   await study(page).getByRole('button', { name: 'نسخ التفسير' }).click();
-  const my = [1, 2, 3].map((v) => MUYASSAR.verses[v].split(MUYASSAR.quote[0]).join('﴿').split(MUYASSAR.quote[1]).join('﴾'));
-  expect(await copied(page)).toBe(my.join('\n\n'));
+  expect(await copied(page)).toBe([1, 2, 3].map((v) => SAADI.verses[v]).join('\n\n'));
 
   await study(page).getByRole('tab', { name: 'معاني الكلمات' }).click();
   await study(page).getByRole('button', { name: 'نسخ المعاني' }).click();
@@ -82,16 +92,17 @@ test('خارج نطاق المذكرات: زر نسخ المحتوى معطّل 
   await expect(toast(page)).toHaveText('نُسخ النص');
 });
 
-test('بطاقة الآية: نسخ كل تفسير مع الآية، ونسخ المعاني والعمل', async ({ page }) => {
+test('بطاقة الآية: نسخ التفسير المختار مع الآية، ونسخ المعاني والعمل', async ({ page }) => {
   await longPress(page, 1);
   await page.getByRole('menuitem', { name: 'تفسير' }).click();
   const card = page.getByRole('dialog', { name: 'التفسير' });
-  await card.locator('.vcard__copy').first().click();
+  await card.locator('.vcard__copy').click();
+  await expect(toast(page)).toHaveText('نُسخ التفسير الميسّر');
+  expect(await copied(page)).toBe(`${oneVerse(1)}\n\nالتفسير الميسّر:\n${muyassar(1)}`);
+  await chooseTafsir(card, 'المختصر');
+  await card.locator('.vcard__copy').click();
   await expect(toast(page)).toHaveText('نُسخ المختصر في تفسير القرآن الكريم');
   expect(await copied(page)).toBe(`${oneVerse(1)}\n\nالمختصر في تفسير القرآن الكريم:\n${MUKHTASAR.verses[1]}`);
-  await card.locator('.vcard__copy').nth(1).click();
-  await expect(toast(page)).toHaveText('نُسخ التفسير الميسّر');
-  expect(await copied(page)).toMatch(new RegExp(`^${oneVerse(1).replace(/[[\]()]/g, '\\$&')}\\n\\nالتفسير الميسّر:\\n`));
   await page.keyboard.press('Escape');
 
   await longPress(page, 1);

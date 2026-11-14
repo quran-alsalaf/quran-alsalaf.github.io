@@ -1,30 +1,62 @@
 // بيانات صفحات المحتوى (تفسير · معاني الكلمات · العمل بالآيات) لنطاق من الآيات.
 //
-// التفسيران يُحمَّلان عند أول فتح للصفحات السفلية لا عند فتح التطبيق (نحو ٤ ميغابايت)،
-// وعامل الخدمة يحفظهما، فيعملان بعدها بلا إنترنت.
+// التفاسير المبنية مع التطبيق تُحمَّل عند أول فتح لها لا عند فتح التطبيق (نحو ١٠ ميغابايت معًا)،
+// وعامل الخدمة يحفظها مسبقًا، فتعمل بلا إنترنت.
+import { useEffect, useState } from 'react';
 
 const BASE = import.meta.env.BASE_URL;
 const TAFSIR_KEY = 'hq.tafsir';
+// بترتيب قائمة الاختيار. name: في زرّ الاختيار، title: اسم الكتاب أسفل التفسير وفي النسخ
 export const TAFSIR_SOURCES = [
-  { id: 'mukhtasar', name: 'المختصر', title: 'المختصر في تفسير القرآن الكريم' },
   { id: 'muyassar', name: 'الميسّر', title: 'التفسير الميسّر' },
+  { id: 'mukhtasar', name: 'المختصر', title: 'المختصر في تفسير القرآن الكريم' },
+  { id: 'saadi', name: 'السعدي', title: 'تيسير الكريم الرحمن في تفسير كلام المنان (تفسير السعدي)' },
 ];
+const DEFAULT_TAFSIR = 'muyassar';
+export const tafsirInfo = (id) => TAFSIR_SOURCES.find((s) => s.id === id);
 
-// مصدر التفسير المختار: يُحفظ ويبقى في كل فتح لاحق، والافتراضي المختصر
+// الاختيار في الجلسة إن تعذّر التخزين، ومن يتابعه (صفحات المحتوى وبطاقة الآية معًا)
+let sessionChoice = null;
+const listeners = new Set();
+
+// مصدر التفسير المختار: يُحفظ ويبقى في كل فتح لاحق، والافتراضي الميسّر (٢٠٢٦-١١-١٤، كان المختصر)
 export function readTafsirSource() {
+  let id = sessionChoice;
   try {
-    return localStorage.getItem(TAFSIR_KEY) === 'muyassar' ? 'muyassar' : 'mukhtasar';
+    id = localStorage.getItem(TAFSIR_KEY) ?? id;
   } catch {
-    return 'mukhtasar';
+    // التخزين غير متاح
   }
+  return tafsirInfo(id) ? id : DEFAULT_TAFSIR;
 }
 
 export function saveTafsirSource(id) {
+  sessionChoice = id;
   try {
     localStorage.setItem(TAFSIR_KEY, id);
   } catch {
     // التخزين غير متاح: يسري في هذه الجلسة وحدها
   }
+  for (const f of listeners) f(id);
+}
+
+// [المصدر المختار، تغييره]: اختيار واحد في صفحات المحتوى وبطاقة الآية، يتبعه كلاهما فورًا
+export function useTafsirSource() {
+  const [source, setSource] = useState(readTafsirSource);
+  useEffect(() => {
+    listeners.add(setSource);
+    return () => listeners.delete(setSource);
+  }, []);
+  return [source, saveTafsirSource];
+}
+
+// آيات لم يُفرد لها السعدي كلامًا (يفسّر الآيات مجموعاتٍ، فتأتي آية منها أحيانًا بلا كلام خاص بها)
+export const SAADI_SHARED = 'لم يُفرد السعدي لهذه الآية كلامًا، وتفسيرها داخل في كلامه على الآيات التي حولها.';
+
+// نص تفسير الآية v من المصدر id (البيانات t)، نصًّا عاديًّا؛ '' إن لم يكن لها كلام خاص بها
+export function tafsirText(id, t, v) {
+  const raw = t.verses[v] ?? '';
+  return id === 'muyassar' ? muyassarPlain(raw, t.quote) : raw;
 }
 
 const tafsirs = new Map();

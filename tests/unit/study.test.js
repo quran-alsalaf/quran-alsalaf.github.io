@@ -2,7 +2,19 @@
 // وتناوب مقررات الأسابيع (src/lib/weeks.js)، والقرّاء (src/lib/reciters.js)
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { copyVerse, copyVerses, muyassarPlain, pageVerses, verseLabel, versePlain, actionsInRange, memoIndex } from '../../src/lib/study.js';
+import {
+  TAFSIR_SOURCES,
+  copyVerse,
+  copyVerses,
+  muyassarPlain,
+  pageVerses,
+  tafsirInfo,
+  tafsirText,
+  verseLabel,
+  versePlain,
+  actionsInRange,
+  memoIndex,
+} from '../../src/lib/study.js';
 import { copyText } from '../../src/lib/userdata.js';
 import { weekMap } from '../../src/lib/weeks.js';
 import { RECITERS, ayahUrl, groupReciters, reciterById, reciterTitle, covers } from '../../src/lib/reciters.js';
@@ -37,6 +49,20 @@ describe('صيغ النسخ', () => {
     // آية واحدة بدايةً ونهاية: بلا «–»
     expect(verseLabel(quran, [v(2, 3), v(2, 3)])).toBe('البقرة ٣');
     expect(verseLabel(quran, [v(1, 7), v(2, 2)])).toBe('الفاتحة ٧ – البقرة ٢');
+  });
+
+  it('نص تفسير الآية بحسب مصدره، وآية السعدي التي لا كلام لها نص فارغ', () => {
+    const my = { quote: ['A', 'B'], verses: ['قال Aالحمد للهB هنا'] };
+    expect(tafsirText('muyassar', my, 0)).toBe('قال ﴿الحمد لله﴾ هنا');
+    expect(tafsirText('mukhtasar', { verses: ['نص'] }, 0)).toBe('نص');
+    expect(tafsirText('saadi', { verses: ['أ\nب', ''] }, 0)).toBe('أ\nب');
+    expect(tafsirText('saadi', { verses: ['أ\nب', ''] }, 1)).toBe('');
+  });
+
+  it('التفاسير بترتيب القائمة، ولكلٍّ اسم واسم كتاب', () => {
+    expect(TAFSIR_SOURCES.map((s) => s.id)).toEqual(['muyassar', 'mukhtasar', 'saadi']);
+    expect(tafsirInfo('saadi').name).toBe('السعدي');
+    for (const s of TAFSIR_SOURCES) expect(s.title.length).toBeGreaterThan(s.name.length);
   });
 
   it('علامتا الاقتباس في الميسّر تصيران ﴿﴾', () => {

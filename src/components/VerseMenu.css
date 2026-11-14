@@ -284,6 +284,22 @@
   margin-top: 0;
 }
 
+.vcard__source + * {
+  margin-top: 8px;
+}
+
+.vcard__copy:disabled {
+  opacity: 0.5;
+}
+
+/* اسم الكتاب أسفل التفسير */
+.vcard__content .vcard__credit {
+  margin-top: 10px;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  text-align: center;
+}
+
 .vcard__action + .vcard__action {
   margin-top: 10px;
   padding-top: 10px;

@@ -204,6 +204,18 @@
   margin: 0;
 }
 
+/* فقرات التفسير الواحد (السعدي فيه فقرات) */
+.study__box p + p,
+.vcard__content p + p {
+  margin-top: 0.5em;
+}
+
+/* آية السعدي التي لا كلام خاصًّا بها */
+.study__shared {
+  color: var(--ink-muted);
+  font-size: calc(var(--text-sm) / var(--boost));
+}
+
 .study__box h3 {
   margin: 0 0 4px;
   font-size: var(--text-sm);
