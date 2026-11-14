@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { toArabicDigits } from '../data/quran.js';
 import { FOREVER } from '../lib/player.js';
-import { copyVerse, loadTafsir, memoIndex, muyassarPlain, verseLabel } from '../lib/study.js';
+import { copyVerse, loadTafsir, memoIndex, paragraphs, tafsirInfo, tafsirText, useTafsirSource, verseLabel } from '../lib/study.js';
 import {
   bookmarksAt,
   copyText,
@@ -11,11 +11,13 @@ import {
   placeBookmark,
   readNotes,
   setNote,
+  shareText,
   unplaceBookmark,
   useUserData,
 } from '../lib/userdata.js';
 import BookmarkForm, { bookmarkMeta, typeName } from './BookmarkForm.jsx';
-import { CopyIcon, NO_ACTIONS, NO_MEANINGS, QuotedText, UNAVAILABLE, VerseCard } from './StudySheet.jsx';
+import { CopyIcon, NO_ACTIONS, NO_MEANINGS, QuotedText, TafsirBody, UNAVAILABLE, VerseCard } from './StudySheet.jsx';
+import TafsirPicker from './TafsirPicker.jsx';
 import './VerseMenu.css';
 import { useLayer } from '../lib/layers.js';
 
@@ -28,7 +30,7 @@ import { useLayer } from '../lib/layers.js';
         أحدها يشغّل فورًا ويغلق المربع (playVerseAlone في App.jsx).
       – «بدء التشغيل من هذه الآية» ⇐ يبدأ فورًا متتابعًا بلا نهاية ولا تكرار (playFromVerse في App.jsx).
   • تفسير/معاني/عمل ⇐ بطاقة عائمة أعلى الشاشة بمحتوى هذه الآية وحدها، فيها زرّا نسخ وإغلاق.
-    والتفسير يعرض التفسيرين معًا: المختصر ثم الميسّر، ولكلٍّ زرّ نسخ بجانب عنوانه.
+    والتفسير (٢٠٢٦-١١-١٤) تفسير واحد هو المختار، وفي أعلاه قائمة التبديل (TafsirPicker) وزرّ نسخه.
   • ملاحظة ⇐ كتابة ملاحظة الآية أو تعديلها (واحدة لكل آية).
   • علامة ⇐ (٢٠٢٦-١١-١٤) تختفي المربعات ويظهر في المربع نفسه (بزرّ رجوع): «علامة جديدة» (اسم ولون
     ونوع، فتُنشأ وتوضع على الآية)، ثم العلامات التي على الآية ولكلٍّ زرّ إزالة، ثم بقية العلامات:
@@ -291,6 +293,17 @@ function CardHead({ quran, v, title, children, onClose }) {
   );
 }
 
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="17.5" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="6.5" cy="12" r="2.5" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="17.5" cy="18.5" r="2.5" stroke="currentColor" strokeWidth="1.7" />
+      <path d="m8.7 10.7 6.6-3.9M8.7 13.3l6.6 3.9" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
 function CopyButton({ onCopy }) {
   return (
     <button type="button" className="vcard__btn" onClick={onCopy} aria-label="نسخ">
@@ -302,20 +315,24 @@ function CopyButton({ onCopy }) {
 // بطاقة التفسير/المعاني/العمل للآية وحدها، أعلى الشاشة
 function DetailCard({ quran, v, kind, onClose, onToast }) {
   const idx = memoIndex(quran);
-  const [tafsir, setTafsir] = useState(null);
+  // التفسير (٢٠٢٦-١١-١٤، كان المختصر ثم الميسّر معًا): تفسير واحد هو المختار في صفحات المحتوى،
+  // يُبدَّل من القائمة أعلى البطاقة، والاختيار نفسه يتبعه الموضعان
+  const [source, setSource] = useTafsirSource();
+  const [tafsirs, setTafsirs] = useState({});
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    if (kind !== 'tafsir') return undefined;
+    if (kind !== 'tafsir' || tafsirs[source]) return undefined;
     let alive = true;
-    Promise.all([loadTafsir('mukhtasar'), loadTafsir('muyassar')]).then(
-      ([mk, my]) => alive && setTafsir({ mk, my }),
+    setFailed(false);
+    loadTafsir(source).then(
+      (t) => alive && setTafsirs((d) => ({ ...d, [source]: t })),
       () => alive && setFailed(true)
     );
     return () => {
       alive = false;
     };
-  }, [kind]);
+  }, [kind, source, tafsirs]);
 
   let title;
   let body;
@@ -323,35 +340,46 @@ function DetailCard({ quran, v, kind, onClose, onToast }) {
 
   if (kind === 'tafsir') {
     title = 'التفسير';
-    if (failed) body = <p className="study__note">تعذّر تحميل التفسير. يُحمَّل مرة واحدة، ويحتاج لذلك اتصالًا بالإنترنت.</p>;
-    else if (!tafsir) body = <p className="study__note">جارٍ تحميل التفسير…</p>;
-    else {
-      // نص عادي بلا تمييز (بطلب صاحب المشروع)، ولكل مصدر زرّ نسخ بجانب عنوانه
-      const mk = tafsir.mk.verses[v];
-      const my = muyassarPlain(tafsir.my.verses[v], tafsir.my.quote);
-      const copyOne = async (name, text) =>
-        onToast((await copyText(`${copyVerse(quran, v)}\n\n${name}:\n${text}`)) ? `نُسخ ${name}` : 'تعذّر النسخ');
-      body = (
-        <>
-          <h3 className="vcard__source">
-            المختصر في تفسير القرآن الكريم
-            <button type="button" className="vcard__copy" onClick={() => copyOne('المختصر في تفسير القرآن الكريم', mk)}>
-              <CopyIcon />
-              نسخ
-            </button>
-          </h3>
-          <p>{mk}</p>
-          <h3 className="vcard__source">
-            التفسير الميسّر
-            <button type="button" className="vcard__copy" onClick={() => copyOne('التفسير الميسّر', my)}>
-              <CopyIcon />
-              نسخ
-            </button>
-          </h3>
-          <p>{my}</p>
-        </>
-      );
-    }
+    const t = tafsirs[source];
+    const text = t ? tafsirText(source, t, v) : '';
+    const name = tafsirInfo(source).title;
+    // النسخ والمشاركة (٢٠٢٦-١١-١٤): الآية وحدها، والتفسير وحده باسم كتابه، والآية مع تفسيرها
+    // بقائمة المشاركة في الجهاز (واتساب وغيره)، والتفسير بفقراته كما يُعرض
+    const tafsirPlain = text ? `${name}:\n${paragraphs(text).join('\n')}` : '';
+    const copyOne = async (what, value) => onToast((await copyText(value)) ? `نُسخ ${what}` : 'تعذّر النسخ');
+    const share = async () => {
+      const result = await shareText(`${copyVerse(quran, v)}\n\n${tafsirPlain}`);
+      if (result === 'copied') onToast('نُسخت الآية مع تفسيرها؛ الصقها حيث تريد');
+      else if (result === 'failed') onToast('تعذّرت المشاركة');
+    };
+    let content;
+    if (failed) content = <p className="study__note">تعذّر تحميل التفسير. يُحمَّل مرة واحدة، ويحتاج لذلك اتصالًا بالإنترنت.</p>;
+    else if (!t) content = <p className="study__note">جارٍ تحميل التفسير…</p>;
+    // نص عادي بلا تمييز (بطلب صاحب المشروع)
+    else content = <TafsirBody text={text} />;
+    body = (
+      <>
+        <div className="vcard__source">
+          <TafsirPicker value={source} onChange={setSource} align="start" />
+        </div>
+        <div className="vcard__tools">
+          <button type="button" className="vcard__copy" onClick={() => copyOne('الآية', copyVerse(quran, v))}>
+            <CopyIcon />
+            نسخ الآية
+          </button>
+          <button type="button" className="vcard__copy" disabled={!text} onClick={() => copyOne('التفسير', tafsirPlain)}>
+            <CopyIcon />
+            نسخ التفسير
+          </button>
+          <button type="button" className="vcard__copy vcard__share" disabled={!t} onClick={share}>
+            <ShareIcon />
+            مشاركة
+          </button>
+        </div>
+        <div className="vcard__tafsir">{content}</div>
+        <p className="vcard__credit">{name}</p>
+      </>
+    );
   } else if (kind === 'meanings') {
     title = 'معاني الكلمات';
     const words = idx.meaningsOf.get(v) ?? [];

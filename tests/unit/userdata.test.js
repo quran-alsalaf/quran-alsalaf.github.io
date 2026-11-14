@@ -249,9 +249,14 @@ describe('إعدادات أخرى', () => {
     expect(readRubAlert()).toBe(true);
   });
 
-  it('مصدر التفسير: المختصر افتراضيًّا، والميسّر يُحفظ', () => {
+  it('مصدر التفسير: الميسّر افتراضيًّا، والمختصر والسعدي يُحفظان، والمعرّف المجهول يرجع إلى الافتراضي', () => {
+    expect(readTafsirSource()).toBe('muyassar');
+    saveTafsirSource('mukhtasar');
     expect(readTafsirSource()).toBe('mukhtasar');
-    saveTafsirSource('muyassar');
+    saveTafsirSource('saadi');
+    expect(readTafsirSource()).toBe('saadi');
+    expect(localStorage.getItem('hq.tafsir')).toBe('saadi');
+    localStorage.setItem('hq.tafsir', 'unknown');
     expect(readTafsirSource()).toBe('muyassar');
   });
 });

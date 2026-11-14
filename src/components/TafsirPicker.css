@@ -1,0 +1,130 @@
+/* اختيار التفسير: زرّ باسم التفسير وسهم، وقائمة تحته (TafsirPicker.jsx) */
+.tpick {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.tpick__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tpick__btn:hover {
+  border-color: var(--border-strong);
+}
+
+.tpick__chevron {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--accent-text);
+  transition: transform 0.18s ease;
+}
+
+.tpick__btn[aria-expanded='true'] .tpick__chevron {
+  transform: rotate(180deg);
+}
+
+.tpick__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  z-index: 5;
+  width: max-content;
+  min-width: 200px;
+  max-width: min(300px, calc(100vw - 32px));
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  transform: translateX(-50%);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  box-shadow: var(--shadow-float);
+  animation: tpick-in 0.14s ease-out;
+}
+
+@keyframes tpick-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -4px);
+  }
+}
+
+/* من طرف الزر (الأيمن في العربية) لا من وسطه */
+.tpick--start .tpick__list {
+  left: auto;
+  inset-inline-start: 0;
+  transform: none;
+  animation-name: tpick-in-start;
+}
+
+@keyframes tpick-in-start {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tpick__list {
+    animation: none;
+  }
+  .tpick__chevron {
+    transition: none;
+  }
+}
+
+.tpick__item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 8px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  text-align: start;
+}
+
+.tpick__item:hover,
+.tpick__item:focus-visible {
+  background: var(--surface-2);
+  outline: none;
+}
+
+.tpick__item[aria-selected='true'] {
+  background: var(--accent-soft);
+}
+
+.tpick__name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.tpick__title {
+  grid-row: 2;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.tpick__check {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  width: 18px;
+  height: 18px;
+  color: var(--accent-text);
+}

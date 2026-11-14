@@ -223,3 +223,18 @@ export async function copyText(text) {
     return ok;
   }
 }
+
+// مشاركة نص بقائمة المشاركة في الجهاز (واتساب وغيره): 'shared' أو 'cancelled' (أغلقها المستخدم).
+// وحيث لا مشاركة في المتصفح (أكثر متصفحات الحاسوب) يُنسخ النص بدلها: 'copied' أو 'failed'
+export async function shareText(text) {
+  if (typeof navigator !== 'undefined' && navigator.share) {
+    try {
+      await navigator.share({ text });
+      return 'shared';
+    } catch (err) {
+      if (err?.name === 'AbortError') return 'cancelled';
+      // رُفضت المشاركة لسبب آخر: يُنسخ النص بدلها
+    }
+  }
+  return (await copyText(text)) ? 'copied' : 'failed';
+}
