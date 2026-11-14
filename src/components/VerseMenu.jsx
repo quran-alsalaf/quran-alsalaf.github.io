@@ -30,6 +30,7 @@ import { useLayer } from '../lib/layers.js';
       – «تشغيل الآية وحدها» ⇐ يظهر تحته عدد المرات (مرة · ٥ · ١٠ · ٢٠ · ٥٠ · بلا نهاية)، والضغط على
         أحدها يشغّل فورًا ويغلق المربع (playVerseAlone في App.jsx).
       – «بدء التشغيل من هذه الآية» ⇐ يبدأ فورًا متتابعًا بلا نهاية ولا تكرار (playFromVerse في App.jsx).
+  • في أول كل بطاقة (تفسير/معاني/عمل/فوائد/ملاحظة) زرّ رجوع إلى المربعات (٢٠٢٦-١١-١٤).
   • تفسير/معاني/عمل ⇐ بطاقة عائمة أعلى الشاشة بمحتوى هذه الآية وحدها بلا نص الآية (٢٠٢٦-١١-١٤)،
     فيها زرّا نسخ وإغلاق، ونسخ المعاني والعمل للمحتوى وحده.
     والتفسير (٢٠٢٦-١١-١٤) تفسير واحد هو المختار، وفي أعلاه قائمة التبديل (TafsirPicker) وأزرار نسخه ومشاركته.
@@ -107,9 +108,11 @@ export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, on
         </VerseBox>
       )}
       {(view === 'tafsir' || view === 'meanings' || view === 'actions' || view === 'fawaid') && (
-        <DetailCard quran={quran} v={v} kind={view} onClose={onClose} onToast={onToast} />
+        <DetailCard quran={quran} v={v} kind={view} onClose={onClose} onBack={() => setView('menu')} onToast={onToast} />
       )}
-      {view === 'note' && <NoteCard quran={quran} v={v} onClose={onClose} onToast={onToast} saveRef={saveNote} />}
+      {view === 'note' && (
+        <NoteCard quran={quran} v={v} onClose={onClose} onBack={() => setView('menu')} onToast={onToast} saveRef={saveNote} />
+      )}
     </div>
   );
 }
@@ -292,11 +295,18 @@ function PlayChoices({ onAlone, onFrom }) {
   );
 }
 
-function CardHead({ quran, v, title, children, onClose }) {
+// رأس البطاقة: زرّ رجوع إلى المربعات في أوله (٢٠٢٦-١١-١٤، بطلب صاحب المشروع)، ثم العنوان واسم الآية،
+// ثم أزرار البطاقة وزرّ الإغلاق
+function CardHead({ quran, v, title, children, onClose, onBack }) {
   const verse = quran.verses[v];
   return (
     <header className="vcard__head">
-      <div>
+      {onBack && (
+        <button type="button" className="vcard__btn" onClick={onBack} aria-label="رجوع">
+          <Icon d="M9 6l6 6-6 6" />
+        </button>
+      )}
+      <div className="vcard__title">
         <h2>{title}</h2>
         <span>
           {quran.suras[verse.s - 1].name}: {toArabicDigits(verse.a)}
@@ -334,7 +344,7 @@ function CopyButton({ onCopy }) {
 }
 
 // بطاقة التفسير/المعاني/العمل للآية وحدها، أعلى الشاشة
-function DetailCard({ quran, v, kind, onClose, onToast }) {
+function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
   const idx = memoIndex(quran);
   // التفسير (٢٠٢٦-١١-١٤، كان المختصر ثم الميسّر معًا): تفسير واحد هو المختار في صفحات المحتوى،
   // يُبدَّل من القائمة أعلى البطاقة، والاختيار نفسه يتبعه الموضعان
@@ -448,7 +458,7 @@ function DetailCard({ quran, v, kind, onClose, onToast }) {
 
   return (
     <section className="vcard" role="dialog" aria-label={title}>
-      <CardHead quran={quran} v={v} title={title} onClose={onClose}>
+      <CardHead quran={quran} v={v} title={title} onClose={onClose} onBack={onBack}>
         {plain && <CopyButton onCopy={copy} />}
       </CardHead>
       <div className="vcard__body">
@@ -459,12 +469,16 @@ function DetailCard({ quran, v, kind, onClose, onToast }) {
 }
 
 // ملاحظة الآية: تُكتب وتُعدَّل، وتُحفظ عند الحفظ أو الإغلاق؛ وتُحذف بزرّها أو بتفريغها
-function NoteCard({ quran, v, onClose, onToast, saveRef }) {
+// والرجوع إلى المربعات يحفظها أولًا كالإغلاق
+function NoteCard({ quran, v, onClose, onBack, onToast, saveRef }) {
   const [text, setText] = useState(() => readNotes()[v] ?? '');
   const existed = useRef(Boolean(readNotes()[v]));
-  const save = () => {
+  const keep = () => {
     const before = readNotes()[v] ?? '';
     if (text !== before) setNote(v, text);
+  };
+  const save = () => {
+    keep();
     onClose();
   };
   if (saveRef) saveRef.current = save;
@@ -478,7 +492,16 @@ function NoteCard({ quran, v, onClose, onToast, saveRef }) {
   };
   return (
     <section className="vcard vcard--note" role="dialog" aria-label="ملاحظة">
-      <CardHead quran={quran} v={v} title="ملاحظة" onClose={save}>
+      <CardHead
+        quran={quran}
+        v={v}
+        title="ملاحظة"
+        onClose={save}
+        onBack={() => {
+          keep();
+          onBack();
+        }}
+      >
         {text.trim() && <CopyButton onCopy={copy} />}
         {existed.current && (
           <button type="button" className="vcard__btn" onClick={remove} aria-label="حذف الملاحظة">

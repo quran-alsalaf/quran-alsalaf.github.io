@@ -200,3 +200,29 @@ test.describe('الجوال الأفقي', () => {
     expect(sh).toBeLessThanOrEqual(ch);
   });
 });
+
+test('رجوع من كل بطاقة إلى المربعات، والملاحظة تُحفظ عند الرجوع', async ({ page }) => {
+  for (const [item, name] of [
+    ['تفسير', 'التفسير'],
+    ['معاني', 'معاني الكلمات'],
+    ['عمل', 'العمل بالآيات'],
+    ['فوائد', 'الفوائد'],
+  ]) {
+    await longPress(page, 2);
+    await page.getByRole('menuitem', { name: item }).click();
+    const card = page.getByRole('dialog', { name });
+    await card.getByRole('button', { name: 'رجوع' }).click();
+    await expect(card).toHaveCount(0);
+    await expect(page.locator('.vbox').getByRole('menuitem')).toHaveCount(8);
+    await expect(page.locator('.vbox__head')).toContainText('الفاتحة: ٣');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.vmenu')).toHaveCount(0);
+  }
+
+  await longPress(page, 2);
+  await page.getByRole('menuitem', { name: 'ملاحظة' }).click();
+  await page.locator('.vcard__textarea').fill('تُحفظ عند الرجوع');
+  await page.getByRole('dialog', { name: 'ملاحظة' }).getByRole('button', { name: 'رجوع' }).click();
+  await expect(page.locator('.vbox').getByRole('menuitem')).toHaveCount(8);
+  expect(await stored(page, 'hq.notes')).toEqual({ 2: 'تُحفظ عند الرجوع' });
+});
