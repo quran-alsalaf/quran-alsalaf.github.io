@@ -6,13 +6,13 @@ test.beforeEach(async ({ page }) => {
   await openApp(page, { 'hq.page': '1' });
 });
 
-test('الضغط المطوّل يفتح مربعًا كبيرًا بمربعاته الستة ويظلّل الآية', async ({ page }) => {
+test('الضغط المطوّل يفتح مربعًا كبيرًا بمربعاته الثمانية ويظلّل الآية', async ({ page }) => {
   await longPress(page, 2);
   const box = page.getByRole('dialog', { name: 'الفاتحة: ٣' });
   await expect(box.locator('.vbox__head')).toContainText('الفاتحة: ٣');
   const items = box.locator('.vmenu__picker [role="menuitem"]');
-  await expect(items).toHaveText(['تشغيل', 'تفسير', 'معاني', 'عمل', 'ملاحظة', 'علامة']);
-  // الستة كلها داخل المربع وداخل الشاشة، ثلاثة في كل صف، وكل مربع كبير (٧٢px فأكثر)
+  await expect(items).toHaveText(['تشغيل', 'علامة', 'ملاحظة', 'تفسير', 'معاني', 'عمل', 'فوائد', 'نسخ']);
+  // الثمانية كلها داخل المربع وداخل الشاشة، ثلاثة في كل صف من اليمين، وكل مربع كبير (٧٢px فأكثر)
   const card = await box.boundingBox();
   const vp = page.viewportSize();
   const rects = await items.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON()));
@@ -23,7 +23,13 @@ test('الضغط المطوّل يفتح مربعًا كبيرًا بمربعا�
     expect(b.height).toBeGreaterThanOrEqual(72);
     expect(b.width).toBeGreaterThanOrEqual(72);
   }
-  expect(new Set(rects.map((b) => Math.round(b.top))).size).toBe(2);
+  const rows = [...new Set(rects.map((b) => Math.round(b.top)))];
+  expect(rows.length).toBe(3);
+  expect(rects.map((b) => rows.indexOf(Math.round(b.top)))).toEqual([0, 0, 0, 1, 1, 1, 2, 2]);
+  // «تشغيل» و«تفسير» و«فوائد» في أقصى اليمين، و«نسخ» في الوسط تحت «معاني»، وأقصى اليسار تحته فارغ
+  expect(rects[0].right).toBeGreaterThan(rects[1].right);
+  expect(Math.round(rects[6].left)).toBe(Math.round(rects[3].left));
+  expect(Math.round(rects[7].left)).toBe(Math.round(rects[4].left));
   expect(card.x).toBeGreaterThanOrEqual(0);
   expect(card.x + card.width).toBeLessThanOrEqual(vp.width);
   expect(card.y).toBeGreaterThanOrEqual(0);
@@ -56,11 +62,11 @@ test('تشغيل: الخياران في المربع نفسه، والرجوع �
   await expect(box.getByRole('group', { name: 'عدد المرات' })).toHaveCount(0);
   // الرجوع
   await box.getByRole('button', { name: 'رجوع' }).click();
-  await expect(page.getByRole('menuitem')).toHaveCount(6);
+  await expect(page.getByRole('menuitem')).toHaveCount(8);
   // Esc في خيارات التشغيل يرجع إلى المربعات، ثم يغلق
   await page.getByRole('menuitem', { name: 'تشغيل' }).click();
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('menuitem')).toHaveCount(6);
+  await expect(page.getByRole('menuitem')).toHaveCount(8);
   await page.keyboard.press('Escape');
   await expect(page.locator('.vmenu')).toHaveCount(0);
   await expect(page.locator('.w--playing')).toHaveCount(0);
@@ -133,3 +139,46 @@ test('ملاحظة: إضافة وتعديل وحذف من البطاقة', async
   await expect(page.locator('.sheet--current .w__notebook')).toHaveCount(0);
 });
 
+
+test('تفسير ومعاني وعمل: البطاقة بالمحتوى وحده بلا نص الآية', async ({ page }) => {
+  for (const [item, name] of [
+    ['تفسير', 'التفسير'],
+    ['معاني', 'معاني الكلمات'],
+    ['عمل', 'العمل بالآيات'],
+  ]) {
+    await longPress(page, 1);
+    await page.getByRole('menuitem', { name: item }).click();
+    const card = page.getByRole('dialog', { name });
+    await expect(card.locator('.vcard__content')).toBeVisible();
+    await expect(card.locator('.study__box--verse')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.vmenu')).toHaveCount(0);
+  }
+});
+
+test('فوائد: بطاقة تخبر أنها تُضاف لاحقًا، بلا زر نسخ', async ({ page }) => {
+  await longPress(page, 2);
+  await page.getByRole('menuitem', { name: 'فوائد' }).click();
+  const card = page.getByRole('dialog', { name: 'الفوائد' });
+  await expect(card.locator('.vcard__head')).toContainText('الفاتحة: ٣');
+  await expect(card).toContainText('تُضاف فوائد الآيات لاحقًا');
+  await expect(card.getByRole('button', { name: 'نسخ' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.vmenu')).toHaveCount(0);
+});
+
+test.describe('الجوال الأفقي', () => {
+  test.use({ viewport: { width: 844, height: 390 } });
+
+  test('المربعات الثمانية كلها داخل الشاشة بلا تمرير', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'مقاس واحد يكفي');
+    await word(page, 2).click({ button: 'right' });
+    const box = page.locator('.vbox');
+    await expect(box.getByRole('menuitem')).toHaveCount(8);
+    const card = await box.boundingBox();
+    expect(card.y).toBeGreaterThanOrEqual(0);
+    expect(card.y + card.height).toBeLessThanOrEqual(390);
+    const [sh, ch] = await box.evaluate((el) => [el.scrollHeight, el.clientHeight]);
+    expect(sh).toBeLessThanOrEqual(ch);
+  });
+});

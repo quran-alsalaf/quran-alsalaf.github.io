@@ -15,32 +15,46 @@ import {
   useUserData,
 } from '../lib/userdata.js';
 import BookmarkForm, { bookmarkMeta, typeName } from './BookmarkForm.jsx';
-import { CopyIcon, NO_ACTIONS, NO_MEANINGS, QuotedText, UNAVAILABLE, VerseCard } from './StudySheet.jsx';
+import { CopyIcon, NO_ACTIONS, NO_MEANINGS, QuotedText, UNAVAILABLE } from './StudySheet.jsx';
 import './VerseMenu.css';
 import { useLayer } from '../lib/layers.js';
 
 /*
   الضغط المطوّل على آية (الفصل ٤): مربع عائم كبير وسط الشاشة (٢٠٢٦-١١-١٢، بدل البطاقة الصغيرة فوق
-  الآية)، في أعلاه اسم الآية ثم مربعات كبيرة بترتيب ثابت: تشغيل · تفسير · معاني · عمل · ملاحظة · علامة.
+  الآية)، في أعلاه اسم الآية ثم مربعات كبيرة، ثلاثة في كل صف من اليمين، بترتيب ثابت (٢٠٢٦-١١-١٤):
+  تشغيل · علامة · ملاحظة / تفسير · معاني · عمل / فوائد · نسخ.
   والمربعات من ACTIONS وحدها، فيُضاف مربع جديد بسطر فيها (وبحالته في choose).
   • تشغيل ⇐ تختفي المربعات ويظهر في المربع نفسه (بزرّ رجوع) خياران:
       – «تشغيل الآية وحدها» ⇐ يظهر تحته عدد المرات (مرة · ٥ · ١٠ · ٢٠ · ٥٠ · بلا نهاية)، والضغط على
         أحدها يشغّل فورًا ويغلق المربع (playVerseAlone في App.jsx).
       – «بدء التشغيل من هذه الآية» ⇐ يبدأ فورًا متتابعًا بلا نهاية ولا تكرار (playFromVerse في App.jsx).
-  • تفسير/معاني/عمل ⇐ بطاقة عائمة أعلى الشاشة بمحتوى هذه الآية وحدها، فيها زرّا نسخ وإغلاق.
-    والتفسير يعرض التفسيرين معًا: المختصر ثم الميسّر، ولكلٍّ زرّ نسخ بجانب عنوانه.
-  • ملاحظة ⇐ كتابة ملاحظة الآية أو تعديلها (واحدة لكل آية).
+  • تفسير/معاني/عمل ⇐ بطاقة عائمة أعلى الشاشة بمحتوى هذه الآية وحدها بلا نص الآية، فيها زرّا نسخ
+    وإغلاق، والنسخ للمحتوى وحده (٢٠٢٦-١١-١٤). والتفسير يعرض التفسيرين معًا: المختصر ثم الميسّر،
+    ولكلٍّ زرّ نسخ بجانب عنوانه ينسخ نصه وحده.
+  • ملاحظة ⇐ كتابة ملاحظة الآية أو تعديلها (واحدة لكل آية)، ونسخها ينسخ نصها وحده.
+  • فوائد ⇐ بطاقة فيها أن الفوائد تُضاف لاحقًا (تنتظر ملفاتها).
+  • نسخ ⇐ ينسخ الآية فورًا ﴿…﴾ [السورة: رقم] ويغلق المربع.
   • علامة ⇐ (٢٠٢٦-١١-١٤) تختفي المربعات ويظهر في المربع نفسه (بزرّ رجوع): «علامة جديدة» (اسم ولون
     ونوع، فتُنشأ وتوضع على الآية)، ثم العلامات التي على الآية ولكلٍّ زرّ إزالة، ثم بقية العلامات:
     الضغط على إحداها يضعها على الآية (والمتنقّلة تنتقل إليها) ويغلق المربع.
 */
 const ACTIONS = [
   { id: 'play', name: 'تشغيل', icon: 'M8 5.5v13l10.5-6.5L8 5.5Z' },
+  { id: 'bookmark', name: 'علامة', icon: 'M7 4.5h10v15l-5-3.6-5 3.6v-15Z' },
+  { id: 'note', name: 'ملاحظة', icon: 'M5 19h3.5L18.5 9a2.1 2.1 0 0 0-3-3L5.5 16v3ZM13.5 8l3 3' },
   { id: 'tafsir', name: 'تفسير', icon: 'M5 4.5h9.5a2.5 2.5 0 0 1 2.5 2.5v12.5H7.5A2.5 2.5 0 0 1 5 17V4.5ZM5 17a2.5 2.5 0 0 1 2.5-2.5H17M8.5 8h5M8.5 11h5' },
   { id: 'meanings', name: 'معاني', icon: 'M4 6.5h16M4 12h10M4 17.5h13' },
   { id: 'actions', name: 'عمل', icon: 'M5 12.5l4 4 10-10' },
-  { id: 'note', name: 'ملاحظة', icon: 'M5 19h3.5L18.5 9a2.1 2.1 0 0 0-3-3L5.5 16v3ZM13.5 8l3 3' },
-  { id: 'bookmark', name: 'علامة', icon: 'M7 4.5h10v15l-5-3.6-5 3.6v-15Z' },
+  {
+    id: 'fawaid',
+    name: 'فوائد',
+    icon: 'M9.5 17.5h5M10.5 20.5h3M12 3.5a5.5 5.5 0 0 0-3.2 10c.5.4.7.9.7 1.5v.5h5V15c0-.6.2-1.1.7-1.5a5.5 5.5 0 0 0-3.2-10Z',
+  },
+  {
+    id: 'copy',
+    name: 'نسخ',
+    icon: 'M10 8h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2ZM16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h2',
+  },
 ];
 
 // عدد مرات قراءة «الآية وحدها» (بطلب صاحب المشروع)
@@ -57,6 +71,13 @@ export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, on
     view === 'note' && saveNote.current ? saveNote.current() : view === 'play' || view === 'bookmark' ? setView('menu') : onClose()
   );
 
+  // «نسخ» ينسخ الآية فورًا ويغلق المربع، وما سواه يفتح ما خلفه
+  const choose = async (id) => {
+    if (id !== 'copy') return setView(id);
+    onClose();
+    onToast((await copyText(copyVerse(quran, v))) ? 'نُسخت الآية' : 'تعذّر النسخ');
+  };
+
   const boxed = view === 'menu' || view === 'play' || view === 'bookmark';
   const sub = view === 'play' ? 'تشغيل الآية' : view === 'bookmark' ? 'علامة' : null;
 
@@ -66,7 +87,7 @@ export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, on
       {boxed && (
         <VerseBox quran={quran} v={v} sub={sub} onBack={() => setView('menu')} onClose={onClose}>
           {view === 'menu' ? (
-            <Tiles onChoose={setView} noPlay={noPlay} />
+            <Tiles onChoose={choose} noPlay={noPlay} />
           ) : view === 'bookmark' ? (
             <BookmarkChoices quran={quran} v={v} onToast={onToast} onDone={onClose} />
           ) : (
@@ -83,7 +104,7 @@ export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, on
           )}
         </VerseBox>
       )}
-      {(view === 'tafsir' || view === 'meanings' || view === 'actions') && (
+      {(view === 'tafsir' || view === 'meanings' || view === 'actions' || view === 'fawaid') && (
         <DetailCard quran={quran} v={v} kind={view} onClose={onClose} onToast={onToast} />
       )}
       {view === 'note' && <NoteCard quran={quran} v={v} onClose={onClose} onToast={onToast} saveRef={saveNote} />}
@@ -329,8 +350,8 @@ function DetailCard({ quran, v, kind, onClose, onToast }) {
       // نص عادي بلا تمييز (بطلب صاحب المشروع)، ولكل مصدر زرّ نسخ بجانب عنوانه
       const mk = tafsir.mk.verses[v];
       const my = muyassarPlain(tafsir.my.verses[v], tafsir.my.quote);
-      const copyOne = async (name, text) =>
-        onToast((await copyText(`${copyVerse(quran, v)}\n\n${name}:\n${text}`)) ? `نُسخ ${name}` : 'تعذّر النسخ');
+      // نص التفسير وحده، بلا الآية ولا اسمه (٢٠٢٦-١١-١٤)
+      const copyOne = async (name, text) => onToast((await copyText(text)) ? `نُسخ ${name}` : 'تعذّر النسخ');
       body = (
         <>
           <h3 className="vcard__source">
@@ -372,6 +393,10 @@ function DetailCard({ quran, v, kind, onClose, onToast }) {
       );
       plain = words.map((w) => `${w.mushaf ?? w.word}: ${w.meaning}`).join('\n');
     }
+  } else if (kind === 'fawaid') {
+    // تنتظر ملفاتها من صاحب المشروع
+    title = 'الفوائد';
+    body = <p className="vcard__empty">تُضاف فوائد الآيات لاحقًا بإذن الله.</p>;
   } else {
     title = 'العمل بالآيات';
     const list = idx.actionsOf.get(v) ?? [];
@@ -390,19 +415,15 @@ function DetailCard({ quran, v, kind, onClose, onToast }) {
     }
   }
 
-  const copy = async () => {
-    // الآية بلا علامتها الخاصة بخط المصحف (كانت تظهر «ئج» في غير التطبيق)، ثم المحتوى
-    const text = `${copyVerse(quran, v)}\n\n${title}:\n${plain || body?.props?.children || ''}`;
-    onToast((await copyText(text)) ? 'نُسخ النص' : 'تعذّر النسخ');
-  };
+  // المحتوى وحده بلا الآية (٢٠٢٦-١١-١٤): للآية مربع «نسخ» خاص بها
+  const copy = async () => onToast((await copyText(plain)) ? 'نُسخ النص' : 'تعذّر النسخ');
 
   return (
     <section className="vcard" role="dialog" aria-label={title}>
       <CardHead quran={quran} v={v} title={title} onClose={onClose}>
-        {kind !== 'tafsir' && <CopyButton onCopy={copy} />}
+        {plain && <CopyButton onCopy={copy} />}
       </CardHead>
       <div className="vcard__body">
-        <VerseCard quran={quran} v={v} />
         <div className="vcard__content">{body}</div>
       </div>
     </section>
@@ -425,7 +446,7 @@ function NoteCard({ quran, v, onClose, onToast, saveRef }) {
     onClose();
   };
   const copy = async () => {
-    onToast((await copyText(`${text}\n\n${copyVerse(quran, v)}`)) ? 'نُسخت الملاحظة' : 'تعذّر النسخ');
+    onToast((await copyText(text)) ? 'نُسخت الملاحظة' : 'تعذّر النسخ');
   };
   return (
     <section className="vcard vcard--note" role="dialog" aria-label="ملاحظة">

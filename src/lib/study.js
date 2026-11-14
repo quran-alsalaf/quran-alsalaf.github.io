@@ -158,5 +158,32 @@ export function copyVerses(quran, list) {
     .join('\n\n');
 }
 
+// الآية أو الآيات قبل محتواها: آية واحدة بلا رقم بين قوسين، وأكثر بصيغة المقدار
+const versesRef = (quran, list) => (list.length === 1 ? copyVerse(quran, list[0]) : copyVerses(quran, list));
+
+// «نسخ المحتوى» في صفحات المحتوى (٢٠٢٦-١١-١٤، بطلب صاحب المشروع): العنوان مرة واحدة، ثم الآية
+// ومحتواها، ثم الآية التالية ومحتواها… والكتل المتتالية بالآيات نفسها تُجمع تحت آياتها مرة واحدة.
+// blocks: [{ verses: [أرقام الآيات], text }]
+export function copyContent(quran, title, blocks) {
+  const merged = [];
+  for (const b of blocks) {
+    const last = merged.at(-1);
+    if (last && last.verses.join() === b.verses.join()) last.texts.push(b.text);
+    else merged.push({ verses: b.verses, texts: [b.text] });
+  }
+  return [title, ...merged.map((b) => `${versesRef(quran, b.verses)}\n${b.texts.join('\n')}`)].join('\n\n');
+}
+
+// كتل التفسير: الآيات المتتالية ذات التفسير الواحد (يجمع المختصر أحيانًا آيتين) تُكتب معًا ثم تفسيرها مرة
+export function tafsirBlocks(verses, textOf) {
+  const out = [];
+  for (const v of verses) {
+    const text = textOf(v);
+    if (out.at(-1)?.text === text) out.at(-1).verses.push(v);
+    else out.push({ verses: [v], text });
+  }
+  return out;
+}
+
 // نص الميسّر: علامتا الاقتباس فيه رمزان خاصان بخط المصحف، فيُكتبان قوسين عاديين
 export const muyassarPlain = (text, quote) => text.split(quote[0]).join('﴿').split(quote[1]).join('﴾');

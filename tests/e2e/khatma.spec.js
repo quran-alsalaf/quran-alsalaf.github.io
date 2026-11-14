@@ -196,7 +196,7 @@ test('الضغط المطول على آية في صفحة الورد يفتح م
   await page.mouse.up();
   const menu = page.locator('.vmenu__picker');
   await expect(menu).toBeVisible();
-  await expect(menu.getByRole('menuitem')).toHaveText(['تفسير', 'معاني', 'عمل', 'ملاحظة', 'علامة']);
+  await expect(menu.getByRole('menuitem')).toHaveText(['علامة', 'ملاحظة', 'تفسير', 'معاني', 'عمل', 'فوائد', 'نسخ']);
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
   await expect(kpage(page)).toBeVisible();
