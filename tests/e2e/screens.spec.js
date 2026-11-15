@@ -2,7 +2,7 @@
 // أي تغيير شكلي غير مقصود يُفشل المقارنة في GitHub. وتحديثها عن قصد: التزام فيه [update-snapshots] (snapshots.yml)
 // (وبحسب CLAUDE.md: تُعرض الصورة القديمة والجديدة على صاحب المشروع قبل اعتماد التحديث)
 import { test, expect } from '@playwright/test';
-import { clickDock, clickTopbar, openApp, showChrome } from './helpers.js';
+import { clickDock, clickTopbar, openApp, prepare, showChrome } from './helpers.js';
 
 const THEMES = [
   ['light', 'beige'],
@@ -51,4 +51,22 @@ for (const [theme, bg] of THEMES) {
     await page.waitForTimeout(400);
     await expect(page).toHaveScreenshot(`none-${theme}.png`);
   });
+
+  // مصحف ورش (٢٠٢٦-١١-١٥): الصفحة الثالثة بخطوط صفحاته، ورقم الآية بلون التطبيق
+  test(`ورش ${theme}`, async ({ page }) => {
+    await openApp(page, { 'hq.page': '3', 'hq.bg': bg, 'hq.accent': 'blue', 'hq.riwayah': 'warsh' });
+    await expect(page.locator('.sheet--current .mushaf-page--warsh:not(.mushaf-page--pending)').first()).toBeVisible();
+    await settle(page);
+    await expect(page).toHaveScreenshot(`warsh-${theme}.png`);
+  });
 }
+
+// اختيار الرواية عند أول فتح (٢٠٢٦-١١-١٥)
+test('اختيار الرواية', async ({ page }) => {
+  await prepare(page, { 'hq.riwayah': null, 'hq.page': '3' });
+  await page.goto('/');
+  await expect(page.getByRole('dialog', { name: 'رواية المصحف' })).toBeVisible();
+  await expect(page.locator('.splash')).toHaveCount(0);
+  await settle(page);
+  await expect(page).toHaveScreenshot('riwayah.png');
+});

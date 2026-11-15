@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import SplashScreen from './components/SplashScreen.jsx';
 import Reader from './components/Reader.jsx';
 import ReadingMode from './components/ReadingMode.jsx';
-import { loadQuran } from './data/quran.js';
+import { loadQuran, loadWarsh } from './data/quran.js';
 import { loadPageFont } from './lib/qcfFonts.js';
 import { readLastPage, saveLastPage } from './lib/position.js';
 import SettingsSheet from './components/SettingsSheet.jsx';
@@ -23,6 +23,8 @@ import { hasOpenLayer } from './lib/layers.js';
 import { useRubAlert } from './lib/rubs.js';
 import { onOfflineNotice, verifyDownloads } from './lib/offline.js';
 import { verifyTafsirDownloads } from './lib/tafsirDownload.js';
+import { readRiwayah, setRiwayah, useRiwayah, WARSH_SOON } from './lib/riwayah.js';
+import RiwayahChooser from './components/RiwayahChooser.jsx';
 import './App.css';
 
 // أقصر مدّة تبقى فيها شاشة الافتتاح ولو كانت البيانات جاهزة فورًا من ذاكرة
@@ -36,7 +38,13 @@ const MOUSE_IDLE_MS = 2500;
 const FLASH_FALLBACK_MS = 12000;
 
 export default function App() {
-  const [quran, setQuran] = useState(null);
+  // مصحف حفص (يُحمَّل دائمًا)، ومصحف ورش (يُحمَّل متى اختيرت ورش). والمعروض quran: ورش إن اختيرت وحُمِّلت،
+  // وإلا حفص. وفي ورش تُوقف الميزات المربوطة بترقيم آيات حفص حتى يُربط الترقيمان (src/lib/riwayah.js)
+  const [hafs, setHafs] = useState(null);
+  const [warshData, setWarshData] = useState(null);
+  const riwayah = useRiwayah();
+  const warsh = riwayah === 'warsh' && !!warshData;
+  const quran = warsh ? warshData : hafs;
   const [failed, setFailed] = useState(false);
   const [splashLeaving, setSplashLeaving] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
@@ -193,10 +201,10 @@ export default function App() {
   const shownRef = useRef(shownPages);
   shownRef.current = shownPages;
   useEffect(() => {
-    if (!quran || player.v == null) return;
+    if (!quran || warsh || player.v == null) return;
     const p = quran.verses[player.v].p;
     if (!shownRef.current.includes(p)) setGotoPage({ page: p, n: Date.now() });
-  }, [quran, player.v, player.n]);
+  }, [quran, warsh, player.v, player.n]);
 
   // الإخفات (٢٠٢٦-١١-١١): يتبع مقدار صفحات المحتوى وحده، فيُخفت في المصحف ما خارجه ويزول بإلغائه،
   // ولو أثناء الاستماع. ومقدار الاستماع لا يُخفت شيئًا؛ والآية الجارية مظلَّلة، وإن كانت خارج مقدار
@@ -210,8 +218,12 @@ export default function App() {
     onToast: showToast,
   });
   const marks = useMemo(
-    () => ({ notes: user.notes, bookmarks: user.bookmarks, range: contentSel, selected: pressed?.v ?? null, playing: player.v, flash: flash?.v ?? null, rubFlash }),
-    [user.notes, user.bookmarks, contentSel?.[0], contentSel?.[1], pressed?.v, player.v, flash?.v, rubFlash]
+    () =>
+      warsh
+        ? // ورش: الملاحظات والعلامات والمقدار والآية الجارية تلاوتها كلها بترقيم حفص، فلا تُرسم على مصحفه
+          { notes: null, bookmarks: null, range: null, selected: pressed?.v ?? null, playing: null, flash: flash?.v ?? null, rubFlash: null }
+        : { notes: user.notes, bookmarks: user.bookmarks, range: contentSel, selected: pressed?.v ?? null, playing: player.v, flash: flash?.v ?? null, rubFlash },
+    [warsh, user.notes, user.bookmarks, contentSel?.[0], contentSel?.[1], pressed?.v, player.v, flash?.v, rubFlash]
   );
 
   // دخول وضع القراءة من الإعدادات: يُوقَف الصوت بهدوء (الاستماع وتحديد المقدار لا يعملان فيه)،
@@ -465,15 +477,21 @@ export default function App() {
     // كاملة من أول إطار. وإن تعذّر خط الصفحة (لا اتصال في أول فتح لها) لا يُعطَّل الافتتاح.
     // ومعه خط الصفحة المقابلة لها، فإن فُتح المصحف صفحتين ظهرتا معًا
     const last = readLastPage();
+    // ومن اختار ورش يُفتح على مصحف ورش: بياناته وخطّا صفحتيه وخط بسملته. فإن تعذّر (لا اتصال ولم يُحمَّل من
+    // قبل) فُتح على حفص، ويُنبَّه بعد الافتتاح (أدناه)
+    const r = readRiwayah() === 'warsh' ? 'warsh' : undefined;
     const fonts = Promise.all([
-      loadPageFont(last),
-      loadPageFont(last % 2 ? last + 1 : last - 1),
+      loadPageFont(last, r),
+      loadPageFont(last % 2 ? last + 1 : last - 1, r),
       document.fonts.load('32px "SurahHeader"'),
-      document.fonts.load('32px "QCF4Basmala"'),
+      document.fonts.load(r ? '32px "WarshBasmala"' : '32px "QCF4Basmala"'),
     ]).catch(() => {});
-    Promise.all([loadQuran(), fonts, minDelay])
-      .then(([data]) => {
-        if (alive) setQuran(data);
+    const warshLoad = r ? loadWarsh().catch(() => null) : Promise.resolve(null);
+    Promise.all([loadQuran(), warshLoad, fonts, minDelay])
+      .then(([data, w]) => {
+        if (!alive) return;
+        setHafs(data);
+        if (w) setWarshData(w);
       })
       .catch(() => {
         if (alive) setFailed(true);
@@ -487,6 +505,38 @@ export default function App() {
       alive = false;
     };
   }, []);
+
+  // اختيار ورش (من الإعدادات أو شاشة الاختيار): يُحمَّل مصحفه أول مرة، ويبقى حفص معروضًا حتى يكتمل. وإن تعذّر
+  // رجعت الرواية إلى حفص برسالة. وعند التبديل يُوقف الصوت، وتُغلق ما كان مفتوحًا على آية بترقيم الرواية الأخرى
+  useEffect(() => {
+    if (riwayah !== 'warsh' || warshData || !hafs) return undefined;
+    let alive = true;
+    loadWarsh().then(
+      (w) => alive && setWarshData(w),
+      () => {
+        if (!alive) return;
+        setRiwayah('hafs');
+        showToast('تعذّر تحميل مصحف ورش؛ تحقّق من الاتصال ثم أعد المحاولة');
+      }
+    );
+    return () => {
+      alive = false;
+    };
+  }, [riwayah, warshData, hafs, showToast]);
+  const shownRiwayah = useRef(null);
+  useEffect(() => {
+    if (!quran) return;
+    const now = warsh ? 'warsh' : 'hafs';
+    if (shownRiwayah.current && shownRiwayah.current !== now) {
+      if (player.status !== 'idle') stop();
+      setPressed(null);
+      setFlash(null);
+      setPicking(null);
+      setListenOpen(false);
+      if (studyOpen) closeStudy();
+    }
+    shownRiwayah.current = now;
+  }, [quran, warsh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // الانتقال إلى صفحة من القائمة الجانبية أو البحث؛ ومن نتيجة آية في البحث تُميَّز الآية تمييزًا مؤقتًا
   const gotoPageNumber = useCallback((p, verse) => {
@@ -509,8 +559,10 @@ export default function App() {
   }, [flash]);
 
   // ما دامت فوق المصحف صفحة أو قائمة أو بطاقة، فهو خارج التركيز ولوحة المفاتيح (inert)
+  // شاشة اختيار الرواية عند أول فتح (بعد الافتتاح، وما لم تُختر رواية)
+  const choosing = splashDone && !!hafs && riwayah === null;
   const covered =
-    studyOpen || settingsOpen || sideMenuOpen || searchOpen || !!pressed || !!picking || listenOpen || khatmaOpen;
+    studyOpen || settingsOpen || sideMenuOpen || searchOpen || !!pressed || !!picking || listenOpen || khatmaOpen || choosing;
   const chromeShown = chromeOpen && !covered;
 
   return (
@@ -554,6 +606,7 @@ export default function App() {
         <main className="app__main">
           {quran && reading && (
             <ReadingMode
+              key={warsh ? 'warsh' : 'hafs'}
               quran={quran}
               startPage={page}
               marks={readingMarks}
@@ -564,6 +617,7 @@ export default function App() {
           )}
           {quran && !reading && (
             <Reader
+              key={warsh ? 'warsh' : 'hafs'}
               quran={quran}
               onTap={onReaderTap}
               onColumn={setColumn}
@@ -593,7 +647,13 @@ export default function App() {
             {/* الاستماع: قبل التشغيل تفتح إعداداته، وأثناءه تصير الخانة أزرار التحكم كلها
                 (إيقاف مؤقت/استئناف، والإعدادات، والإيقاف التام) — بلا شريط صوت منفصل */}
             {player.status === 'idle' || !quran ? (
-              <button className="dock__slot" type="button" disabled={!quran} onClick={() => setListenOpen(true)}>
+              <button
+                className={`dock__slot${warsh ? ' dock__slot--off' : ''}`}
+                type="button"
+                disabled={!quran}
+                aria-disabled={warsh || undefined}
+                onClick={() => (warsh ? showToast(WARSH_SOON) : setListenOpen(true))}
+              >
                 {player.download?.active ? (
                   <span className="dock__label dock__label--row">
                     <span className="dock__spin" />
@@ -626,11 +686,17 @@ export default function App() {
             {/* صفحات المحتوى، وفيها ✕ صغير ما دام لها مقدار (٢٠٢٦-١١-١٢): يلغيه فورًا ويزيل الإخفات دون أن
                 يفتحها. وهو زرّ مستقل فوق طرف الخانة (لا داخل زرّها)، بمساحة لمس كاملة الارتفاع لا تتداخل مع
                 مساحة فتحها، ويُفسح له الزرّ مكانه فيبقى اسمه في وسط ما بقي */}
-            <div className={`dock__study${user.contentRange?.length ? ' dock__study--range' : ''}`}>
-              <button className="dock__slot" type="button" disabled={!quran} onClick={openStudy}>
+            <div className={`dock__study${user.contentRange?.length && !warsh ? ' dock__study--range' : ''}`}>
+              <button
+                className={`dock__slot${warsh ? ' dock__slot--off' : ''}`}
+                type="button"
+                disabled={!quran}
+                aria-disabled={warsh || undefined}
+                onClick={() => (warsh ? showToast(WARSH_SOON) : openStudy())}
+              >
                 <span className="dock__label">صفحات المحتوى</span>
               </button>
-              {quran && user.contentRange?.length > 0 && (
+              {quran && !warsh && user.contentRange?.length > 0 && (
                 <button type="button" className="dock__clear" onClick={() => saveContentRange(null)} aria-label="إلغاء مقدار المحتوى" title="إلغاء المقدار">
                   <span>
                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -652,6 +718,7 @@ export default function App() {
         onClose={closeSettings}
         onStartReading={startReading}
       />
+      {choosing && <RiwayahChooser />}
       {quran && (
         <SideMenu
           quran={quran}
@@ -682,7 +749,7 @@ export default function App() {
         onClick={closeStudy}
         aria-hidden="true"
       />
-      {quran && (
+      {quran && !warsh && (
         <StudySheet
           ref={studyRef}
           open={studyOpen}

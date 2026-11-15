@@ -32,6 +32,7 @@ import { CopyIcon, NO_ACTIONS, ShareIcon, NO_MEANINGS, QuotedText, TafsirBody, U
 import TafsirPicker from './TafsirPicker.jsx';
 import './VerseMenu.css';
 import { useLayer } from '../lib/layers.js';
+import { isWarsh, WARSH_SOON } from '../lib/riwayah.js';
 
 /*
   الضغط المطوّل على آية (الفصل ٤): مربع عائم كبير وسط الشاشة (٢٠٢٦-١١-١٢، بدل البطاقة الصغيرة فوق
@@ -87,8 +88,11 @@ export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, on
     view === 'note' && saveNote.current ? saveNote.current() : view === 'play' || view === 'bookmark' ? setView('menu') : onClose()
   );
 
+  // في مصحف ورش لا يعمل إلا «نسخ» (بنص ورش وترقيمه)؛ وما سواه مربوط بترقيم حفص فيُنبَّه أنه يُتاح لاحقًا
+  const warsh = isWarsh(quran);
   // «نسخ» ينسخ الآية فورًا ويغلق المربع، وما سواه يفتح ما خلفه
   const choose = async (id) => {
+    if (warsh && id !== 'copy') return onToast(WARSH_SOON);
     if (id !== 'copy') return setView(id);
     onClose();
     onToast((await copyText(copyVerse(quran, v))) ? 'نُسخت الآية' : 'تعذّر النسخ');
@@ -103,7 +107,7 @@ export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, on
       {boxed && (
         <VerseBox quran={quran} v={v} sub={sub} onBack={() => setView('menu')} onClose={onClose}>
           {view === 'menu' ? (
-            <Tiles onChoose={choose} noPlay={noPlay} />
+            <Tiles onChoose={choose} noPlay={noPlay} off={warsh ? (id) => id !== 'copy' : null} />
           ) : view === 'bookmark' ? (
             <BookmarkChoices quran={quran} v={v} onToast={onToast} onDone={onClose} />
           ) : (
@@ -163,11 +167,19 @@ function VerseBox({ quran, v, sub, onBack, onClose, children }) {
 }
 
 // المربعات الكبيرة: لكلٍّ أيقونة وتسمية تحتها
-function Tiles({ onChoose, noPlay }) {
+// off: المربعات المتوقفة (في مصحف ورش) — باهتة، والضغط عليها رسالة
+function Tiles({ onChoose, noPlay, off }) {
   return (
     <div className="vmenu__picker" role="menu">
       {ACTIONS.filter((a) => !(noPlay && a.id === 'play')).map((a) => (
-        <button key={a.id} type="button" role="menuitem" onClick={() => onChoose(a.id)} className="vmenu__action">
+        <button
+          key={a.id}
+          type="button"
+          role="menuitem"
+          onClick={() => onChoose(a.id)}
+          className={`vmenu__action${off?.(a.id) ? ' vmenu__action--off' : ''}`}
+          aria-disabled={off?.(a.id) || undefined}
+        >
           <Icon d={a.icon} />
           <span className="vmenu__label">{a.name}</span>
         </button>

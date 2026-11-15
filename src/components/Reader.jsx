@@ -113,8 +113,8 @@ export default function Reader({ quran, onTap, onColumn, onPage, onSpread, onLon
   // الصفحتان المجاورتان تُرسمان على الشريط فيُنزَّل خطّاهما معهما، ويُنزَّل ما بعدهما مسبقًا
   // وفي الزوج: الزوجان المجاوران يُرسمان، ويُنزَّل خطّا ما بعدهما مسبقًا
   useEffect(
-    () => prefetchPageFonts(spread ? [base + 4, base + 5, base - 4, base - 3] : [page + 2, page - 2]),
-    [page, base, spread]
+    () => prefetchPageFonts(spread ? [base + 4, base + 5, base - 4, base - 3] : [page + 2, page - 2], quran.riwayah),
+    [page, base, spread, quran.riwayah]
   );
   useEffect(() => {
     onSpread?.(spread);
@@ -427,8 +427,8 @@ function ArrowButton({ side, at, shown, disabled, onClick }) {
 // زوج متقابل كالمصحف المفتوح: الفردية يمينًا والزوجية يسارًا، وبينهما كعب خفيف.
 // يُنتظر خطّا الصفحتين معًا قبل رسم أيٍّ منهما، فلا تظهر صفحة قبل أختها.
 function Spread({ quran, start, area, shift, current, marks, outside }) {
-  const right = usePageFont(start);
-  const left = usePageFont(start + 1);
+  const right = usePageFont(start, quran.riwayah);
+  const left = usePageFont(start + 1, quran.riwayah);
   const font = right === 'ready' && left === 'ready' ? 'ready' : right === 'failed' || left === 'failed' ? 'failed' : 'loading';
   return (
     <div className="spread" style={{ transform: `translate3d(${shift * 100}%, 0, 0)` }} aria-hidden={!current}>
@@ -445,7 +445,7 @@ function Spread({ quran, start, area, shift, current, marks, outside }) {
 // outside: صفحة من الزوج خارج حدود المصحف المحدود (ورد الختمة) — تظهر باهتة
 function Sheet({ quran, page, layout, scroll, shift, current, marks, half, font: pairFont, outside }) {
   const { suras, juz } = pageInfo(quran, page);
-  const own = usePageFont(page);
+  const own = usePageFont(page, quran.riwayah);
   const font = pairFont ?? own;
   return (
     <section

@@ -19,10 +19,13 @@ const SAFETY = 0.99;
 // أسطر الخطّاط الكاملة تملأ ٩٦٪ فأكثر من أعرض سطر في صفحتها، فما دون ٩٣٪ ناقص.
 const SHORT_FILL = 0.93;
 
-const sizes = new Map(); // "عرض|ارتفاع|تمرير" → { fontSize, width, pageHeight }
-const shorts = new Map(); // صفحة → أرقام الأسطر الموسّطة
+// والحسابان لكل مصحف على حدة (حفص وورش، ٢٠٢٦-١١-١٥): أعرض سطر وأسطر كل صفحة تختلف بينهما
+const sizes = new Map(); // "أعرض سطر|عرض|ارتفاع|تمرير" → { fontSize, width, pageHeight }
+const shortsOf = new WeakMap(); // المصحف → (صفحة → أرقام الأسطر الموسّطة)
 
 function shortLinesOf(quran, page) {
+  let shorts = shortsOf.get(quran.qcf);
+  if (!shorts) shortsOf.set(quran.qcf, (shorts = new Map()));
   let set = shorts.get(page);
   if (set) return set;
   const lines = quran.qcf.pages[page - 1];
@@ -48,7 +51,7 @@ const SCROLL_MAX_HEIGHT = 540;
 
 // area: عرض منطقة الأسطر وارتفاعها بالبكسل. scroll: وضع التمرير أعلاه
 export function pageLayout(quran, page, area, scroll = false) {
-  const key = `${area.w}|${area.h}|${scroll ? 1 : 0}`;
+  const key = `${quran.qcf.widest}|${area.w}|${area.h}|${scroll ? 1 : 0}`;
   let size = sizes.get(key);
   if (!size) {
     const widest = quran.qcf.widest;

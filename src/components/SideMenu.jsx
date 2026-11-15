@@ -9,6 +9,7 @@ import { ShareIcon } from './StudySheet.jsx';
 import './SideMenu.css';
 import { useLayer } from '../lib/layers.js';
 import { juzStarts, rubName, rubOpening } from '../lib/rubs.js';
+import { isWarsh } from '../lib/riwayah.js';
 
 /*
   القائمة الجانبية (الفصل ٧): صفحة كاملة تنزلق من اليمين (أيقونتها في الشريط العلوي هناك)،
@@ -80,6 +81,10 @@ export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onE
     if (!open) setOpenMark(null);
   }, [open]);
 
+  // مصحف ورش (٢٠٢٦-١١-١٥): الأرباع والملاحظات والعلامات بترقيم آيات حفص، فتُتاح فيه بعد ربط الترقيمين
+  const warsh = isWarsh(quran);
+  const soon = (what) => <p className="sidemenu__empty">{what} تُتاح برواية ورش قريبًا. وهي محفوظة كما هي، وتظهر في رواية حفص.</p>;
+
   const goto = (v) => {
     onGoto(quran.verses[v].p);
     onClose();
@@ -142,7 +147,9 @@ export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onE
                 </ul>
               )}
 
+              {index === 'rubs' && warsh && <p className="sidemenu__empty">الأرباع تُتاح برواية ورش قريبًا.</p>}
               {index === 'rubs' &&
+                !warsh &&
                 juzs.map((_, j) => (
                   <section key={j} className="sidemenu__rubGroup" aria-label={juzName(j + 1)}>
                     <h3 className="sidemenu__rubJuz">{juzName(j + 1)}</h3>
@@ -170,7 +177,9 @@ export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onE
             </>
           )}
 
+          {tab === 'notes' && warsh && soon('الملاحظات')}
           {tab === 'notes' &&
+            !warsh &&
             (noteEntries.length ? (
               <ul className="sidemenu__list">
                 {noteEntries.map(({ v, note }) => (
@@ -192,7 +201,9 @@ export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onE
               <p className="sidemenu__empty">لا توجد ملاحظات بعد. اضغط ضغطًا مطوّلًا على أي آية لإضافة واحدة.</p>
             ))}
 
+          {tab === 'bookmarks' && warsh && soon('العلامات المرجعية')}
           {tab === 'bookmarks' &&
+            !warsh &&
             (opened ? (
               <BookmarkDetail quran={quran} b={opened} onBack={() => setOpenMark(null)} onGoto={goto} />
             ) : bookmarks.length ? (
