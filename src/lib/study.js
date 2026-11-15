@@ -51,7 +51,7 @@ export function useTafsirSource() {
   return [isTafsirReady(source) ? source : DEFAULT_TAFSIR, saveTafsirSource];
 }
 
-// آيات لم يُفرد لها المفسّر كلامًا (السعدي والبغوي يفسّران الآيات مجموعاتٍ، فتأتي آية منها أحيانًا بلا
+// آيات لم يُفرد لها المفسّر كلامًا (السعدي والبغوي وابن كثير يفسّرون الآيات مجموعاتٍ، فتأتي آية منها أحيانًا بلا
 // كلام خاص بها): نص التنبيه بحسب التفسير
 export const sharedNote = (id) => tafsirInfo(id)?.shared ?? '';
 export const SAADI_SHARED = sharedNote('saadi');

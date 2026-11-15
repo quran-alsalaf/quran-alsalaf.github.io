@@ -1,10 +1,11 @@
 // نظافة نصوص البيانات (scripts/data/07-tidy.mjs): التفسيران و«العمل بالآيات»، وتفسير السعدي (10-saadi.mjs)
-// وتفسير البغوي (11-baghawy.mjs)
+// وتفسير البغوي (11-baghawy.mjs) وتفسير ابن كثير (12-katheer.mjs)
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { tidyAction, tidyMukhtasar, tidyMuyassar } from '../../scripts/data/07-tidy.mjs';
 import { cleanSaadi } from '../../scripts/data/10-saadi.mjs';
 import { applyFixes, cleanBaghawy } from '../../scripts/data/11-baghawy.mjs';
+import * as K from '../../scripts/data/12-katheer.mjs';
 
 const load = (f) => JSON.parse(readFileSync(`public/data/${f}.json`, 'utf8'));
 const MY = load('tafsir-muyassar');
@@ -15,6 +16,7 @@ const loadSplit = (id) => ({
 });
 const SA = loadSplit('saadi');
 const BG = loadSplit('baghawy');
+const KT = loadSplit('katheer');
 const ME = load('memos');
 const QURAN = load('quran');
 const ref = (i) => `${QURAN.verses[i].s}:${QURAN.verses[i].a}`;
@@ -139,5 +141,69 @@ describe('تفسير البغوي', () => {
   it('فقرات البغوي: لا يضيع شيء من النص', async () => {
     const { paragraphs } = await import('../../src/lib/study.js');
     for (const t of BG.verses.filter(Boolean)) expect(paragraphs(t).join(' ').replace(/\s+/g, '')).toBe(t.replace(/\s+/g, ''));
+  });
+});
+
+describe('تفسير ابن كثير', () => {
+  const at = (s, a) => KT.verses[QURAN.verses.findIndex((x) => x.s === s && x.a === a)];
+  const Q = K.quranIndex(QURAN);
+  const clean = (html) => K.cleanKatheer(Q, `x|||${html}`);
+
+  it('اقتباس الآية السليم ﴿…﴾ إذا طابق المصحف، وإلا يبقى بقوسيه كما في النسخة', () => {
+    expect(clean('<p>قوله : <span class="t3">( الحمد لله رب العالمين )</span> أي</p>')).toBe('قوله: ﴿الحمد لله رب العالمين﴾ أي');
+    // «يا أيها» و«ياأيها»، و«السماوات» و«السموات»، و«أو لم» و«أولم»
+    expect(clean('<p><span class="t3">( يا أيها الذين آمنوا استجيبوا لله وللرسول )</span></p>')).toBe('﴿يا أيها الذين آمنوا استجيبوا لله وللرسول﴾');
+    expect(clean('<p><span class="t3">( وما خلق الله في السماوات والأرض )</span></p>')).toBe('﴿وما خلق الله في السماوات والأرض﴾');
+    // آيتان متتاليتان بينهما نقطة في اقتباس واحد
+    expect(clean('<p><span class="t3">( كم تركوا من جنات وعيون . وزروع ومقام كريم )</span></p>')).toBe('﴿كم تركوا من جنات وعيون. وزروع ومقام كريم﴾');
+    // كلمة برسم آخر في وسطه («تترا» وفي المصحف «تترى»)
+    expect(clean('<p><span class="t3">( ثم أرسلنا رسلنا تترا كل ما جاء أمة رسولها كذبوه )</span></p>')).toBe('﴿ثم أرسلنا رسلنا تترا كل ما جاء أمة رسولها كذبوه﴾');
+    // ليس آية: يبقى كما هو
+    expect(clean('<p><span class="t3">( تنبيه )</span></p>')).toBe('(تنبيه)');
+  });
+
+  it('الاقتباس المكسور: يُغلق بعد ما طابق المصحف من أوله، ويُفتح قبل ما طابقه من آخره', () => {
+    // سقط الغالق، فامتد الوسم إلى قوس اقتباس بعده
+    expect(clean('<p><span class="t3">( الحمد لله رب العالمين قال : حمدني عبدي ، وإذا قال : ( الرحمن الرحيم )</span></p>')).toBe(
+      '﴿الحمد لله رب العالمين﴾ قال: حمدني عبدي، وإذا قال: ﴿الرحمن الرحيم﴾'
+    );
+    // سقط الفاتح
+    expect(clean('<p>ولا يجحدون ما جاءوهم به من ربهم وبالآخرة هم يوقنون ) أي : بالبعث</p>')).toBe('ولا يجحدون ما جاءوهم به من ربهم ﴿وبالآخرة هم يوقنون﴾ أي: بالبعث');
+    // قوس الفتح مقلوب
+    expect(clean('<p>بمصالح عباده ) الحكيم ) في أفعاله</p>')).toBe('بمصالح عباده ﴿الحكيم﴾ في أفعاله');
+    // غالق بلا فاتح قبل كلام ليس من المصحف: يبقى كما هو
+    expect(clean('<p>فناموا سنين كثيرة )</p>')).toBe('فناموا سنين كثيرة )');
+  });
+
+  it('المعقوفات: عزو بلا غالق، ومعقوفان مقلوبان، وبقايا قوسين بلا قرين', () => {
+    expect(clean('<p>كما قال ﴿أن اشكر لي ولوالديك إلي المصير﴾ [ لقمان 14.</p>')).toBe('كما قال ﴿أن اشكر لي ولوالديك إلي المصير﴾ [لقمان: 14].');
+    expect(clean('<p>حديث ] آخر [ فيه ذكر</p>')).toBe('حديث [آخر] فيه ذكر');
+    expect(clean('<p>﴿فجعلناها نكالا لما بين يديها﴾ [وما خلفها] ) قال</p>')).toBe('﴿فجعلناها نكالا لما بين يديها﴾ [وما خلفها] قال');
+  });
+
+  it('إصلاحات أوائل السور تجد نصّها', () => {
+    expect(K.applyFixes('36:1', 'يس|||<p>وهي ] مكية .</p>')).toBe('يس|||<p>تفسير سورة يس</p><p>[وهي] مكية .</p>');
+    expect(() => K.applyFixes('2:1', 'نص آخر')).toThrow();
+  });
+
+  it('لكل آيات المصحف، في مواضعها (طوبقت بطبعة دار طيبة في الشاملة)، بلا وسوم ولا بقايا', () => {
+    expect(KT.verses).toHaveLength(QURAN.verses.length);
+    expect(where(KT.verses, /[<>{}\u200f]|&[a-z]*;/).map(ref)).toEqual([]);
+    expect(where(KT.verses, /[؀-ۿ] ?, ?[؀-ۿ]/).map(ref)).toEqual([]);
+    // آيات لم يُفرد لها كلامًا (تظهر عندها رسالة التفسير المشترك)
+    expect(where(KT.verses, /^$/).length).toBeLessThanOrEqual(40);
+    // ما بقي من أقواس غير متوازنة عيبٌ في النسخة لا يتضح إصلاحه
+    expect(KT.verses.filter((t) => !balanced(t)).length).toBeLessThanOrEqual(95);
+    expect(at(2, 4)).toMatch(/^قال ابن عباس: ﴿والذين يؤمنون بما أنزل إليك وما أنزل من قبلك﴾ أي: يصدقون بما جئت به من الله/);
+    expect(at(2, 4)).toContain('من ربهم ﴿وبالآخرة هم يوقنون﴾ أي: بالبعث والقيامة');
+    expect(at(67, 2)).toMatch(/^ثم قال: ﴿الذي خلق الموت والحياة﴾ واستدل بهذه الآية من قال: إن الموت أمر وجودي/);
+    expect(at(2, 1)).toMatch(/^تفسير سورة البقرة\nخمسة وعشرون ألفا وخمسمائة حرف/);
+    expect(at(3, 1)).toMatch(/^تفسير سورة آل عمران\nهي مدنية؛ لأن صدرها إلى ثلاث وثمانين آية/);
+    expect(at(36, 1)).toMatch(/^تفسير سورة يس\n\[وهي\] مكية\./);
+  });
+
+  it('فقرات ابن كثير: لا يضيع شيء من النص', async () => {
+    const { paragraphs } = await import('../../src/lib/study.js');
+    for (const t of KT.verses.filter(Boolean)) expect(paragraphs(t).join(' ').replace(/\s+/g, '')).toBe(t.replace(/\s+/g, ''));
   });
 });

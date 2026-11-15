@@ -69,8 +69,8 @@ test('التبديل بين التبويبات الثلاثة ومصادر ال�
 
   await picker.click();
   const list = study(page).getByRole('listbox', { name: 'مصدر التفسير' });
-  await expect(list.getByRole('option')).toHaveCount(4);
-  await expect(list.locator('.tpick__name')).toHaveText(['الميسّر', 'المختصر', 'السعدي', 'البغوي']);
+  await expect(list.getByRole('option')).toHaveCount(5);
+  await expect(list.locator('.tpick__name')).toHaveText(['الميسّر', 'المختصر', 'السعدي', 'البغوي', 'ابن كثير']);
   await expect(list.getByRole('option', { selected: true })).toContainText('الميسّر');
   await list.getByRole('option', { name: /المختصر/ }).click();
   await expect(list).toHaveCount(0);

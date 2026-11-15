@@ -133,9 +133,10 @@ describe('صيغ النسخ', () => {
   });
 
   it('التفاسير بترتيب القائمة، ولكلٍّ اسم واسم كتاب', () => {
-    expect(TAFSIR_SOURCES.map((s) => s.id)).toEqual(['muyassar', 'mukhtasar', 'saadi', 'baghawy']);
+    expect(TAFSIR_SOURCES.map((s) => s.id)).toEqual(['muyassar', 'mukhtasar', 'saadi', 'baghawy', 'katheer']);
     expect(tafsirInfo('saadi').name).toBe('السعدي');
     expect(tafsirInfo('baghawy').name).toBe('البغوي');
+    expect(tafsirInfo('katheer').name).toBe('ابن كثير');
     for (const s of TAFSIR_SOURCES) expect(s.title.length).toBeGreaterThan(s.name.length);
   });
 

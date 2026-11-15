@@ -91,7 +91,7 @@ export async function waitMushaf(page) {
   await expect(page.locator('.splash')).toHaveCount(0);
 }
 
-// تفسير يُحمَّل بزرّ (السعدي، البغوي) بنصّه كما يقرؤه التطبيق: { verses } لكل آيات المصحف بترتيبها
+// تفسير يُحمَّل بزرّ (السعدي، البغوي، ابن كثير) بنصّه كما يقرؤه التطبيق: { verses } لكل آيات المصحف بترتيبها
 export function tafsirData(id) {
   const verses = [];
   for (let s = 1; s <= 114; s++) {

@@ -260,7 +260,7 @@ function TafsirTab({ quran, verses, pages, onToast }) {
 }
 
 // نص تفسير آية مقسّمًا فقرات للقراءة (paragraphs)، أو تنبيه الآية التي لم يُفرد لها المفسّر (السعدي أو
-// البغوي) كلامًا خاصًّا
+// البغوي أو ابن كثير) كلامًا خاصًّا
 export function TafsirBody({ text, source }) {
   if (!text) return <p className="study__shared">{sharedNote(source)}</p>;
   return paragraphs(text).map((p, i) => <p key={i}>{p}</p>);
