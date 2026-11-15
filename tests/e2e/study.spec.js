@@ -135,11 +135,12 @@ test('السعدي: الآية التي لا كلام خاصًّا بها تنب
   await open(page);
   await expect(study(page).locator('.study__shared')).toHaveCount(1);
   await expect(study(page).locator('.study__shared')).toHaveText(/لم يُفرد السعدي لهذه الآية كلامًا/);
-  // ونسخ التفسير يتخطاها
-  await study(page).getByRole('button', { name: 'نسخ التفسير' }).click();
+  // ونسخ المحتوى (٢٠٢٦-١١-١٤) يكتبها مع الآية التي قبلها ثم تفسيرهما، بلا التنبيه
+  await study(page).getByRole('button', { name: 'نسخ المحتوى' }).click();
   const text = await copied(page);
-  // تفسير ٦٠ يليه تفسير ٦٢ مباشرة
-  expect(text).toContain('عن الحق.\n\n﴿فَكَيْفَ﴾ يكون حال هؤلاء الضالين');
+  expect(text).toMatch(/\[النساء: ٦٠–٦١\]\nيعجب تعالى عباده من حالة المنافقين/);
+  // تفسير ٦٠ تليه الآية ٦٢ ثم تفسيرها
+  expect(text).toMatch(/عن الحق\.\n\n﴿[^\n]+﴾ \[النساء: ٦٢\]\n﴿فَكَيْفَ﴾ يكون حال هؤلاء الضالين/);
   expect(text).not.toContain('لم يُفرد');
 });
 

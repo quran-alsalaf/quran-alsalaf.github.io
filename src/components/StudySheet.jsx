@@ -7,7 +7,8 @@ import {
   paragraphs,
   sectionLabel,
   sectionsInRange,
-  copyVerses,
+  copyContent,
+  tafsirBlocks,
   tafsirInfo,
   tafsirText,
   useTafsirSource,
@@ -30,7 +31,7 @@ import './StudySheet.css';
   وإن لم يُحدَّد فالمحتوى لآيات الصفحة الظاهرة أو الصفحتين الظاهرتين.
   والتبويبات ثلاثة ثابتة من اليمين، يُنتقل بينها باللمس أو بالسحب يمينًا ويسارًا (كتقليب
   المصحف: السحب نحو اليمين إلى التبويب الذي على اليسار). و«من فوائد الآيات» لصفحات النطاق،
-  وفي كل تبويب زرّا نسخ: المحتوى وحده متتاليًا، والآيات وحدها.
+  وفي كل تبويب زرّ «نسخ المحتوى» (٢٠٢٦-١١-١٤): الآية ثم محتواها، ثم التالية ثم محتواها، في المقدار كله.
 */
 const TABS = [
   { id: 'tafsir', name: 'تفسير' },
@@ -201,19 +202,19 @@ function TafsirTab({ quran, verses, pages, onToast }) {
   const fawaid = mukhtasar && t ? pages.flatMap((p) => t.fawaid[p] ?? []) : [];
   // تفسير آيات النطاق متتاليًا (والمختصر يجمع أحيانًا آيتين بتفسير واحد، فلا يُكرَّر؛
   // وآية السعدي التي لا كلام خاصًّا بها لا يُنسخ لها شيء)
-  const copyTafsir = () => {
-    const out = [];
-    for (const v of verses) {
-      const text = tafsirText(source, t, v);
-      if (text && out.at(-1) !== text) out.push(text);
-    }
-    return out.map((text) => paragraphs(text).join('\n')).join('\n\n');
-  };
+  // اسم التفسير، ثم كل آية وتفسيرها بفقراته (والمختصر يجمع أحيانًا آيتين بتفسير واحد فتُكتبان معًا ثم
+  // تفسيرهما؛ وآية السعدي التي لا كلام خاصًّا بها تُكتب مع الآيات التي قبلها)
+  const copyTafsir = () =>
+    copyContent(
+      quran,
+      tafsirInfo(source).title,
+      tafsirBlocks(verses, (v) => tafsirText(source, t, v)).map((b) => ({ ...b, text: paragraphs(b.text).join('\n') }))
+    );
 
   return (
     <>
-      {/* صفّ واحد: نسخ التفسير يمينًا، ومبدّل المصدر في الوسط، ونسخ الآيات يسارًا */}
-      <CopyBar quran={quran} verses={verses} label="نسخ التفسير" getText={t ? copyTafsir : null} onToast={onToast}>
+      {/* صفّ واحد: نسخ المحتوى يمينًا، واختيار التفسير في الوسط */}
+      <CopyBar getText={t ? copyTafsir : null} onToast={onToast}>
         <TafsirPicker value={source} onChange={setSource} />
       </CopyBar>
 
@@ -268,15 +269,22 @@ export function TafsirBody({ text }) {
 function MeaningsTab({ quran, verses, onToast }) {
   const idx = memoIndex(quran);
   const covered = verses.filter((v) => idx.sectionOf.m[v] >= 0);
-  const copyBar = (getText) => <CopyBar quran={quran} verses={verses} label="نسخ المعاني" getText={getText} onToast={onToast} />;
+  const copyBar = (getText) => <CopyBar getText={getText} onToast={onToast} />;
   if (!covered.length) return (
     <>
       {copyBar(null)}
       <p className="study__note">{UNAVAILABLE}</p>
     </>
   );
+  // كل آية لها معانٍ ثم معانيها (والآية بلا معانٍ لا تُنسخ)
   const meaningsText = () =>
-    covered.flatMap((v) => (idx.meaningsOf.get(v) ?? []).map((w) => `${w.mushaf ?? w.word}: ${w.meaning}`)).join('\n');
+    copyContent(
+      quran,
+      'معاني الكلمات',
+      covered
+        .filter((v) => idx.meaningsOf.get(v)?.length)
+        .map((v) => ({ verses: [v], text: idx.meaningsOf.get(v).map((w) => `${w.mushaf ?? w.word}: ${w.meaning}`).join('\n') }))
+    );
   const hasWords = covered.some((v) => idx.meaningsOf.get(v)?.length);
 
   const shown = covered;
@@ -319,8 +327,10 @@ function ActionsTab({ quran, verses, onToast }) {
   const idx = memoIndex(quran);
   const covered = verses.filter((v) => idx.sectionOf.a[v] >= 0);
   const list = useMemo(() => actionsInRange(quran, verses), [quran, verses]);
-  const actionsText = () => list.map((i) => `• ${idx.actions[i].t}`).join('\n');
-  const copyBar = <CopyBar quran={quran} verses={verses} label="نسخ العمل" getText={list.length ? actionsText : null} onToast={onToast} />;
+  // آيات كل توجيه ثم التوجيه (والتوجيهات المتتالية على الآيات نفسها تُجمع تحتها)
+  const actionsText = () =>
+    copyContent(quran, 'العمل بالآيات', list.map((i) => ({ verses: idx.actions[i].v, text: `• ${idx.actions[i].t}` })));
+  const copyBar = <CopyBar getText={list.length ? actionsText : null} onToast={onToast} />;
   if (!covered.length) return (
     <>
       {copyBar}
@@ -406,21 +416,18 @@ function Links({ quran, kind, verses }) {
   );
 }
 
-// زرّا النسخ الصغيران أعلى كل تبويب، على الجانبين (بطلب صاحب المشروع): نسخ المحتوى وحده
-// متتاليًا يمينًا، ونسخ الآيات وحدها (الصفحة أو النطاق) يسارًا، وما بينهما في الوسط
-function CopyBar({ quran, verses, label, getText, onToast, children }) {
+// زرّ «نسخ المحتوى» الصغير أعلى كل تبويب يمينًا (٢٠٢٦-١١-١٤، أُلغي «نسخ الآيات» بطلب صاحب
+// المشروع)، وما بعده (اختيار التفسير) في الوسط
+function CopyBar({ getText, onToast, children }) {
   const copy = async (text) => onToast?.((await copyText(text)) ? 'نُسخ النص' : 'تعذّر النسخ');
   return (
     <div className="study__copy">
       <button type="button" disabled={!getText} onClick={() => copy(getText())}>
         <CopyIcon />
-        {label}
+        نسخ المحتوى
       </button>
       {children ?? <span />}
-      <button type="button" onClick={() => copy(copyVerses(quran, verses))}>
-        <CopyIcon />
-        نسخ الآيات
-      </button>
+      <span />
     </div>
   );
 }

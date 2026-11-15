@@ -11,38 +11,52 @@ import {
   placeBookmark,
   readNotes,
   setNote,
-  shareText,
   unplaceBookmark,
   useUserData,
 } from '../lib/userdata.js';
 import BookmarkForm, { bookmarkMeta, typeName } from './BookmarkForm.jsx';
-import { CopyIcon, NO_ACTIONS, NO_MEANINGS, QuotedText, TafsirBody, UNAVAILABLE, VerseCard } from './StudySheet.jsx';
+import { CopyIcon, NO_ACTIONS, NO_MEANINGS, QuotedText, TafsirBody, UNAVAILABLE } from './StudySheet.jsx';
 import TafsirPicker from './TafsirPicker.jsx';
 import './VerseMenu.css';
 import { useLayer } from '../lib/layers.js';
 
 /*
   الضغط المطوّل على آية (الفصل ٤): مربع عائم كبير وسط الشاشة (٢٠٢٦-١١-١٢، بدل البطاقة الصغيرة فوق
-  الآية)، في أعلاه اسم الآية ثم مربعات كبيرة بترتيب ثابت: تشغيل · تفسير · معاني · عمل · ملاحظة · علامة.
+  الآية)، في أعلاه اسم الآية ثم مربعات كبيرة، ثلاثة في كل صف من اليمين، بترتيب ثابت (٢٠٢٦-١١-١٤):
+  تشغيل · علامة · ملاحظة / تفسير · معاني · عمل / فوائد · نسخ.
   والمربعات من ACTIONS وحدها، فيُضاف مربع جديد بسطر فيها (وبحالته في choose).
   • تشغيل ⇐ تختفي المربعات ويظهر في المربع نفسه (بزرّ رجوع) خياران:
       – «تشغيل الآية وحدها» ⇐ يظهر تحته عدد المرات (مرة · ٥ · ١٠ · ٢٠ · ٥٠ · بلا نهاية)، والضغط على
         أحدها يشغّل فورًا ويغلق المربع (playVerseAlone في App.jsx).
       – «بدء التشغيل من هذه الآية» ⇐ يبدأ فورًا متتابعًا بلا نهاية ولا تكرار (playFromVerse في App.jsx).
-  • تفسير/معاني/عمل ⇐ بطاقة عائمة أعلى الشاشة بمحتوى هذه الآية وحدها، فيها زرّا نسخ وإغلاق.
-    والتفسير (٢٠٢٦-١١-١٤) تفسير واحد هو المختار، وفي أعلاه قائمة التبديل (TafsirPicker) وزرّ نسخه.
-  • ملاحظة ⇐ كتابة ملاحظة الآية أو تعديلها (واحدة لكل آية).
+  • في أول كل بطاقة (تفسير/معاني/عمل/فوائد/ملاحظة) زرّ رجوع إلى المربعات (٢٠٢٦-١١-١٤).
+  • تفسير/معاني/عمل ⇐ بطاقة عائمة أعلى الشاشة بمحتوى هذه الآية وحدها بلا نص الآية (٢٠٢٦-١١-١٤)،
+    فيها زرّا نسخ وإغلاق، ونسخ المعاني والعمل للمحتوى وحده.
+    والتفسير (٢٠٢٦-١١-١٤) تفسير واحد هو المختار، وفي أعلاه قائمة التبديل (TafsirPicker) وأزرار نسخه ومشاركته.
+  • ملاحظة ⇐ كتابة ملاحظة الآية أو تعديلها (واحدة لكل آية)، ونسخها ينسخ نصها وحده.
+  • فوائد ⇐ بطاقة فيها أن الفوائد تُضاف لاحقًا (تنتظر ملفاتها).
+  • نسخ ⇐ ينسخ الآية فورًا ﴿…﴾ [السورة: رقم] ويغلق المربع.
   • علامة ⇐ (٢٠٢٦-١١-١٤) تختفي المربعات ويظهر في المربع نفسه (بزرّ رجوع): «علامة جديدة» (اسم ولون
     ونوع، فتُنشأ وتوضع على الآية)، ثم العلامات التي على الآية ولكلٍّ زرّ إزالة، ثم بقية العلامات:
     الضغط على إحداها يضعها على الآية (والمتنقّلة تنتقل إليها) ويغلق المربع.
 */
 const ACTIONS = [
   { id: 'play', name: 'تشغيل', icon: 'M8 5.5v13l10.5-6.5L8 5.5Z' },
+  { id: 'bookmark', name: 'علامة', icon: 'M7 4.5h10v15l-5-3.6-5 3.6v-15Z' },
+  { id: 'note', name: 'ملاحظة', icon: 'M5 19h3.5L18.5 9a2.1 2.1 0 0 0-3-3L5.5 16v3ZM13.5 8l3 3' },
   { id: 'tafsir', name: 'تفسير', icon: 'M5 4.5h9.5a2.5 2.5 0 0 1 2.5 2.5v12.5H7.5A2.5 2.5 0 0 1 5 17V4.5ZM5 17a2.5 2.5 0 0 1 2.5-2.5H17M8.5 8h5M8.5 11h5' },
   { id: 'meanings', name: 'معاني', icon: 'M4 6.5h16M4 12h10M4 17.5h13' },
   { id: 'actions', name: 'عمل', icon: 'M5 12.5l4 4 10-10' },
-  { id: 'note', name: 'ملاحظة', icon: 'M5 19h3.5L18.5 9a2.1 2.1 0 0 0-3-3L5.5 16v3ZM13.5 8l3 3' },
-  { id: 'bookmark', name: 'علامة', icon: 'M7 4.5h10v15l-5-3.6-5 3.6v-15Z' },
+  {
+    id: 'fawaid',
+    name: 'فوائد',
+    icon: 'M9.5 17.5h5M10.5 20.5h3M12 3.5a5.5 5.5 0 0 0-3.2 10c.5.4.7.9.7 1.5v.5h5V15c0-.6.2-1.1.7-1.5a5.5 5.5 0 0 0-3.2-10Z',
+  },
+  {
+    id: 'copy',
+    name: 'نسخ',
+    icon: 'M10 8h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2ZM16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h2',
+  },
 ];
 
 // عدد مرات قراءة «الآية وحدها» (بطلب صاحب المشروع)
@@ -59,6 +73,13 @@ export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, on
     view === 'note' && saveNote.current ? saveNote.current() : view === 'play' || view === 'bookmark' ? setView('menu') : onClose()
   );
 
+  // «نسخ» ينسخ الآية فورًا ويغلق المربع، وما سواه يفتح ما خلفه
+  const choose = async (id) => {
+    if (id !== 'copy') return setView(id);
+    onClose();
+    onToast((await copyText(copyVerse(quran, v))) ? 'نُسخت الآية' : 'تعذّر النسخ');
+  };
+
   const boxed = view === 'menu' || view === 'play' || view === 'bookmark';
   const sub = view === 'play' ? 'تشغيل الآية' : view === 'bookmark' ? 'علامة' : null;
 
@@ -68,7 +89,7 @@ export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, on
       {boxed && (
         <VerseBox quran={quran} v={v} sub={sub} onBack={() => setView('menu')} onClose={onClose}>
           {view === 'menu' ? (
-            <Tiles onChoose={setView} noPlay={noPlay} />
+            <Tiles onChoose={choose} noPlay={noPlay} />
           ) : view === 'bookmark' ? (
             <BookmarkChoices quran={quran} v={v} onToast={onToast} onDone={onClose} />
           ) : (
@@ -85,10 +106,12 @@ export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, on
           )}
         </VerseBox>
       )}
-      {(view === 'tafsir' || view === 'meanings' || view === 'actions') && (
-        <DetailCard quran={quran} v={v} kind={view} onClose={onClose} onToast={onToast} />
+      {(view === 'tafsir' || view === 'meanings' || view === 'actions' || view === 'fawaid') && (
+        <DetailCard quran={quran} v={v} kind={view} onClose={onClose} onBack={() => setView('menu')} onToast={onToast} />
       )}
-      {view === 'note' && <NoteCard quran={quran} v={v} onClose={onClose} onToast={onToast} saveRef={saveNote} />}
+      {view === 'note' && (
+        <NoteCard quran={quran} v={v} onClose={onClose} onBack={() => setView('menu')} onToast={onToast} saveRef={saveNote} />
+      )}
     </div>
   );
 }
@@ -271,11 +294,18 @@ function PlayChoices({ onAlone, onFrom }) {
   );
 }
 
-function CardHead({ quran, v, title, children, onClose }) {
+// رأس البطاقة: زرّ رجوع إلى المربعات في أوله (٢٠٢٦-١١-١٤، بطلب صاحب المشروع)، ثم العنوان واسم الآية،
+// ثم أزرار البطاقة وزرّ الإغلاق
+function CardHead({ quran, v, title, children, onClose, onBack }) {
   const verse = quran.verses[v];
   return (
     <header className="vcard__head">
-      <div>
+      {onBack && (
+        <button type="button" className="vcard__btn" onClick={onBack} aria-label="رجوع">
+          <Icon d="M9 6l6 6-6 6" />
+        </button>
+      )}
+      <div className="vcard__title">
         <h2>{title}</h2>
         <span>
           {quran.suras[verse.s - 1].name}: {toArabicDigits(verse.a)}
@@ -293,17 +323,6 @@ function CardHead({ quran, v, title, children, onClose }) {
   );
 }
 
-function ShareIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="17.5" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.7" />
-      <circle cx="6.5" cy="12" r="2.5" stroke="currentColor" strokeWidth="1.7" />
-      <circle cx="17.5" cy="18.5" r="2.5" stroke="currentColor" strokeWidth="1.7" />
-      <path d="m8.7 10.7 6.6-3.9M8.7 13.3l6.6 3.9" stroke="currentColor" strokeWidth="1.7" />
-    </svg>
-  );
-}
-
 function CopyButton({ onCopy }) {
   return (
     <button type="button" className="vcard__btn" onClick={onCopy} aria-label="نسخ">
@@ -313,7 +332,7 @@ function CopyButton({ onCopy }) {
 }
 
 // بطاقة التفسير/المعاني/العمل للآية وحدها، أعلى الشاشة
-function DetailCard({ quran, v, kind, onClose, onToast }) {
+function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
   const idx = memoIndex(quran);
   // التفسير (٢٠٢٦-١١-١٤، كان المختصر ثم الميسّر معًا): تفسير واحد هو المختار في صفحات المحتوى،
   // يُبدَّل من القائمة أعلى البطاقة، والاختيار نفسه يتبعه الموضعان
@@ -343,15 +362,9 @@ function DetailCard({ quran, v, kind, onClose, onToast }) {
     const t = tafsirs[source];
     const text = t ? tafsirText(source, t, v) : '';
     const name = tafsirInfo(source).title;
-    // النسخ والمشاركة (٢٠٢٦-١١-١٤): الآية وحدها، والتفسير وحده باسم كتابه، والآية مع تفسيرها
-    // بقائمة المشاركة في الجهاز (واتساب وغيره)، والتفسير بفقراته كما يُعرض
-    const tafsirPlain = text ? `${name}:\n${paragraphs(text).join('\n')}` : '';
-    const copyOne = async (what, value) => onToast((await copyText(value)) ? `نُسخ ${what}` : 'تعذّر النسخ');
-    const share = async () => {
-      const result = await shareText(`${copyVerse(quran, v)}\n\n${tafsirPlain}`);
-      if (result === 'copied') onToast('نُسخت الآية مع تفسيرها؛ الصقها حيث تريد');
-      else if (result === 'failed') onToast('تعذّرت المشاركة');
-    };
+    // نسخ التفسير وحده بفقراته، بلا الآية ولا اسم كتابه (٢٠٢٦-١١-١٤، بطلب صاحب المشروع: للآية مربع
+    // «نسخ» خاص بها، والمشاركة مؤجلة إلى الملاحظات) — بزرّ النسخ في رأس البطاقة كالمعاني والعمل
+    plain = text ? paragraphs(text).join('\n') : '';
     let content;
     if (failed) content = <p className="study__note">تعذّر تحميل التفسير. يُحمَّل مرة واحدة، ويحتاج لذلك اتصالًا بالإنترنت.</p>;
     else if (!t) content = <p className="study__note">جارٍ تحميل التفسير…</p>;
@@ -361,20 +374,6 @@ function DetailCard({ quran, v, kind, onClose, onToast }) {
       <>
         <div className="vcard__source">
           <TafsirPicker value={source} onChange={setSource} align="start" />
-        </div>
-        <div className="vcard__tools">
-          <button type="button" className="vcard__copy" onClick={() => copyOne('الآية', copyVerse(quran, v))}>
-            <CopyIcon />
-            نسخ الآية
-          </button>
-          <button type="button" className="vcard__copy" disabled={!text} onClick={() => copyOne('التفسير', tafsirPlain)}>
-            <CopyIcon />
-            نسخ التفسير
-          </button>
-          <button type="button" className="vcard__copy vcard__share" disabled={!t} onClick={share}>
-            <ShareIcon />
-            مشاركة
-          </button>
         </div>
         <div className="vcard__tafsir">{content}</div>
         <p className="vcard__credit">{name}</p>
@@ -400,6 +399,10 @@ function DetailCard({ quran, v, kind, onClose, onToast }) {
       );
       plain = words.map((w) => `${w.mushaf ?? w.word}: ${w.meaning}`).join('\n');
     }
+  } else if (kind === 'fawaid') {
+    // تنتظر ملفاتها من صاحب المشروع
+    title = 'الفوائد';
+    body = <p className="vcard__empty">تُضاف فوائد الآيات لاحقًا بإذن الله.</p>;
   } else {
     title = 'العمل بالآيات';
     const list = idx.actionsOf.get(v) ?? [];
@@ -418,19 +421,15 @@ function DetailCard({ quran, v, kind, onClose, onToast }) {
     }
   }
 
-  const copy = async () => {
-    // الآية بلا علامتها الخاصة بخط المصحف (كانت تظهر «ئج» في غير التطبيق)، ثم المحتوى
-    const text = `${copyVerse(quran, v)}\n\n${title}:\n${plain || body?.props?.children || ''}`;
-    onToast((await copyText(text)) ? 'نُسخ النص' : 'تعذّر النسخ');
-  };
+  // المعاني والعمل: المحتوى وحده بلا الآية (٢٠٢٦-١١-١٤)، وللآية مربع «نسخ» خاص بها
+  const copy = async () => onToast((await copyText(plain)) ? 'نُسخ النص' : 'تعذّر النسخ');
 
   return (
     <section className="vcard" role="dialog" aria-label={title}>
-      <CardHead quran={quran} v={v} title={title} onClose={onClose}>
-        {kind !== 'tafsir' && <CopyButton onCopy={copy} />}
+      <CardHead quran={quran} v={v} title={title} onClose={onClose} onBack={onBack}>
+        {plain && <CopyButton onCopy={copy} />}
       </CardHead>
       <div className="vcard__body">
-        <VerseCard quran={quran} v={v} />
         <div className="vcard__content">{body}</div>
       </div>
     </section>
@@ -438,12 +437,16 @@ function DetailCard({ quran, v, kind, onClose, onToast }) {
 }
 
 // ملاحظة الآية: تُكتب وتُعدَّل، وتُحفظ عند الحفظ أو الإغلاق؛ وتُحذف بزرّها أو بتفريغها
-function NoteCard({ quran, v, onClose, onToast, saveRef }) {
+// والرجوع إلى المربعات يحفظها أولًا كالإغلاق
+function NoteCard({ quran, v, onClose, onBack, onToast, saveRef }) {
   const [text, setText] = useState(() => readNotes()[v] ?? '');
   const existed = useRef(Boolean(readNotes()[v]));
-  const save = () => {
+  const keep = () => {
     const before = readNotes()[v] ?? '';
     if (text !== before) setNote(v, text);
+  };
+  const save = () => {
+    keep();
     onClose();
   };
   if (saveRef) saveRef.current = save;
@@ -453,11 +456,20 @@ function NoteCard({ quran, v, onClose, onToast, saveRef }) {
     onClose();
   };
   const copy = async () => {
-    onToast((await copyText(`${text}\n\n${copyVerse(quran, v)}`)) ? 'نُسخت الملاحظة' : 'تعذّر النسخ');
+    onToast((await copyText(text)) ? 'نُسخت الملاحظة' : 'تعذّر النسخ');
   };
   return (
     <section className="vcard vcard--note" role="dialog" aria-label="ملاحظة">
-      <CardHead quran={quran} v={v} title="ملاحظة" onClose={save}>
+      <CardHead
+        quran={quran}
+        v={v}
+        title="ملاحظة"
+        onClose={save}
+        onBack={() => {
+          keep();
+          onBack();
+        }}
+      >
         {text.trim() && <CopyButton onCopy={copy} />}
         {existed.current && (
           <button type="button" className="vcard__btn" onClick={remove} aria-label="حذف الملاحظة">

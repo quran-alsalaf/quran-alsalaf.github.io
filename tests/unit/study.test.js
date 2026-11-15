@@ -3,6 +3,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
+  copyContent,
+  tafsirBlocks,
   TAFSIR_SOURCES,
   copyVerse,
   copyVerses,
@@ -42,6 +44,42 @@ describe('صيغ النسخ', () => {
     const [a, b] = text.split('\n\n');
     expect(a).toMatch(/^﴿.+ \(٦\) .+ \(٧\)﴾ \[الفاتحة: ٦–٧\]$/);
     expect(b).toMatch(/^﴿الٓمٓ \(١\)﴾ \[البقرة: ١\]$/);
+  });
+
+  it('نسخ المحتوى: العنوان، ثم كل آية ومحتواها بالتناوب', () => {
+    const text = copyContent(quran, 'التفسير الميسّر', [
+      { verses: [v(1, 2)], text: 'تفسير ٢' },
+      { verses: [v(1, 3)], text: 'تفسير ٣' },
+    ]);
+    expect(text).toBe(`التفسير الميسّر\n\n${copyVerse(quran, v(1, 2))}\nتفسير ٢\n\n${copyVerse(quran, v(1, 3))}\nتفسير ٣`);
+  });
+
+  it('نسخ المحتوى: الكتل المتتالية بالآيات نفسها تُجمع تحتها، وأكثر من آية بصيغة المقدار', () => {
+    const vs = [v(1, 6), v(1, 7)];
+    const text = copyContent(quran, 'العمل بالآيات', [
+      { verses: vs, text: '• أ' },
+      { verses: vs, text: '• ب' },
+      { verses: [v(1, 7)], text: '• ج' },
+    ]);
+    expect(text).toBe(`العمل بالآيات\n\n${copyVerses(quran, vs)}\n• أ\n• ب\n\n${copyVerse(quran, v(1, 7))}\n• ج`);
+  });
+
+  it('كتل التفسير: الآيات المتتالية ذات التفسير الواحد تُجمع، ولا يتكرر التفسير', () => {
+    const texts = { 1: 'أ', 2: 'ب', 3: 'ب', 4: 'ج', 5: 'ب' };
+    expect(tafsirBlocks([1, 2, 3, 4, 5], (x) => texts[x])).toEqual([
+      { verses: [1], text: 'أ' },
+      { verses: [2, 3], text: 'ب' },
+      { verses: [4], text: 'ج' },
+      { verses: [5], text: 'ب' },
+    ]);
+  });
+
+  it('كتل التفسير: الآية بلا كلام خاص (السعدي) مع التي قبلها، أو التي بعدها إن كانت أول المقدار', () => {
+    const texts = { 1: '', 2: 'أ', 3: '', 4: 'ب' };
+    expect(tafsirBlocks([1, 2, 3, 4], (x) => texts[x])).toEqual([
+      { verses: [1, 2, 3], text: 'أ' },
+      { verses: [4], text: 'ب' },
+    ]);
   });
 
   it('تسمية المقدار', () => {
