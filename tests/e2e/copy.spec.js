@@ -3,12 +3,12 @@
 // الحافظة محاكاة (helpers.js): يُقرأ ما نسخه التطبيق نصًّا كما سيُلصق
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { QURAN, clickDock, copied, isLaptop, longPress, openApp, pageVerses, toArabic } from './helpers.js';
+import { QURAN, clickDock, copied, downloadedTafsir, isLaptop, longPress, openApp, pageVerses, tafsirData, toArabic } from './helpers.js';
 import { paragraphs } from '../../src/lib/study.js';
 
 const MUKHTASAR = JSON.parse(readFileSync('public/data/tafsir-mukhtasar.json', 'utf8'));
 const MUYASSAR = JSON.parse(readFileSync('public/data/tafsir-muyassar.json', 'utf8'));
-const SAADI = JSON.parse(readFileSync('public/data/tafsir-saadi.json', 'utf8'));
+const SAADI = tafsirData('saadi');
 const muyassar = (v) => MUYASSAR.verses[v].split(MUYASSAR.quote[0]).join('﴿').split(MUYASSAR.quote[1]).join('﴾');
 // التفسير يُنسخ بفقراته كما يُعرض
 const para = (text) => paragraphs(text).join('\n');
@@ -67,7 +67,7 @@ test('صفحات المحتوى: نسخ التفسير اسمه ثم كل آية
 
 test('صفحات المحتوى: نسخ التفسير (الميسّر والمختصر والسعدي) والمعاني والعمل للمقدار المحدد، آيةً ثم محتواها', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem('hq.contentRange', '[1,3]'));
-  await page.reload();
+  await downloadedTafsir(page, 'saadi');
   await clickDock(page, 'صفحات المحتوى');
 
   await study(page).getByRole('button', { name: 'نسخ المحتوى' }).click();
@@ -115,7 +115,7 @@ test('صفحات المحتوى: آية السعدي التي لا كلام خا
     localStorage.setItem('hq.contentRange', JSON.stringify(r));
     localStorage.setItem('hq.tafsir', 'saadi');
   }, [a, c]);
-  await page.reload();
+  await downloadedTafsir(page, 'saadi');
   await clickDock(page, 'صفحات المحتوى');
   await study(page).getByRole('button', { name: 'نسخ المحتوى' }).click();
   expect(await copied(page)).toBe(
@@ -140,6 +140,7 @@ test('مربع «نسخ» في مربع الآية: ينسخ الآية ﴿…�
 });
 
 test('بطاقة الآية: نسخ التفسير المختار والمعاني والعمل، كلٌّ وحده بلا الآية', async ({ page }) => {
+  await downloadedTafsir(page, 'saadi');
   await longPress(page, 1);
   await page.getByRole('menuitem', { name: 'تفسير' }).click();
   const card = page.getByRole('dialog', { name: 'التفسير' });

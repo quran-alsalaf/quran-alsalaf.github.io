@@ -62,10 +62,18 @@
   }
 }
 
-/* من طرف الزر (الأيمن في العربية) لا من وسطه */
+/* من طرف الزر (الأيمن في العربية) لا من وسطه — في بطاقة الآية. والقائمة فيها داخل مجرى البطاقة لا عائمة
+   (٢٠٢٦-١١-١٥): البطاقة القصيرة كانت تقصّ آخرها (البغوي) ولا تمرّ إليه، فصارت تدفع التفسير تحتها وتطيل البطاقة */
+.tpick--start {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .tpick--start .tpick__list {
+  position: relative;
+  top: auto;
   left: auto;
-  inset-inline-start: 0;
+  margin-top: 6px;
   transform: none;
   animation-name: tpick-in-start;
 }
@@ -127,4 +135,129 @@
   width: 18px;
   height: 18px;
   color: var(--accent-text);
+}
+
+/* تفسير يُحمَّل بزرّ ولم يكتمل تحميله (٢٠٢٦-١١-١٥): لا يُختار، وفي آخر سطره زرّ التحميل */
+.tpick__item--locked {
+  cursor: default;
+}
+
+.tpick__item--locked .tpick__name,
+.tpick__item--locked .tpick__title {
+  opacity: 0.6;
+}
+
+.tpick__item--locked:hover {
+  background: none;
+}
+
+/* نص للقارئ الصوتي وحده */
+.tpick__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.tpick__status {
+  grid-row: 3;
+  grid-column: 1;
+  font-size: var(--text-xs);
+  color: var(--accent-text);
+}
+
+.tpick__save {
+  grid-row: 1 / span 3;
+  grid-column: 2;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-inline-end: -6px;
+  border-radius: 50%;
+  color: var(--accent-text);
+}
+
+.tpick__save:not([class*='--']) {
+  color: var(--ink-muted);
+}
+
+.tpick__save:hover,
+.tpick__save:active,
+.tpick__save:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.tpick__save svg {
+  width: 24px;
+  height: 24px;
+}
+
+.tpick__ring {
+  transition: stroke-dashoffset 250ms linear;
+}
+
+/* تأكيد التحميل: بطاقة وسط الشاشة فوق ستارة (خارج القائمة، فوق صفحات المحتوى ومربع الآية) */
+.tpick__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.38);
+}
+
+.tpick__confirm {
+  width: min(100%, 380px);
+  padding: 20px 20px 14px;
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-float);
+  text-align: start;
+}
+
+.tpick__confirm h3 {
+  margin: 0 0 10px;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.tpick__confirm p {
+  margin: 0 0 8px;
+  line-height: 1.7;
+}
+
+.tpick__hint {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.tpick__warn {
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+
+.tpick__confirm-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.tpick__cbtn {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.tpick__cbtn--primary {
+  background: var(--accent);
+  color: var(--accent-ink);
 }

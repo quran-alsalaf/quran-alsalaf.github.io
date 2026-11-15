@@ -124,8 +124,8 @@ describe('صيغ النسخ', () => {
   });
 
   it('فقرات السعدي: لا فقرة تتجاوز نحو ١٣٠٠ حرف، ولا يضيع شيء من النص', () => {
-    const SA = JSON.parse(readFileSync('public/data/tafsir-saadi.json', 'utf8'));
-    for (const t of SA.verses.filter(Boolean)) {
+    const SA = Array.from({ length: 114 }, (_, i) => JSON.parse(readFileSync(`public/data/tafsir/saadi/${i + 1}.json`, 'utf8')).verses).flat();
+    for (const t of SA.filter(Boolean)) {
       const ps = paragraphs(t);
       expect(ps.join(' ').replace(/\s+/g, '')).toBe(t.replace(/\s+/g, ''));
       for (const p of ps) expect(p.length).toBeLessThan(1300);
@@ -133,8 +133,9 @@ describe('صيغ النسخ', () => {
   });
 
   it('التفاسير بترتيب القائمة، ولكلٍّ اسم واسم كتاب', () => {
-    expect(TAFSIR_SOURCES.map((s) => s.id)).toEqual(['muyassar', 'mukhtasar', 'saadi']);
+    expect(TAFSIR_SOURCES.map((s) => s.id)).toEqual(['muyassar', 'mukhtasar', 'saadi', 'baghawy']);
     expect(tafsirInfo('saadi').name).toBe('السعدي');
+    expect(tafsirInfo('baghawy').name).toBe('البغوي');
     for (const s of TAFSIR_SOURCES) expect(s.title.length).toBeGreaterThan(s.name.length);
   });
 

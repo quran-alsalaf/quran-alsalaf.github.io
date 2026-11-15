@@ -192,12 +192,13 @@ describe('التحميل', () => {
     expect(notes.at(-1)).toMatch(/لا تكفي المساحة/);
   });
 
-  it('الحذف يمسح الملفات والحالة', async () => {
+  it('لا حذف لما حُمِّل (٢٠٢٦-١١-١٥، بطلب صاحب المشروع): لا دالة حذف، وتبدأ محاولة تحميله من جديد «مكتمل» بلا تنزيل', async () => {
     await O.startDownload('shuraym');
-    await O.deleteDownload('shuraym');
-    expect(C.store.has('reciter-audio-shuraym')).toBe(false);
-    expect(O.offlineState().items.shuraym).toBeUndefined();
-    expect(JSON.parse(localStorage.getItem('hq.offline'))).toEqual({});
+    expect(O.deleteDownload).toBeUndefined();
+    fetched = [];
+    expect(await O.startDownload('shuraym')).toBe('done');
+    expect(fetched).toHaveLength(0);
+    expect(C.store.get('reciter-audio-shuraym').size).toBe(6236);
   });
 
   it('قارئ سُجِّل محمَّلًا ثم مسح المتصفح ملفاته يرجع «لم يُحمَّل»', async () => {

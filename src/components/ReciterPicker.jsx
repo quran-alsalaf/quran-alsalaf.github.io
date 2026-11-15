@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { covers, groupReciters, reciterById, reciterTitle, RECITERS } from '../lib/reciters.js';
 import { previewReciter, stopPreview, usePlayer } from '../lib/player.js';
-import { deleteDownload, freeSpaceMB, pauseDownload, startDownload, supported, useOffline } from '../lib/offline.js';
+import { freeSpaceMB, pauseDownload, startDownload, supported, useOffline } from '../lib/offline.js';
 import { toArabicDigits } from '../data/quran.js';
 import './ReciterPicker.css';
 import { useLayer } from '../lib/layers.js';
@@ -23,14 +23,15 @@ const pctOf = (it) => (it.total ? Math.floor((it.count / it.total) * 100) : 0);
   يوقف المعاينة. أزرار الصف (المعاينة، والتحميل) في .rcpick__tools فوق زرّ الاختيار.
   وزرّ التحميل (٢٠٢٦-١١-١٤) يحمّل صوت القارئ لكامل القرآن على الجهاز (src/lib/offline.js) بعد تأكيد
   يذكر حجمه: أثناءه دائرة تقدّم يوقفه الضغط عليها مؤقتًا، ومتوقفًا يُستأنف بالضغط، ومكتملًا علامة ✓
-  يحذفه الضغط عليها بعد تأكيد. وحالته مكتوبة تحت الاسم.
+  لا تُضغط (٢٠٢٦-١١-١٥، بطلب صاحب المشروع: لا حذف لما حُمِّل؛ وكان الضغط عليها يحذفه بعد تأكيد).
+  وحالته مكتوبة تحت الاسم.
 */
 export default function ReciterPicker({ chosen, suras, onPick, onClose, onToast }) {
   useLayer(onClose);
   const { preview } = usePlayer();
   const offline = useOffline();
   const canSave = supported();
-  // التأكيد المفتوح: { kind: 'download' | 'delete', id, free }
+  // تأكيد التحميل المفتوح: { id, free }
   const [ask, setAsk] = useState(null);
   useEffect(() => stopPreview, []);
   const shown = RECITERS.filter((r) => covers(r, suras));
@@ -44,15 +45,15 @@ export default function ReciterPicker({ chosen, suras, onPick, onClose, onToast 
   const onSaveButton = async (r) => {
     const it = offline.items[r.id];
     if (it?.status === 'downloading') return pauseDownload();
-    if (it?.status === 'done') return setAsk({ kind: 'delete', id: r.id });
+    if (it?.status === 'done') return undefined; // محمَّل: لا حذف
     if (offline.active && offline.active !== r.id) {
       onToast?.(`يُحمَّل الآن ${reciterTitle(reciterById(offline.active))}؛ أوقفه أولًا ثم حمّل غيره`);
       return undefined;
     }
     if (it?.status === 'paused') return download(r.id);
-    setAsk({ kind: 'download', id: r.id, free: null });
+    setAsk({ id: r.id, free: null });
     const free = await freeSpaceMB();
-    setAsk((a) => (a?.kind === 'download' && a.id === r.id ? { ...a, free } : a));
+    setAsk((a) => (a?.id === r.id ? { ...a, free } : a));
     return undefined;
   };
 
@@ -130,11 +131,7 @@ export default function ReciterPicker({ chosen, suras, onPick, onClose, onToast 
           onClose={() => setAsk(null)}
           onConfirm={() => {
             setAsk(null);
-            if (ask.kind === 'download') download(ask.id);
-            else {
-              deleteDownload(ask.id);
-              onToast?.(`حُذف تحميل ${reciterTitle(reciterById(ask.id))}`);
-            }
+            download(ask.id);
           }}
         />
       )}
@@ -157,20 +154,22 @@ function SaveStatus({ id, item }) {
   );
 }
 
-// زرّ التحميل: سهم (لم يُحمَّل) · دائرة تقدّم بعلامة إيقاف (يُحمَّل) · دائرة تقدّم بسهم (متوقف) · ✓ (محمَّل)
+// زرّ التحميل: سهم (لم يُحمَّل) · دائرة تقدّم بعلامة إيقاف (يُحمَّل) · دائرة تقدّم بسهم (متوقف).
+// والمحمَّل علامة ✓ لا تُضغط (لا حذف لما حُمِّل)
 function SaveButton({ r, item, onClick }) {
   const name = reciterTitle(r);
   const status = item?.status;
-  const label =
-    status === 'downloading'
-      ? `إيقاف تحميل ${name} مؤقتًا`
-      : status === 'paused'
-        ? `استئناف تحميل ${name}`
-        : status === 'done'
-          ? `حذف تحميل ${name}`
-          : `تحميل ${name} لكامل القرآن`;
+  if (status === 'done')
+    return (
+      <span className="rcpick__save rcpick__save--done" role="img" aria-label={`${name}: محمَّل على الجهاز`} title="محمَّل على الجهاز">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6.5 12.5l3.6 3.6 7.4-8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+    );
+  const label = status === 'downloading' ? `إيقاف تحميل ${name} مؤقتًا` : status === 'paused' ? `استئناف تحميل ${name}` : `تحميل ${name} لكامل القرآن`;
   const C = 2 * Math.PI * 10;
-  const ring = item && status !== 'done' && (
+  const ring = item && (
     <>
       <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeOpacity="0.22" strokeWidth="2" />
       <circle
@@ -199,7 +198,6 @@ function SaveButton({ r, item, onClick }) {
         {ring}
         {status === 'downloading' && <path d="M10 8.5v7M14 8.5v7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />}
         {status === 'paused' && <path d="M12 7.5v8m-3.2-3.2L12 15.5l3.2-3.2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />}
-        {status === 'done' && <path d="M6.5 12.5l3.6 3.6 7.4-8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />}
         {!status && (
           <path d="M12 4.5v10m-4-4 4 4 4-4M5 18.5h14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         )}
@@ -208,44 +206,25 @@ function SaveButton({ r, item, onClick }) {
   );
 }
 
-// تأكيد التحميل (بحجمه، وتنبيه إن بدت المساحة لا تكفي) أو الحذف
+// تأكيد التحميل: بحجمه، وتنبيه إن بدت المساحة لا تكفي
 function Confirm({ ask, onClose, onConfirm }) {
   useLayer(onClose);
   const r = reciterById(ask.id);
   const name = reciterTitle(r);
   const size = r.mb ? sizeText(r.mb) : null;
-  const tight = ask.kind === 'download' && r.mb && ask.free != null && ask.free < r.mb;
+  const tight = r.mb && ask.free != null && ask.free < r.mb;
   return (
     <div className="rcpick__scrim" onClick={onClose} role="presentation">
-      <div
-        className="rcpick__confirm"
-        role="alertdialog"
-        aria-modal="true"
-        aria-label={ask.kind === 'download' ? `تحميل ${name}` : `حذف تحميل ${name}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {ask.kind === 'download' ? (
-          <>
-            <h3>تحميل تلاوة {name}</h3>
-            <p>
-              لكامل القرآن{size && <>، نحو <b>{size}</b></>}. يُحفظ على الجهاز فيعمل الاستماع بصوته بلا إنترنت.
-            </p>
-            <p className="rcpick__hint">يُفضَّل الاتصال بشبكة Wi‑Fi، وإبقاء التطبيق مفتوحًا حتى يكتمل؛ وإن أُغلق أكمله زرّ الاستئناف.</p>
-            {tight && (
-              <p className="rcpick__warn">
-                المساحة المتاحة للتطبيق نحو {sizeText(ask.free)}، وقد لا تكفي.
-              </p>
-            )}
-          </>
-        ) : (
-          <>
-            <h3>حذف تحميل {name}؟</h3>
-            <p>تُحذف ملفاته من الجهاز{size && <> (نحو {size})</>}، ويعود الاستماع بصوته يحتاج الإنترنت.</p>
-          </>
-        )}
+      <div className="rcpick__confirm" role="alertdialog" aria-modal="true" aria-label={`تحميل ${name}`} onClick={(e) => e.stopPropagation()}>
+        <h3>تحميل تلاوة {name}</h3>
+        <p>
+          لكامل القرآن{size && <>، نحو <b>{size}</b></>}. يُحفظ على الجهاز فيعمل الاستماع بصوته بلا إنترنت.
+        </p>
+        <p className="rcpick__hint">يُفضَّل الاتصال بشبكة Wi‑Fi، وإبقاء التطبيق مفتوحًا حتى يكتمل؛ وإن أُغلق أكمله زرّ الاستئناف.</p>
+        {tight && <p className="rcpick__warn">المساحة المتاحة للتطبيق نحو {sizeText(ask.free)}، وقد لا تكفي.</p>}
         <div className="rcpick__confirm-actions">
-          <button type="button" className={`rcpick__btn${ask.kind === 'delete' ? ' rcpick__btn--danger' : ' rcpick__btn--primary'}`} onClick={onConfirm}>
-            {ask.kind === 'download' ? 'تحميل' : 'حذف'}
+          <button type="button" className="rcpick__btn rcpick__btn--primary" onClick={onConfirm}>
+            تحميل
           </button>
           <button type="button" className="rcpick__btn" onClick={onClose}>
             إلغاء

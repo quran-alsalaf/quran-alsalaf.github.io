@@ -272,14 +272,15 @@ describe('إعدادات أخرى', () => {
     expect(readRubAlert()).toBe(true);
   });
 
-  it('مصدر التفسير: الميسّر افتراضيًّا، والمختصر والسعدي يُحفظان، والمعرّف المجهول يرجع إلى الافتراضي', () => {
+  it('مصدر التفسير: الميسّر افتراضيًّا، والمختصر يُحفظ، والمعرّف المجهول يرجع إلى الافتراضي', () => {
     expect(readTafsirSource()).toBe('muyassar');
     saveTafsirSource('mukhtasar');
     expect(readTafsirSource()).toBe('mukhtasar');
-    saveTafsirSource('saadi');
-    expect(readTafsirSource()).toBe('saadi');
-    expect(localStorage.getItem('hq.tafsir')).toBe('saadi');
+    expect(localStorage.getItem('hq.tafsir')).toBe('mukhtasar');
     localStorage.setItem('hq.tafsir', 'unknown');
+    expect(readTafsirSource()).toBe('muyassar');
+    // السعدي يُحمَّل بزرّ (٢٠٢٦-١١-١٥): قبل تحميله يُعرض الميسّر مكانه (tests/unit/tafsir-download.test.js)
+    localStorage.setItem('hq.tafsir', 'saadi');
     expect(readTafsirSource()).toBe('muyassar');
   });
 });

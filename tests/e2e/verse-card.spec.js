@@ -1,6 +1,6 @@
 // الضغط المطوّل على آية وبطاقتها وكل خيار فيها
 import { test, expect } from '@playwright/test';
-import { clickDock, longPress, openApp, stored, word } from './helpers.js';
+import { clickDock, downloadedTafsir, longPress, openApp, stored, word } from './helpers.js';
 
 test.beforeEach(async ({ page }) => {
   await openApp(page, { 'hq.page': '1' });
@@ -80,6 +80,7 @@ test('الزر الأيمن على آية يفتح بطاقتها، وEsc يغل
 });
 
 test('تفسير: التفسير المختار وحده للآية، والتبديل من أعلى البطاقة يتبعه صفحات المحتوى', async ({ page }) => {
+  await downloadedTafsir(page, 'saadi');
   await longPress(page, 1);
   await page.getByRole('menuitem', { name: 'تفسير' }).click();
   const card = page.getByRole('dialog', { name: 'التفسير' });

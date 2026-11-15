@@ -1,13 +1,20 @@
 // نظافة نصوص البيانات (scripts/data/07-tidy.mjs): التفسيران و«العمل بالآيات»، وتفسير السعدي (10-saadi.mjs)
+// وتفسير البغوي (11-baghawy.mjs)
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { tidyAction, tidyMukhtasar, tidyMuyassar } from '../../scripts/data/07-tidy.mjs';
 import { cleanSaadi } from '../../scripts/data/10-saadi.mjs';
+import { applyFixes, cleanBaghawy } from '../../scripts/data/11-baghawy.mjs';
 
 const load = (f) => JSON.parse(readFileSync(`public/data/${f}.json`, 'utf8'));
 const MY = load('tafsir-muyassar');
 const MK = load('tafsir-mukhtasar');
-const SA = load('tafsir-saadi');
+// التفاسير التي تُحمَّل بزرّ: ملف لكل سورة (public/data/tafsir/{id}/{س}.json)، تُجمع بترتيب المصحف
+const loadSplit = (id) => ({
+  verses: Array.from({ length: 114 }, (_, i) => load(`tafsir/${id}/${i + 1}`).verses).flat(),
+});
+const SA = loadSplit('saadi');
+const BG = loadSplit('baghawy');
 const ME = load('memos');
 const QURAN = load('quran');
 const ref = (i) => `${QURAN.verses[i].s}:${QURAN.verses[i].a}`;
@@ -98,5 +105,39 @@ describe('تفسير السعدي', () => {
     const empty = where(SA.verses, /^$/).map(ref);
     expect(empty.length).toBeLessThanOrEqual(50);
     expect(empty).toContain('4:61');
+  });
+});
+
+describe('تفسير البغوي', () => {
+  const at = (s, a) => BG.verses[QURAN.verses.findIndex((x) => x.s === s && x.a === a)];
+
+  it('التنظيف: الآية المفسَّرة ﴿…﴾، وأقواس النسخة الأخرى كما هي بلا فراغ داخلها، والفقرات والترقيم', () => {
+    expect(cleanBaghawy('x|||<p>قوله تعالى: <span class="t4">{لا تقولوا راعنا}</span> كيلا</p><p>وقيل</p>')).toBe('قوله تعالى: ﴿لا تقولوا راعنا﴾ كيلا\nوقيل');
+    expect(cleanBaghawy('x|||<p>قوله تعالى <span class="t3">( هن أم الكتاب )</span> أي أصله</p>')).toBe('قوله تعالى (هن أم الكتاب) أي أصله');
+    expect(cleanBaghawy('x|||<p>كما قال : <span class="t1">" وجعلنا ابن مريم وأمه آية "</span> <span class="t3">( 50 - المؤمنون )</span> أي</p>')).toBe(
+      'كما قال: "وجعلنا ابن مريم وأمه آية" (50 - المؤمنون) أي'
+    );
+    expect(cleanBaghawy('x|||<p>من الإحكام , كأنه <span class="t2">[ في موضع آخر ]</span>.</p>')).toBe('من الإحكام، كأنه [في موضع آخر].');
+    expect(cleanBaghawy('x|||<p>قال:وقيل</p>')).toBe('قال: وقيل');
+  });
+
+  it('إصلاحات الوسوم المكسورة في النسخة تجد نصّها', () => {
+    expect(() => applyFixes('2:115', 'عزو [88-القصص} أي')).not.toThrow();
+    expect(() => applyFixes('2:115', 'نص آخر')).toThrow();
+    expect(applyFixes('1:1', 'كما هو')).toBe('كما هو');
+  });
+
+  it('لكل آيات المصحف، في مواضعها (طوبقت بطبعة طيبة في الشاملة)، بلا وسوم ولا بقايا', () => {
+    expect(BG.verses).toHaveLength(QURAN.verses.length);
+    expect(where(BG.verses, /[<>{}\u200f]|&[a-z]*;/).map(ref)).toEqual([]);
+    expect(where(BG.verses, /[؀-ۿ] ?, ?[؀-ۿ]/).map(ref)).toEqual([]);
+    expect(at(2, 106)).toMatch(/^قوله عز وجل \(ما ننسخ من آية أو ننسها\) وذلك أن المشركين قالوا: إن محمدا ما يأمر أصحابه/);
+    expect(at(67, 2)).toMatch(/^\(الذي خلق الموت والحياة\) قال عطاء عن ابن عباس: يريد الموت في الدنيا والحياة في الآخرة/);
+    expect(at(2, 105)).toContain('﴿أن ينزل عليكم من خير من ربكمْ﴾ أي خير ونبوة');
+  });
+
+  it('فقرات البغوي: لا يضيع شيء من النص', async () => {
+    const { paragraphs } = await import('../../src/lib/study.js');
+    for (const t of BG.verses.filter(Boolean)) expect(paragraphs(t).join(' ').replace(/\s+/g, '')).toBe(t.replace(/\s+/g, ''));
   });
 });

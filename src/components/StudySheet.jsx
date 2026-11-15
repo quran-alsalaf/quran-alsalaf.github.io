@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  SAADI_SHARED,
+  sharedNote,
   actionsInRange,
   loadTafsir,
   memoIndex,
@@ -215,7 +215,7 @@ function TafsirTab({ quran, verses, pages, onToast }) {
     <>
       {/* صفّ واحد: نسخ المحتوى يمينًا، واختيار التفسير في الوسط */}
       <CopyBar getText={t ? copyTafsir : null} onToast={onToast}>
-        <TafsirPicker value={source} onChange={setSource} />
+        <TafsirPicker value={source} onChange={setSource} onToast={onToast} />
       </CopyBar>
 
       {!t && !failed && <p className="study__note">جارٍ تحميل التفسير…</p>}
@@ -235,7 +235,7 @@ function TafsirTab({ quran, verses, pages, onToast }) {
               )}
               <VerseCard quran={quran} v={v} />
               <div className="study__box study__box--explain">
-                <TafsirBody text={tafsirText(source, t, v)} />
+                <TafsirBody text={tafsirText(source, t, v)} source={source} />
               </div>
             </div>
           );
@@ -259,9 +259,10 @@ function TafsirTab({ quran, verses, pages, onToast }) {
   );
 }
 
-// نص تفسير آية مقسّمًا فقرات للقراءة (paragraphs)، أو تنبيه آية السعدي التي لا كلام خاصًّا بها
-export function TafsirBody({ text }) {
-  if (!text) return <p className="study__shared">{SAADI_SHARED}</p>;
+// نص تفسير آية مقسّمًا فقرات للقراءة (paragraphs)، أو تنبيه الآية التي لم يُفرد لها المفسّر (السعدي أو
+// البغوي) كلامًا خاصًّا
+export function TafsirBody({ text, source }) {
+  if (!text) return <p className="study__shared">{sharedNote(source)}</p>;
   return paragraphs(text).map((p, i) => <p key={i}>{p}</p>);
 }
 

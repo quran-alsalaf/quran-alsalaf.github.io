@@ -1,5 +1,5 @@
 // تحميل صوت قارئ لكامل القرآن (٢٠٢٦-١١-١٤): زرّ أمام كل قارئ في صفحة الاختيار، بتأكيد يذكر الحجم،
-// ودائرة تقدّم، وإيقاف واستئناف، وحفظ دائم يبقى بعد إعادة الفتح، وحذف؛ والتشغيل من الملفات المحفوظة.
+// ودائرة تقدّم، وإيقاف واستئناف، وحفظ دائم يبقى بعد إعادة الفتح بلا حذف؛ والتشغيل من الملفات المحفوظة.
 // لا يُطلب شيء من الإنترنت: ملفات الصوت تُحاكى، وأغلب ملفات القارئ تُحفظ مسبقًا في ذاكرته (كتحميل
 // سابق ناقص) فيكمل الاختبار الباقي وحده بسرعة.
 import { test, expect } from '@playwright/test';
@@ -47,7 +47,7 @@ async function openPicker(page) {
   await expect(picker(page)).toBeVisible();
 }
 
-test('تحميل قارئ لكامل القرآن: تأكيد بالحجم، ثم ✓ «محمَّل على الجهاز» يبقى بعد إعادة الفتح، ثم الحذف', async ({ page }) => {
+test('تحميل قارئ لكامل القرآن: تأكيد بالحجم، ثم ✓ «محمَّل على الجهاز» يبقى بعد إعادة الفتح، ولا حذف', async ({ page }) => {
   await prepare(page, { 'hq.page': '3' });
   await page.goto('/');
   await waitMushaf(page);
@@ -70,7 +70,7 @@ test('تحميل قارئ لكامل القرآن: تأكيد بالحجم، ث�
 
   await picker(page).getByRole('button', { name: 'تحميل ماهر المعيقلي لكامل القرآن' }).click();
   await ask.getByRole('button', { name: 'تحميل' }).click();
-  await expect(picker(page).getByRole('button', { name: 'حذف تحميل ماهر المعيقلي' })).toBeVisible();
+  await expect(picker(page).getByRole('img', { name: 'ماهر المعيقلي: محمَّل على الجهاز' })).toBeVisible();
   await expect(row(page, 'ماهر المعيقلي').locator('.rcpick__status')).toHaveText('محمَّل على الجهاز');
   await expect(toast(page)).toContainText('اكتمل تحميل تلاوة ماهر المعيقلي');
   // التحميل لا يختار القارئ ولا يغلق الصفحة
@@ -84,14 +84,13 @@ test('تحميل قارئ لكامل القرآن: تأكيد بالحجم، ث�
   await openPicker(page);
   await expect(row(page, 'ماهر المعيقلي').locator('.rcpick__status')).toHaveText('محمَّل على الجهاز');
 
-  // الحذف بعد تأكيد
-  await picker(page).getByRole('button', { name: 'حذف تحميل ماهر المعيقلي' }).click();
-  const del = page.getByRole('alertdialog', { name: 'حذف تحميل ماهر المعيقلي' });
-  await expect(del).toContainText('١٫٢ غيغابايت');
-  await del.getByRole('button', { name: 'حذف' }).click();
-  await expect(picker(page).getByRole('button', { name: 'تحميل ماهر المعيقلي لكامل القرآن' })).toBeVisible();
-  await expect(row(page, 'ماهر المعيقلي').locator('.rcpick__status')).toHaveCount(0);
-  expect(await page.evaluate(() => caches.has('reciter-audio-muaiqly'))).toBe(false);
+  // لا حذف (٢٠٢٦-١١-١٥، بطلب صاحب المشروع): ✓ علامة لا زرّ، والضغط عليها لا يفتح شيئًا ولا يمسح الملفات
+  const done = picker(page).getByRole('img', { name: 'ماهر المعيقلي: محمَّل على الجهاز' });
+  await expect(picker(page).getByRole('button', { name: /حذف/ })).toHaveCount(0);
+  await done.click();
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  await expect(row(page, 'ماهر المعيقلي').locator('.rcpick__status')).toHaveText('محمَّل على الجهاز');
+  expect(await page.evaluate(async () => (await (await caches.open('reciter-audio-muaiqly')).keys()).length)).toBe(6236);
 });
 
 test('الإيقاف المؤقت والاستئناف، وقارئ واحد يُحمَّل في كل مرة، ويستمر التحميل بعد إغلاق الصفحة', async ({ page }) => {

@@ -91,6 +91,32 @@ export async function waitMushaf(page) {
   await expect(page.locator('.splash')).toHaveCount(0);
 }
 
+// تفسير يُحمَّل بزرّ (السعدي، البغوي) بنصّه كما يقرؤه التطبيق: { verses } لكل آيات المصحف بترتيبها
+export function tafsirData(id) {
+  const verses = [];
+  for (let s = 1; s <= 114; s++) {
+    verses.push(...JSON.parse(readFileSync(new URL(`../../public/data/tafsir/${id}/${s}.json`, import.meta.url), 'utf8')).verses);
+  }
+  return { verses };
+}
+
+// يجعل التفسير id محمَّلًا على الجهاز كأن المستخدم حمّله بزرّه (ملفاته في ذاكرته وحالته «done»)،
+// ثم يعيد فتح التطبيق ليقرأ الحالة. للاختبارات التي تستعمل التفسير لا التي تختبر تحميله
+export async function downloadedTafsir(page, ...ids) {
+  await page.evaluate(async (list) => {
+    const meta = JSON.parse(localStorage.getItem('hq.tafsirDownloads') || '{}');
+    for (const id of list) {
+      const urls = Array.from({ length: 114 }, (_, i) => new URL(`data/tafsir/${id}/${i + 1}.json`, document.baseURI).href);
+      const cache = await caches.open(`tafsir-${id}`);
+      await cache.addAll(urls);
+      meta[id] = { status: 'done', count: 114, total: 114 };
+    }
+    localStorage.setItem('hq.tafsirDownloads', JSON.stringify(meta));
+  }, ids);
+  await page.reload();
+  await waitMushaf(page);
+}
+
 export const isLaptop = (testInfo) => testInfo.project.name === 'laptop';
 
 // رقم الصفحة المحفوظ (آخر موضع)
