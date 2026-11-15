@@ -23,7 +23,7 @@ import { hasOpenLayer } from './lib/layers.js';
 import { useRubAlert } from './lib/rubs.js';
 import { onOfflineNotice, verifyDownloads } from './lib/offline.js';
 import { verifyTafsirDownloads } from './lib/tafsirDownload.js';
-import { readRiwayah, setRiwayah, useRiwayah, WARSH_SOON } from './lib/riwayah.js';
+import { readRiwayah, setRiwayah, useRiwayah } from './lib/riwayah.js';
 import RiwayahChooser from './components/RiwayahChooser.jsx';
 import { hafsList, hafsRange, shownBookmarks, shownNotes, shownRange } from './lib/verseMap.js';
 import './App.css';
@@ -208,10 +208,10 @@ export default function App() {
   const shownRef = useRef(shownPages);
   shownRef.current = shownPages;
   useEffect(() => {
-    if (!quran || warsh || player.v == null) return;
+    if (!quran || player.v == null || !quran.verses[player.v]) return;
     const p = quran.verses[player.v].p;
     if (!shownRef.current.includes(p)) setGotoPage({ page: p, n: Date.now() });
-  }, [quran, warsh, player.v, player.n]);
+  }, [quran, player.v, player.n]);
 
   // الإخفات (٢٠٢٦-١١-١١): يتبع مقدار صفحات المحتوى وحده، فيُخفت في المصحف ما خارجه ويزول بإلغائه،
   // ولو أثناء الاستماع. ومقدار الاستماع لا يُخفت شيئًا؛ والآية الجارية مظلَّلة، وإن كانت خارج مقدار
@@ -224,19 +224,19 @@ export default function App() {
     enabled: !!quran && splashDone && !reading && !studyOpen && !khatmaOpen,
     onToast: showToast,
   });
-  // الملاحظات والعلامات بترقيم المصحف المعروض (في ورش: كل آية حفص ⇐ ما يقابلها). والآية الجارية تلاوتها
-  // لا تكون في ورش (الاستماع موقوف فيه)
+  // الملاحظات والعلامات بترقيم المصحف المعروض (في ورش: كل آية حفص ⇐ ما يقابلها). والآيات الجارية تلاوتها:
+  // آيات المقطع الجاري كلها (آيتان في ملف واحد تُظلَّلان معًا، src/lib/player.js)
   const marks = useMemo(
     () => ({
       notes: quran ? shownNotes(quran, user.notes) : null,
       bookmarks: quran ? shownBookmarks(quran, user.bookmarks) : null,
       range: contentSel,
       selected: pressed?.v ?? null,
-      playing: warsh ? null : player.v,
+      playing: player.vs,
       flash: flash?.v ?? null,
       rubFlash,
     }),
-    [quran, warsh, user.notes, user.bookmarks, contentSel?.[0], contentSel?.[1], pressed?.v, player.v, flash?.v, rubFlash]
+    [quran, user.notes, user.bookmarks, contentSel?.[0], contentSel?.[1], pressed?.v, player.vs, flash?.v, rubFlash]
   );
 
   // دخول وضع القراءة من الإعدادات: يُوقَف الصوت بهدوء (الاستماع وتحديد المقدار لا يعملان فيه)،
@@ -666,13 +666,7 @@ export default function App() {
             {/* الاستماع: قبل التشغيل تفتح إعداداته، وأثناءه تصير الخانة أزرار التحكم كلها
                 (إيقاف مؤقت/استئناف، والإعدادات، والإيقاف التام) — بلا شريط صوت منفصل */}
             {player.status === 'idle' || !quran ? (
-              <button
-                className={`dock__slot${warsh ? ' dock__slot--off' : ''}`}
-                type="button"
-                disabled={!quran}
-                aria-disabled={warsh || undefined}
-                onClick={() => (warsh ? showToast(WARSH_SOON) : setListenOpen(true))}
-              >
+              <button className="dock__slot" type="button" disabled={!quran} onClick={() => setListenOpen(true)}>
                 {player.download?.active ? (
                   <span className="dock__label dock__label--row">
                     <span className="dock__spin" />

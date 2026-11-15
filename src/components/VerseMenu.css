@@ -66,11 +66,6 @@
   padding: 14px;
 }
 
-/* مربع متوقف في مصحف ورش: باهت، والضغط عليه رسالة «تُتاح برواية ورش قريبًا» */
-.vmenu__action--off > * {
-  opacity: 0.4;
-}
-
 .vmenu__action {
   display: grid;
   place-items: center;

@@ -68,7 +68,7 @@ export const copied = (page) => page.evaluate(() => window.__clip.at(-1));
 
 // يجهّز الصفحة قبل فتحها: محاكاة الصوت، وبيانات محلية تُكتب مرة واحدة فقط (لا عند إعادة الفتح)
 export async function prepare(page, storage = {}) {
-  await page.route(/everyayah\.com|tarteel\.ai/, (r) => r.abort());
+  await page.route(/everyayah\.com|tarteel\.ai|quranpedia\.net/, (r) => r.abort());
   await page.addInitScript(audioMock);
   await page.addInitScript(clipboardMock, false);
   await page.addInitScript((data) => {

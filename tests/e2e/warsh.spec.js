@@ -1,5 +1,5 @@
 // مصحف ورش (٢٠٢٦-١١-١٥، «الروايات» الجلسة ١): اختيار الرواية عند أول فتح ومن الإعدادات، وعرض مصحف ورش،
-// والضغط المطوّل فيه، وما يبقى متوقفًا فيه بعد ربط ترقيمه بحفص (الجلسة ٢): الاستماع والأرباع.
+// والضغط المطوّل فيه، وما يبقى متوقفًا فيه: الأرباع. والاستماع بقرّاء ورش (الجلسة ٣) بمحاكاة الصوت.
 // وما يعمل بالربط (المحتوى والعلامات والملاحظات والمقادير) في warsh-map.spec.js
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -11,6 +11,11 @@ const SOON = 'تُتاح برواية ورش قريبًا';
 const warshPage = (page) => page.locator('.sheet--current .mushaf-page--warsh:not(.mushaf-page--pending)').first();
 const wword = (page, v) => page.locator(`.sheet--current .mushaf-page--warsh .w[data-v="${v}"]`).first();
 const toast = (page) => page.locator('.toast');
+const listen = (page) => page.getByRole('dialog', { name: 'الاستماع للآيات' });
+const picker = (page) => page.getByRole('dialog', { name: 'اختر القارئ' });
+const lastSrc = (page) => page.evaluate(() => window.__audio.srcs.at(-1));
+const end = (page) => page.evaluate(() => window.__audio.end());
+const WARSH_NAMES = ['محمود خليل الحصري', 'عبد الباسط عبد الصمد', 'إبراهيم الدوسري', 'ياسين الجزائري', 'العيون الكوشي'];
 
 async function longPressWarsh(page, v) {
   const box = await wword(page, v).boundingBox();
@@ -90,7 +95,7 @@ test.describe('مصحف ورش', () => {
     await expect(sheet.locator('.w--aya')).toHaveCount(4);
   });
 
-  test('الضغط المطوّل: اسم الآية بترقيم ورش، والنسخ بنصّها، و«تشغيل» وحده يُتاح لاحقًا', async ({ page }) => {
+  test('الضغط المطوّل: اسم الآية بترقيم ورش، والمربعات كلها متاحة، والنسخ بنصّها', async ({ page }) => {
     const v = at(2, 4);
     await longPressWarsh(page, v);
     const box = page.getByRole('dialog', { name: 'البقرة: ٤' });
@@ -98,15 +103,9 @@ test.describe('مصحف ورش', () => {
     await expect(wword(page, v)).toHaveClass(/w--selected/);
     const items = box.locator('.vmenu__picker [role="menuitem"]');
     await expect(items).toHaveText(['تشغيل', 'علامة', 'ملاحظة', 'تفسير', 'معاني', 'عمل', 'فوائد', 'نسخ']);
-    await expect(box.getByRole('menuitem', { name: 'تشغيل' })).toHaveAttribute('aria-disabled', 'true');
-    for (const name of ['علامة', 'ملاحظة', 'تفسير', 'معاني', 'عمل', 'فوائد', 'نسخ']) {
+    for (const name of ['تشغيل', 'علامة', 'ملاحظة', 'تفسير', 'معاني', 'عمل', 'فوائد', 'نسخ']) {
       await expect(box.getByRole('menuitem', { name })).not.toHaveAttribute('aria-disabled', 'true');
     }
-    // المتوقف: رسالة، ويبقى المربع على حاله
-    // (aria-disabled: يُعلن متوقفًا لقارئ الشاشة ويُضغط مع ذلك؛ وأداة الاختبار لا تضغطه إلا بـforce)
-    await box.getByRole('menuitem', { name: 'تشغيل' }).click({ force: true });
-    await expect(toast(page)).toHaveText(SOON);
-    await expect(box.locator('.vmenu__picker')).toBeVisible();
     // النسخ بنص ورش وترقيمه
     await box.getByRole('menuitem', { name: 'نسخ' }).click();
     await expect(page.locator('.vmenu')).toHaveCount(0);
@@ -114,11 +113,72 @@ test.describe('مصحف ورش', () => {
     expect(await copied(page)).toBe(`﴿${text}﴾ [البقرة: ٤]`);
   });
 
-  test('الاستماع: رسالة بدل الفتح', async ({ page }) => {
+  // قرّاء ورش (٢٠٢٦-١١-١٥، «الروايات» الجلسة ٣)
+  test('الاستماع: الحصري قارئه الافتراضي، وقرّاء ورش الخمسة وحدهم، والبسملة ثم الآيات بترقيم ورش وتظليلها', async ({ page }, testInfo) => {
     await showChrome(page);
-    await page.locator('.dock').getByRole('button', { name: 'الاستماع للآيات' }).click({ force: true });
-    await expect(toast(page)).toHaveText(SOON);
-    await expect(page.locator('.listen')).toHaveCount(0);
+    await page.locator('.dock').getByRole('button', { name: 'الاستماع للآيات' }).click();
+    await expect(listen(page)).toBeVisible();
+    await expect(listen(page).locator('.listen__value').first()).toContainText('محمود خليل الحصري');
+    await listen(page).getByRole('button', { name: /القارئ/ }).click();
+    await expect(picker(page).locator('.rcpick__group-title')).toHaveText(['مرتّل']);
+    await expect(picker(page).getByRole('radio')).toHaveText(WARSH_NAMES);
+    await expect(picker(page).getByRole('radio', { name: 'محمود خليل الحصري' })).toHaveAttribute('aria-checked', 'true');
+    // التحميل لكامل القرآن بحجمه (ثم إلغاء)
+    await picker(page).getByRole('button', { name: 'تحميل ياسين الجزائري لكامل القرآن' }).click();
+    const confirm = page.getByRole('alertdialog', { name: 'تحميل ياسين الجزائري' });
+    await expect(confirm).toContainText('٣٨٣ ميغابايت');
+    await confirm.getByRole('button', { name: 'إلغاء' }).click();
+    await picker(page).getByRole('button', { name: 'إغلاق' }).click();
+    await listen(page).getByRole('button', { name: 'تشغيل' }).click();
+    // من أول الظاهر: البقرة في الصفحة ٢ (والفاتحة في الصفحة ١ في عرض الصفحتين)، فالبسملة بصوت الحصري، ثم الآية ١
+    // («الحمد لله…» في الفاتحة، و«الم ذلك الكتاب» في البقرة بترقيم ورش)، ثم ٢
+    const s = isLaptop(testInfo) ? 1 : 2;
+    expect(await lastSrc(page)).toBe(`https://files.quranpedia.net/recitations/261/00${s}000.mp3`);
+    await expect(wword(page, at(s, 1))).toHaveClass(/w--playing/);
+    await end(page);
+    expect(await lastSrc(page)).toMatch(new RegExp(`/261/00${s}001\\.mp3$`));
+    await end(page);
+    expect(await lastSrc(page)).toMatch(new RegExp(`/261/00${s}002\\.mp3$`));
+    await expect(wword(page, at(s, 2))).toHaveClass(/w--playing/);
+    await expect(wword(page, at(s, 1))).not.toHaveClass(/w--playing/);
+  });
+
+  test('قارئ ورش المختار لا يغيّر قارئ حفص، وفي مصحف حفص لا يظهر قرّاء ورش', async ({ page }) => {
+    await showChrome(page);
+    await page.locator('.dock').getByRole('button', { name: 'الاستماع للآيات' }).click();
+    await listen(page).getByRole('button', { name: /القارئ/ }).click();
+    await picker(page).getByRole('radio', { name: 'العيون الكوشي' }).click();
+    await expect(listen(page).locator('.listen__value').first()).toContainText('العيون الكوشي');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hq.listen')))).toMatchObject({ warshReciter: 'w-kouchi' });
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hq.listen')).reciter ?? 'shuraym')).toBe('shuraym');
+    await listen(page).getByRole('button', { name: 'إغلاق' }).click();
+    // إلى حفص
+    await clickTopbar(page, 'الإعدادات');
+    await page.getByRole('radiogroup', { name: 'الرواية' }).getByRole('radio', { name: 'حفص' }).click();
+    await page.keyboard.press('Escape');
+    await waitMushaf(page);
+    await showChrome(page);
+    await page.locator('.dock').getByRole('button', { name: 'الاستماع للآيات' }).click();
+    await expect(listen(page).locator('.listen__value').first()).toContainText('سعود الشريم');
+    await listen(page).getByRole('button', { name: /القارئ/ }).click();
+    await expect(picker(page).getByRole('radio')).toHaveCount(37);
+    for (const name of ['العيون الكوشي', 'ياسين الجزائري', 'إبراهيم الدوسري']) await expect(picker(page).getByRole('radio', { name })).toHaveCount(0);
+  });
+
+  test('تشغيل آية من مربعها: آيتا الملك ٩ و١٠ في ملف واحد تُظلَّلان معًا', async ({ page }) => {
+    const v9 = at(67, 9);
+    await page.evaluate((p) => localStorage.setItem('hq.page', String(p)), W.verses[v9].p);
+    await page.reload();
+    await expect(warshPage(page)).toBeVisible();
+    await longPressWarsh(page, v9);
+    await page.getByRole('menuitem', { name: 'تشغيل' }).click();
+    await page.getByRole('button', { name: /تشغيل الآية وحدها/ }).click();
+    await page.getByRole('button', { name: 'مرة', exact: true }).click();
+    expect(await lastSrc(page)).toMatch(/\/261\/067009\.mp3$/);
+    await expect(wword(page, v9)).toHaveClass(/w--playing/);
+    await expect(wword(page, v9 + 1)).toHaveClass(/w--playing/);
+    await end(page);
+    await expect(page.locator('.w--playing')).toHaveCount(0);
   });
 
   test('القائمة: السور بعدد آيات ورش وتنقل إليها، والأرباع تُتاح لاحقًا', async ({ page }) => {
