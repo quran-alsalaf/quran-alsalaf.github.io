@@ -1,6 +1,6 @@
 // صفحات المحتوى: الفتح والإغلاق بكل الطرق، والتبويبات، ومقدارها وإخفاته، واستقلاله عن مقدار الاستماع
 import { test, expect } from '@playwright/test';
-import { clickDock, copied, isLaptop, openApp, pickVerse, stored, word } from './helpers.js';
+import { clickDock, copied, downloadedTafsir, isLaptop, openApp, pickVerse, stored, word } from './helpers.js';
 
 const study = (page) => page.locator('section.study');
 const open = async (page) => {
@@ -69,8 +69,8 @@ test('التبديل بين التبويبات الثلاثة ومصادر ال�
 
   await picker.click();
   const list = study(page).getByRole('listbox', { name: 'مصدر التفسير' });
-  await expect(list.getByRole('option')).toHaveCount(3);
-  await expect(list.locator('.tpick__name')).toHaveText(['الميسّر', 'المختصر', 'السعدي']);
+  await expect(list.getByRole('option')).toHaveCount(4);
+  await expect(list.locator('.tpick__name')).toHaveText(['الميسّر', 'المختصر', 'السعدي', 'البغوي']);
   await expect(list.getByRole('option', { selected: true })).toContainText('الميسّر');
   await list.getByRole('option', { name: /المختصر/ }).click();
   await expect(list).toHaveCount(0);
@@ -78,6 +78,9 @@ test('التبديل بين التبويبات الثلاثة ومصادر ال�
   await expect(study(page).getByText('من مقاصد السورة').first()).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('hq.tafsir'))).toBe('mukhtasar');
 
+  // السعدي يُحمَّل بزرّ (٢٠٢٦-١١-١٥)؛ بعد تحميله يُختار كغيره
+  await downloadedTafsir(page, 'saadi');
+  await open(page);
   await picker.click();
   await list.getByRole('option', { name: /السعدي/ }).click();
   await expect(picker).toHaveText('السعدي');
@@ -98,6 +101,7 @@ test('التبديل بين التبويبات الثلاثة ومصادر ال�
 });
 
 test('قائمة التفاسير بلوحة المفاتيح: الأسهم وEnter، وEsc يغلقها وحدها، والنقر خارجها', async ({ page }) => {
+  await downloadedTafsir(page, 'saadi');
   await open(page);
   const picker = study(page).locator('.tpick__btn');
   await picker.click();
@@ -131,7 +135,7 @@ test('السعدي: الآية التي لا كلام خاصًّا بها تنب
     localStorage.setItem('hq.tafsir', 'saadi');
     localStorage.setItem('hq.page', '88');
   });
-  await page.reload();
+  await downloadedTafsir(page, 'saadi');
   await open(page);
   await expect(study(page).locator('.study__shared')).toHaveCount(1);
   await expect(study(page).locator('.study__shared')).toHaveText(/لم يُفرد السعدي لهذه الآية كلامًا/);

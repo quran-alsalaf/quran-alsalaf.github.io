@@ -383,11 +383,11 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
     if (failed) content = <p className="study__note">تعذّر تحميل التفسير. يُحمَّل مرة واحدة، ويحتاج لذلك اتصالًا بالإنترنت.</p>;
     else if (!t) content = <p className="study__note">جارٍ تحميل التفسير…</p>;
     // نص عادي بلا تمييز (بطلب صاحب المشروع)
-    else content = <TafsirBody text={text} />;
+    else content = <TafsirBody text={text} source={source} />;
     body = (
       <>
         <div className="vcard__source">
-          <TafsirPicker value={source} onChange={setSource} align="start" />
+          <TafsirPicker value={source} onChange={setSource} align="start" onToast={onToast} />
         </div>
         <div className="vcard__tafsir">{content}</div>
         <p className="vcard__credit">{name}</p>

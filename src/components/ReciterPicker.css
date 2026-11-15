@@ -173,7 +173,7 @@
   transition: stroke-dashoffset 250ms linear;
 }
 
-/* تأكيد التحميل أو الحذف: بطاقة وسط الصفحة فوق ستارة */
+/* تأكيد التحميل: بطاقة وسط الصفحة فوق ستارة */
 .rcpick__scrim {
   position: fixed;
   inset: 0;
@@ -232,11 +232,6 @@
 .rcpick__btn--primary {
   background: var(--accent);
   color: var(--accent-ink);
-}
-
-.rcpick__btn--danger {
-  background: var(--danger);
-  color: #fff;
 }
 
 .rcpick__spin {

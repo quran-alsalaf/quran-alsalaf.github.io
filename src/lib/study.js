@@ -1,26 +1,24 @@
 // بيانات صفحات المحتوى (تفسير · معاني الكلمات · العمل بالآيات) لنطاق من الآيات.
 //
-// التفاسير المبنية مع التطبيق تُحمَّل عند أول فتح لها لا عند فتح التطبيق (نحو ١٠ ميغابايت معًا)،
-// وعامل الخدمة يحفظها مسبقًا، فتعمل بلا إنترنت.
-import { useEffect, useState } from 'react';
+// التفاسير المبنية مع التطبيق تُحمَّل عند أول فتح لها لا عند فتح التطبيق، وعامل الخدمة يحفظها مسبقًا،
+// فتعمل بلا إنترنت. والتفاسير الكبيرة تُحمَّل بزرّ ثم تُقرأ من ذاكرتها (src/lib/tafsirDownload.js).
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { tafsirInfo } from '../data/tafsirs.js';
+import { isTafsirReady, readDownloadedTafsir, subscribeTafsirDownloads, tafsirDownloads } from './tafsirDownload.js';
 
 // (import.meta.env غائب خارج Vite، كاختبارات المتصفح التي تستورد paragraphs)
 const BASE = import.meta.env?.BASE_URL ?? '/';
 const TAFSIR_KEY = 'hq.tafsir';
-// بترتيب قائمة الاختيار. name: في زرّ الاختيار، title: اسم الكتاب أسفل التفسير وفي النسخ
-export const TAFSIR_SOURCES = [
-  { id: 'muyassar', name: 'الميسّر', title: 'التفسير الميسّر' },
-  { id: 'mukhtasar', name: 'المختصر', title: 'المختصر في تفسير القرآن الكريم' },
-  { id: 'saadi', name: 'السعدي', title: 'تيسير الكريم الرحمن في تفسير كلام المنان (تفسير السعدي)' },
-];
+// مصادر التفسير (المبنية مع التطبيق، وما يُحمَّل بزرّ) في src/data/tafsirs.js
+export { TAFSIR_SOURCES, tafsirInfo } from '../data/tafsirs.js';
 const DEFAULT_TAFSIR = 'muyassar';
-export const tafsirInfo = (id) => TAFSIR_SOURCES.find((s) => s.id === id);
 
 // الاختيار في الجلسة إن تعذّر التخزين، ومن يتابعه (صفحات المحتوى وبطاقة الآية معًا)
 let sessionChoice = null;
 const listeners = new Set();
 
-// مصدر التفسير المختار: يُحفظ ويبقى في كل فتح لاحق، والافتراضي الميسّر (٢٠٢٦-١١-١٤، كان المختصر)
+// مصدر التفسير المختار: يُحفظ ويبقى في كل فتح لاحق، والافتراضي الميسّر (٢٠٢٦-١١-١٤، كان المختصر).
+// وتفسير يُحمَّل بزرّ ولم يكتمل تحميله (أو مسح المتصفح ملفاته) يُعرض مكانه الميسّر
 export function readTafsirSource() {
   let id = sessionChoice;
   try {
@@ -28,7 +26,7 @@ export function readTafsirSource() {
   } catch {
     // التخزين غير متاح
   }
-  return tafsirInfo(id) ? id : DEFAULT_TAFSIR;
+  return isTafsirReady(id) ? id : DEFAULT_TAFSIR;
 }
 
 export function saveTafsirSource(id) {
@@ -48,11 +46,15 @@ export function useTafsirSource() {
     listeners.add(setSource);
     return () => listeners.delete(setSource);
   }, []);
-  return [source, saveTafsirSource];
+  // يُعاد الحساب إذا تغيّرت حالة التحميل
+  useSyncExternalStore(subscribeTafsirDownloads, tafsirDownloads);
+  return [isTafsirReady(source) ? source : DEFAULT_TAFSIR, saveTafsirSource];
 }
 
-// آيات لم يُفرد لها السعدي كلامًا (يفسّر الآيات مجموعاتٍ، فتأتي آية منها أحيانًا بلا كلام خاص بها)
-export const SAADI_SHARED = 'لم يُفرد السعدي لهذه الآية كلامًا، وتفسيرها داخل في كلامه على الآيات التي حولها.';
+// آيات لم يُفرد لها المفسّر كلامًا (السعدي والبغوي يفسّران الآيات مجموعاتٍ، فتأتي آية منها أحيانًا بلا
+// كلام خاص بها): نص التنبيه بحسب التفسير
+export const sharedNote = (id) => tafsirInfo(id)?.shared ?? '';
+export const SAADI_SHARED = sharedNote('saadi');
 
 // تقسيم نص التفسير فقرات للقراءة (٢٠٢٦-١١-١٤): التفسير الطويل (السعدي خاصة) كتلة واحدة يصعب تتبّعها،
 // فيبدأ سطر جديد عند نهاية جملة («.» أو «؟» أو «!» ثم مسافة، لا داخل اقتباس ﴿…﴾ ولا في «...») متى بلغت
@@ -103,11 +105,13 @@ const tafsirs = new Map();
 export function loadTafsir(id) {
   let p = tafsirs.get(id);
   if (!p) {
-    p = fetch(`${BASE}data/tafsir-${id}.json`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
+    p = (tafsirInfo(id)?.bytes
+      ? readDownloadedTafsir(id)
+      : fetch(`${BASE}data/tafsir-${id}.json`).then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+    )
       .catch((err) => {
         tafsirs.delete(id); // تُتاح إعادة المحاولة
         throw err;

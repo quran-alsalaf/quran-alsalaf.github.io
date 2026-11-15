@@ -22,6 +22,7 @@ import { spreadStart } from './lib/layout.js';
 import { hasOpenLayer } from './lib/layers.js';
 import { useRubAlert } from './lib/rubs.js';
 import { onOfflineNotice, verifyDownloads } from './lib/offline.js';
+import { verifyTafsirDownloads } from './lib/tafsirDownload.js';
 import './App.css';
 
 // أقصر مدّة تبقى فيها شاشة الافتتاح ولو كانت البيانات جاهزة فورًا من ذاكرة
@@ -102,6 +103,7 @@ export default function App() {
   useEffect(() => onOfflineNotice(showToast), [showToast]);
   useEffect(() => {
     verifyDownloads();
+    verifyTafsirDownloads();
   }, []);
 
   // الاستماع (الفصل ٦): المقدار المسموع مقدار الاستماع المحدد. وبلا مقدار (٢٠٢٦-١١-١١): من أول الصفحة
