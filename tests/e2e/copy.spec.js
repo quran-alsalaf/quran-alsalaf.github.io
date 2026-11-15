@@ -1,5 +1,5 @@
 // أزرار النسخ: «نسخ المحتوى» في صفحات المحتوى (آية ثم محتواها)، ومربع «نسخ» للآية، وبطاقات التفسير والمعاني
-// والعمل والملاحظة (المحتوى وحده).
+// والعمل (المحتوى وحده)، والملاحظة (مشاركة بدل النسخ منذ ٢٠٢٦-١١-١٥).
 // الحافظة محاكاة (helpers.js): يُقرأ ما نسخه التطبيق نصًّا كما سيُلصق
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -169,15 +169,20 @@ test('بطاقة الآية: نسخ التفسير المختار والمعان
   expect(await copied(page)).toMatch(/^• داوِم على حمد الله/);
 });
 
-test('بطاقة الملاحظة: نسخ الملاحظة وحدها', async ({ page }) => {
+// بطاقة الملاحظة (٢٠٢٦-١١-١٥، «تطوير الملاحظات»): لا زرّ نسخ فيها، والمشاركة بدله (notes.spec.js)،
+// وحيث لا مشاركة في المتصفح يُنسخ نص المشاركة
+test('بطاقة الملاحظة: «مشاركة» بدل النسخ، وبلا مشاركة في المتصفح يُنسخ نصها', async ({ page }) => {
+  await page.evaluate(() => Object.defineProperty(navigator, 'share', { value: undefined, configurable: true }));
   await longPress(page, 2);
   await page.getByRole('menuitem', { name: 'ملاحظة' }).click();
-  // لا زر نسخ قبل الكتابة
-  await expect(page.getByRole('dialog', { name: 'ملاحظة' }).getByRole('button', { name: 'نسخ' })).toHaveCount(0);
+  const note = page.getByRole('dialog', { name: 'ملاحظة' });
+  // لا زرّ مشاركة قبل الكتابة، ولا زرّ نسخ أبدًا
+  await expect(note.getByRole('button', { name: 'مشاركة' })).toHaveCount(0);
   await page.locator('.vcard__textarea').fill('تأمل هذه الآية');
-  await page.getByRole('dialog', { name: 'ملاحظة' }).getByRole('button', { name: 'نسخ' }).click();
+  await expect(note.getByRole('button', { name: 'نسخ' })).toHaveCount(0);
+  await note.getByRole('button', { name: 'مشاركة' }).click();
   await expect(toast(page)).toHaveText('نُسخت الملاحظة');
-  expect(await copied(page)).toBe('تأمل هذه الآية');
+  expect(await copied(page)).toBe('تأمل هذه الآية\n\nتطبيق قرآن السلف\nhttps://quran-alsalaf.github.io/');
 });
 
 test('بلا واجهة الحافظة: يُنسخ بالطريقة البديلة، وإن تعذّر ظهرت «تعذّر النسخ»', async ({ page }) => {

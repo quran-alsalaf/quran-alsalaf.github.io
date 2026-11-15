@@ -212,6 +212,17 @@ export function copyVerse(quran, v) {
   return `﴿${versePlain(quran, v)}﴾ [${quran.suras[x.s - 1].name}: ${ar(x.a)}]`;
 }
 
+// مشاركة الملاحظة (٢٠٢٦-١١-١٥، «تطوير الملاحظات»): الآية إن أُدرجت فيها، ثم التعليق، ثم اسم التطبيق
+// ورابطه (بطلب صاحب المشروع، ويحذفهما المستخدم من نص المشاركة إن شاء). note: { text, verse }
+export const APP_SIGNATURE = 'تطبيق قرآن السلف\nhttps://quran-alsalaf.github.io/';
+export function noteShareText(quran, v, note) {
+  const parts = [];
+  if (note.verse) parts.push(copyVerse(quran, v));
+  if (note.text.trim()) parts.push(note.text.trim());
+  parts.push(APP_SIGNATURE);
+  return parts.join('\n\n');
+}
+
 // آيات النطاق، مجموعةً بالسور: ﴿آية (١) آية (٢)﴾ [السورة: ١–٢]
 export function copyVerses(quran, list) {
   const groups = [];

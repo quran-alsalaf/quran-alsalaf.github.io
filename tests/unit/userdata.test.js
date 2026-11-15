@@ -35,6 +35,29 @@ describe('الملاحظات', () => {
     expect(U.readNotes()).toEqual({ 9: 'ثانية' });
   });
 
+  it('إدراج الآية في الملاحظة (٢٠٢٦-١١-١٥): يُحفظ معها، وتبقى بالآية وحدها بلا تعليق، وتُزال فتعود نصًّا', () => {
+    U.setNote(5, 'تعليق', true);
+    expect(raw('hq.notes')).toEqual({ 5: { text: 'تعليق', verse: true } });
+    expect(U.noteOf(U.readNotes(), 5)).toEqual({ text: 'تعليق', verse: true });
+    U.setNote(5, '', true);
+    expect(U.noteOf(U.readNotes(), 5)).toEqual({ text: '', verse: true });
+    U.setNote(5, 'تعليق', false);
+    expect(raw('hq.notes')).toEqual({ 5: 'تعليق' });
+    U.setNote(5, '', true);
+    U.setNote(5, '');
+    expect(U.readNotes()).toEqual({});
+  });
+
+  it('الملاحظات القديمة (نصوص) تُقرأ كما هي بلا آية مُدرجة، وما لا ملاحظة له null', () => {
+    localStorage.setItem('hq.notes', JSON.stringify({ 3: 'قديمة', 4: { text: 'جديدة', verse: true }, 6: { verse: true } }));
+    const notes = U.readNotes();
+    expect(U.noteOf(notes, 3)).toEqual({ text: 'قديمة', verse: false });
+    expect(U.noteOf(notes, 4)).toEqual({ text: 'جديدة', verse: true });
+    expect(U.noteOf(notes, 6)).toEqual({ text: '', verse: true });
+    expect(U.noteOf(notes, 9)).toBeNull();
+    expect(U.noteOf(undefined, 3)).toBeNull();
+  });
+
   it('كل تغيير يُعلَن بحدث واحد لتتحدّث الواجهة', () => {
     const fn = vi.fn();
     window.addEventListener('hq-userdata', fn);

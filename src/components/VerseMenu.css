@@ -303,6 +303,82 @@
   text-align: center;
 }
 
+/* بطاقة الملاحظة (٢٠٢٦-١١-١٥): الآية المُدرجة أو زرّ إدراجها، ثم خانة التعليق، في جسم يتمرّر */
+.vnote {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* خانة التعليق تصغر لتتسع البطاقة مع آية طويلة، فلا يُقص طرفها */
+.vnote .vcard__textarea {
+  flex: 1 1 180px;
+  min-height: 96px;
+  margin-bottom: 1px;
+}
+
+.vnote__insert {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 14px 0;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--accent-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.vnote__insert svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* مستطيل الآية: منفصل عن خانة التعليق، بخط المصحف وتشكيله، وزرّ ✕ في زاويته */
+.vnote__verse {
+  position: relative;
+  flex: none;
+  margin: 12px 14px 0;
+  padding: 10px 14px;
+  padding-inline-end: 40px;
+  max-height: 30vh;
+  overflow-y: auto;
+  border-radius: var(--r-md);
+  background: var(--accent-soft-strong);
+  border: 1px solid var(--border);
+}
+
+.vnote__verse p {
+  margin: 0;
+  font-family: var(--font-quran);
+  font-size: 1.3rem;
+  line-height: 2.1;
+  color: var(--ink);
+}
+
+.vnote__unverse {
+  position: absolute;
+  top: 6px;
+  inset-inline-end: 6px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-muted);
+}
+
+.vnote__unverse svg {
+  width: 14px;
+  height: 14px;
+}
+
 .vcard__textarea {
   min-height: 180px;
   margin: 12px 14px 0;
@@ -496,4 +572,22 @@
 
 :root[data-theme='dark'] .vmark__yes {
   color: #f1948a;
+}
+
+/* بطاقة الملاحظة في الجوال الأفقي (٢٠٢٦-١١-١٥): الآية المُدرجة أقصر وخانة التعليق أصغر، ليظهرا معًا */
+@media (orientation: landscape) and (max-height: 540px) {
+  .vnote__verse {
+    max-height: 19vh;
+    padding-block: 4px;
+  }
+
+  .vnote__verse p {
+    font-size: 1.15rem;
+    line-height: 1.9;
+  }
+
+  .vnote .vcard__textarea {
+    min-height: 52px;
+    margin-top: 8px;
+  }
 }

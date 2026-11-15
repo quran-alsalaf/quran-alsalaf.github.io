@@ -193,17 +193,14 @@ test('الملاحظات في القائمة الجانبية: تظهر بترت
   const rows = side(page).locator('.sidemenu__row');
   await expect(rows.locator('.sidemenu__rowText')).toHaveText(['أولى', 'ثانية']);
 
+  // التعديل (٢٠٢٦-١١-١٥): يفتح بطاقة الملاحظة نفسها (بدل خانة داخل القائمة)
   await rows.first().getByRole('button', { name: 'تعديل الملاحظة' }).click();
-  await side(page).locator('.sidemenu__textarea').fill('أولى معدّلة');
-  await side(page).getByRole('button', { name: 'حفظ' }).click();
-  await expect(rows.first().locator('.sidemenu__rowText')).toHaveText('أولى معدّلة');
+  const note = page.getByRole('dialog', { name: 'ملاحظة' });
+  await note.locator('.vcard__textarea').fill('أولى معدّلة');
+  await note.getByRole('button', { name: 'حفظ' }).click();
   expect(await stored(page, 'hq.notes')).toEqual({ 1: 'أولى معدّلة', 5: 'ثانية' });
-
-  // إلغاء التعديل لا يغيّر شيئًا
-  await rows.first().getByRole('button', { name: 'تعديل الملاحظة' }).click();
-  await side(page).locator('.sidemenu__textarea').fill('لن تُحفظ');
-  await side(page).getByRole('button', { name: 'إلغاء' }).click();
-  expect((await stored(page, 'hq.notes'))[1]).toBe('أولى معدّلة');
+  await clickTopbar(page, 'القائمة');
+  await expect(rows.first().locator('.sidemenu__rowText')).toHaveText('أولى معدّلة');
 
   await rows.nth(1).getByRole('button', { name: 'حذف الملاحظة' }).click();
   await expect(rows).toHaveCount(1);
