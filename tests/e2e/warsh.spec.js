@@ -135,8 +135,9 @@ test.describe('مصحف ورش', () => {
     await expect(menu.locator('.sidemenu__empty')).toContainText(SOON);
     await menu.getByRole('radio', { name: 'السور' }).click();
     await menu.locator('.sidemenu__suras button').filter({ hasText: /سورة الحجر(?!ات)/ }).click();
+    // الانتقال يكتمل بعد إغلاق القائمة بقليل، فيُنتظر حفظ الصفحة الجديدة
+    await expect.poll(() => savedPage(page)).toBe(262);
     await expect(warshPage(page)).toBeVisible();
-    expect(await savedPage(page)).toBe(262);
     await clickTopbar(page, 'القائمة');
     for (const tab of ['العلامات', 'الملاحظات']) {
       await menu.getByRole('tab', { name: tab }).click();
