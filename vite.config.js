@@ -130,7 +130,7 @@ export default defineConfig({
           },
           // بيانات مصحف ورش: تُحدَّث من الشبكة إن أمكن، وإلا فالمحفوظة (بلا إنترنت)
           {
-            urlPattern: /\/data\/warsh\/quran\.json$/,
+            urlPattern: /\/data\/warsh\/(quran|memos)\.json$/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'warsh-data',

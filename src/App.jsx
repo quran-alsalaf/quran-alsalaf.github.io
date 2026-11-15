@@ -25,6 +25,7 @@ import { onOfflineNotice, verifyDownloads } from './lib/offline.js';
 import { verifyTafsirDownloads } from './lib/tafsirDownload.js';
 import { readRiwayah, setRiwayah, useRiwayah, WARSH_SOON } from './lib/riwayah.js';
 import RiwayahChooser from './components/RiwayahChooser.jsx';
+import { hafsList, hafsRange, shownBookmarks, shownNotes, shownRange } from './lib/verseMap.js';
 import './App.css';
 
 // أقصر مدّة تبقى فيها شاشة الافتتاح ولو كانت البيانات جاهزة فورًا من ذاكرة
@@ -39,7 +40,8 @@ const FLASH_FALLBACK_MS = 12000;
 
 export default function App() {
   // مصحف حفص (يُحمَّل دائمًا)، ومصحف ورش (يُحمَّل متى اختيرت ورش). والمعروض quran: ورش إن اختيرت وحُمِّلت،
-  // وإلا حفص. وفي ورش تُوقف الميزات المربوطة بترقيم آيات حفص حتى يُربط الترقيمان (src/lib/riwayah.js)
+  // وإلا حفص. وبيانات المستخدم والمحتوى بترقيم حفص، فتُنقل في ورش إلى ترقيمه وتُحفظ بترقيم حفص
+  // (src/lib/verseMap.js، «الروايات» الجلسة ٢). والاستماع وحده موقوف في ورش حتى قرّائه (الجلسة ٣)
   const [hafs, setHafs] = useState(null);
   const [warshData, setWarshData] = useState(null);
   const riwayah = useRiwayah();
@@ -75,10 +77,14 @@ export default function App() {
   // المقداران المستقلان (٢٠٢٦-١١-١٠): مقدار الاستماع، ومقدار صفحات المحتوى (ويتبعه
   // إخفات ما خارجه في المصحف). وكلاهما إن لم يكتمل فالمعتمد آيات الصفحة الظاهرة، أو الصفحتين
   // الظاهرتين معًا من أول اليمنى إلى آخر اليسرى
-  const selection = user.range?.length === 2 ? user.range : null;
+  // والمقداران محفوظان بترقيم حفص، فيُنقلان إلى ترقيم المصحف المعروض (ورش) هنا، ويُحفظ اختيار المستخدم
+  // بترقيم حفص (pickVerse)
+  const listenRange = useMemo(() => (quran ? shownRange(quran, user.range) : null), [quran, user.range]);
+  const contentRange = useMemo(() => (quran ? shownRange(quran, user.contentRange) : null), [quran, user.contentRange]);
+  const selection = listenRange?.length === 2 ? listenRange : null;
   // مقدار استماع ببداية بلا نهاية (٢٠٢٦-١١-١٢): يبدأ من آيته متتابعًا إلى آخر المصحف
-  const listenStart = user.range?.length === 1 ? user.range[0] : null;
-  const contentSel = user.contentRange?.length === 2 ? user.contentRange : null;
+  const listenStart = listenRange?.length === 1 ? listenRange[0] : null;
+  const contentSel = contentRange?.length === 2 ? contentRange : null;
   const shownVerses = useMemo(
     () => (quran ? [...new Set(shownPages.flatMap((p) => pageVerses(quran, p)))] : []),
     [quran, shownPages]
@@ -89,9 +95,10 @@ export default function App() {
     () => (contentSel ? span(contentSel) : shownVerses),
     [shownVerses, contentSel?.[0], contentSel?.[1]]
   );
+  // صفحات المقدار في مصحف حفص («من فوائد الآيات» في المختصر لكل صفحة منه)
   const contentPages = useMemo(
-    () => (quran ? [...new Set(contentVerses.map((v) => quran.verses[v].p))] : []),
-    [quran, contentVerses]
+    () => (quran && hafs ? [...new Set(hafsList(quran, contentVerses).map((v) => hafs.verses[v].p))] : []),
+    [quran, hafs, contentVerses]
   );
 
   // الضغط المطوّل على آية، وقائمة اختيار آية النطاق، والتنبيه القصير
@@ -154,7 +161,7 @@ export default function App() {
     // الانتقال إلى بداية المقدار (٢٠٢٦-١١-١١): من أول ضغطة تشغيل، قبل أن يبدأ الصوت، ينتقل المصحف إلى
     // صفحة أول آية في مقدار الاستماع إن كان بعيدًا عن الظاهر — ومثله البداية وحدها. وبلا مقدار يبدأ من
     // الظاهر فلا انتقال
-    if (user.range?.length) showVerse(user.range[0]);
+    if (listenRange?.length) showVerse(listenRange[0]);
     // play() ترجع 'unsupported' أو 'playing' (src/lib/player.js)، ونافذة الاستماع تبقى مفتوحة كما كانت
     if (play(quran, playVerses(), !selection) === 'unsupported') showToast('تسجيل هذا القارئ لا يشمل هذا الموضع؛ اختر قارئًا آخر.');
     // أخطاء التشغيل نفسه تظهر من التأثير أدناه (player.error)
@@ -217,13 +224,19 @@ export default function App() {
     enabled: !!quran && splashDone && !reading && !studyOpen && !khatmaOpen,
     onToast: showToast,
   });
+  // الملاحظات والعلامات بترقيم المصحف المعروض (في ورش: كل آية حفص ⇐ ما يقابلها). والآية الجارية تلاوتها
+  // لا تكون في ورش (الاستماع موقوف فيه)
   const marks = useMemo(
-    () =>
-      warsh
-        ? // ورش: الملاحظات والعلامات والمقدار والآية الجارية تلاوتها كلها بترقيم حفص، فلا تُرسم على مصحفه
-          { notes: null, bookmarks: null, range: null, selected: pressed?.v ?? null, playing: null, flash: flash?.v ?? null, rubFlash: null }
-        : { notes: user.notes, bookmarks: user.bookmarks, range: contentSel, selected: pressed?.v ?? null, playing: player.v, flash: flash?.v ?? null, rubFlash },
-    [warsh, user.notes, user.bookmarks, contentSel?.[0], contentSel?.[1], pressed?.v, player.v, flash?.v, rubFlash]
+    () => ({
+      notes: quran ? shownNotes(quran, user.notes) : null,
+      bookmarks: quran ? shownBookmarks(quran, user.bookmarks) : null,
+      range: contentSel,
+      selected: pressed?.v ?? null,
+      playing: warsh ? null : player.v,
+      flash: flash?.v ?? null,
+      rubFlash,
+    }),
+    [quran, warsh, user.notes, user.bookmarks, contentSel?.[0], contentSel?.[1], pressed?.v, player.v, flash?.v, rubFlash]
   );
 
   // دخول وضع القراءة من الإعدادات: يُوقَف الصوت بهدوء (الاستماع وتحديد المقدار لا يعملان فيه)،
@@ -244,11 +257,12 @@ export default function App() {
   // صفحة الورد تنبّه ببداية الربع وحدها (KhatmaPage)
   const khatmaMarks = useMemo(() => ({ ...marks, range: null, playing: null, flash: null, rubFlash: null }), [marks]);
 
-  // تعديل الملاحظة من القائمة اليمنى (٢٠٢٦-١١-١٥): ينقل المصحف إلى صفحة الآية ويفتح بطاقة ملاحظتها نفسها
-  const editNote = (v) => {
+  // تعديل الملاحظة من القائمة اليمنى (٢٠٢٦-١١-١٥): ينقل المصحف إلى صفحة الآية ويفتح بطاقة ملاحظتها نفسها.
+  // key: آية حفص التي حُفظت بها (في ورش قد تقابل آيةُ ورش آيتين من حفص، فتُفتح ملاحظة التي اختيرت)
+  const editNote = (v, key) => {
     gotoPageNumber(quran.verses[v].p);
     setChromeOpen(false);
-    setPressed({ v, view: 'note' });
+    setPressed({ v, view: 'note', key });
   };
 
   const onLongPress = useCallback((v, rect) => {
@@ -260,12 +274,13 @@ export default function App() {
   // ومقدار الاستماع لا يحرّكه عند التحديد أصلًا (ينتقل عند التشغيل، startListening). أما مقدار صفحات
   // المحتوى (٢٠٢٦-١١-١١، بدل إبقاء المصحف مكانه): عند اكتماله ينتقل المصحف خلف صفحات المحتوى إلى صفحة
   // أول آية فيه (وزوجها في عرض الصفحتين)، فإذا أغلقها وجد المقدار أمامه وما خارجه مُخفَت
+  // (والمقدار يُحفظ بترقيم حفص: في ورش من أول ما يقابل البداية إلى آخر ما يقابل النهاية)
   const pickVerse = (v) => {
     const content = picking.target === 'content';
-    const save = content ? saveContentRange : saveRange;
+    const save = (r) => (content ? saveContentRange : saveRange)(hafsRange(quran, r));
     if (picking.mode === 'start') save([v]);
     else {
-      const s = (content ? user.contentRange : user.range)[0];
+      const s = (content ? contentRange : listenRange)[0];
       save(v < s ? [v, s] : [s, v]);
       if (content) showVerse(Math.min(v, s));
     }
@@ -523,6 +538,10 @@ export default function App() {
       alive = false;
     };
   }, [riwayah, warshData, hafs, showToast]);
+  // خط نص الآيات خارج صفحات المصحف بحسب المصحف المعروض (global.css: نص ورش بخط ورش العام)
+  useEffect(() => {
+    document.documentElement.dataset.riwayah = warsh ? 'warsh' : 'hafs';
+  }, [warsh]);
   const shownRiwayah = useRef(null);
   useEffect(() => {
     if (!quran) return;
@@ -686,17 +705,11 @@ export default function App() {
             {/* صفحات المحتوى، وفيها ✕ صغير ما دام لها مقدار (٢٠٢٦-١١-١٢): يلغيه فورًا ويزيل الإخفات دون أن
                 يفتحها. وهو زرّ مستقل فوق طرف الخانة (لا داخل زرّها)، بمساحة لمس كاملة الارتفاع لا تتداخل مع
                 مساحة فتحها، ويُفسح له الزرّ مكانه فيبقى اسمه في وسط ما بقي */}
-            <div className={`dock__study${user.contentRange?.length && !warsh ? ' dock__study--range' : ''}`}>
-              <button
-                className={`dock__slot${warsh ? ' dock__slot--off' : ''}`}
-                type="button"
-                disabled={!quran}
-                aria-disabled={warsh || undefined}
-                onClick={() => (warsh ? showToast(WARSH_SOON) : openStudy())}
-              >
+            <div className={`dock__study${user.contentRange?.length ? ' dock__study--range' : ''}`}>
+              <button className="dock__slot" type="button" disabled={!quran} onClick={openStudy}>
                 <span className="dock__label">صفحات المحتوى</span>
               </button>
-              {quran && !warsh && user.contentRange?.length > 0 && (
+              {quran && user.contentRange?.length > 0 && (
                 <button type="button" className="dock__clear" onClick={() => saveContentRange(null)} aria-label="إلغاء مقدار المحتوى" title="إلغاء المقدار">
                   <span>
                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -749,7 +762,7 @@ export default function App() {
         onClick={closeStudy}
         aria-hidden="true"
       />
-      {quran && !warsh && (
+      {quran && (
         <StudySheet
           ref={studyRef}
           open={studyOpen}
@@ -759,7 +772,7 @@ export default function App() {
           quran={quran}
           verses={contentVerses}
           pages={contentPages}
-          range={user.contentRange}
+          range={contentRange}
           onPickStart={() => setPicking({ target: 'content', mode: 'start' })}
           onPickEnd={() => setPicking({ target: 'content', mode: 'end' })}
           onClearRange={() => saveContentRange(null)}
@@ -773,7 +786,7 @@ export default function App() {
           continuous={!selection}
           label={listenLabel}
           suras={listenSuras}
-          range={user.range}
+          range={listenRange}
           onPickStart={() => setPicking({ target: 'listen', mode: 'start' })}
           onPickEnd={() => setPicking({ target: 'listen', mode: 'end' })}
           onClearRange={() => saveRange(null)}
@@ -787,7 +800,7 @@ export default function App() {
         <RangePicker
           quran={quran}
           mode={picking.mode}
-          start={(picking.target === 'content' ? user.contentRange : user.range)?.[0]}
+          start={(picking.target === 'content' ? contentRange : listenRange)?.[0]}
           near={shownVerses[0]}
           onPick={pickVerse}
           onClose={() => setPicking(null)}
