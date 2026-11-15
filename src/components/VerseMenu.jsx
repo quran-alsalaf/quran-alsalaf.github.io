@@ -8,7 +8,7 @@ import {
   noteShareText,
   paragraphs,
   tafsirInfo,
-  tafsirText,
+  shownTafsirText,
   useTafsirSource,
   verseLabel,
   verseText,
@@ -33,6 +33,7 @@ import TafsirPicker from './TafsirPicker.jsx';
 import './VerseMenu.css';
 import { useLayer } from '../lib/layers.js';
 import { isWarsh, WARSH_SOON } from '../lib/riwayah.js';
+import { hafsKey, hafsOf, shownBookmarks } from '../lib/verseMap.js';
 
 /*
   الضغط المطوّل على آية (الفصل ٤): مربع عائم كبير وسط الشاشة (٢٠٢٦-١١-١٢، بدل البطاقة الصغيرة فوق
@@ -88,11 +89,12 @@ export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, on
     view === 'note' && saveNote.current ? saveNote.current() : view === 'play' || view === 'bookmark' ? setView('menu') : onClose()
   );
 
-  // في مصحف ورش لا يعمل إلا «نسخ» (بنص ورش وترقيمه)؛ وما سواه مربوط بترقيم حفص فيُنبَّه أنه يُتاح لاحقًا
+  // في مصحف ورش (٢٠٢٦-١١-١٥، «الروايات» الجلسة ٢) تعمل المربعات كلها بربط ترقيمه بحفص (src/lib/verseMap.js)،
+  // إلا «تشغيل» حتى يُضاف قرّاء ورش (الجلسة ٣)
   const warsh = isWarsh(quran);
   // «نسخ» ينسخ الآية فورًا ويغلق المربع، وما سواه يفتح ما خلفه
   const choose = async (id) => {
-    if (warsh && id !== 'copy') return onToast(WARSH_SOON);
+    if (warsh && id === 'play') return onToast(WARSH_SOON);
     if (id !== 'copy') return setView(id);
     onClose();
     onToast((await copyText(copyVerse(quran, v))) ? 'نُسخت الآية' : 'تعذّر النسخ');
@@ -107,7 +109,7 @@ export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, on
       {boxed && (
         <VerseBox quran={quran} v={v} sub={sub} onBack={() => setView('menu')} onClose={onClose}>
           {view === 'menu' ? (
-            <Tiles onChoose={choose} noPlay={noPlay} off={warsh ? (id) => id !== 'copy' : null} />
+            <Tiles onChoose={choose} noPlay={noPlay} off={warsh ? (id) => id === 'play' : null} />
           ) : view === 'bookmark' ? (
             <BookmarkChoices quran={quran} v={v} onToast={onToast} onDone={onClose} />
           ) : (
@@ -128,7 +130,7 @@ export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, on
         <DetailCard quran={quran} v={v} kind={view} onClose={onClose} onBack={() => setView('menu')} onToast={onToast} />
       )}
       {view === 'note' && (
-        <NoteCard quran={quran} v={v} onClose={onClose} onBack={() => setView('menu')} onToast={onToast} saveRef={saveNote} />
+        <NoteCard quran={quran} v={v} noteKey={pressed.key} onClose={onClose} onBack={() => setView('menu')} onToast={onToast} saveRef={saveNote} />
       )}
     </div>
   );
@@ -188,9 +190,11 @@ function Tiles({ onChoose, noPlay, off }) {
   );
 }
 
-// اختيار العلامة للآية (٢٠٢٦-١١-١٤): علامة جديدة، ثم ما على الآية (بزرّ إزالة)، ثم بقية العلامات
+// اختيار العلامة للآية (٢٠٢٦-١١-١٤): علامة جديدة، ثم ما على الآية (بزرّ إزالة)، ثم بقية العلامات.
+// والعلامات محفوظة بترقيم حفص (في ورش: تُعرض بترقيمه، وتوضع على آية حفص «الأصلية» للآية، وتُزال عن كل ما يقابلها)
 function BookmarkChoices({ quran, v, onToast, onDone }) {
-  const { bookmarks = [] } = useUserData();
+  const { bookmarks: saved = [] } = useUserData();
+  const bookmarks = shownBookmarks(quran, saved);
   const [creating, setCreating] = useState(false);
   // إزالة علامة عن الآية بعد تأكيد (بطلب صاحب المشروع): رقم العلامة المسؤول عن إزالتها
   const [unplacing, setUnplacing] = useState(null);
@@ -198,7 +202,7 @@ function BookmarkChoices({ quran, v, onToast, onDone }) {
   const others = bookmarks.filter((b) => !here.includes(b));
 
   const place = (b) => {
-    const result = placeBookmark(b.id, v);
+    const result = placeBookmark(b.id, hafsKey(quran, v));
     onToast(result === 'moved' ? `نُقلت علامة «${b.name}» إلى هذه الآية` : `وُضعت علامة «${b.name}»`);
     onDone();
   };
@@ -211,7 +215,7 @@ function BookmarkChoices({ quran, v, onToast, onDone }) {
           submitLabel="إنشاء ووضعها على الآية"
           onCancel={() => setCreating(false)}
           onSubmit={(values) => {
-            createBookmark(values, v);
+            createBookmark(values, hafsKey(quran, v));
             onToast(`وُضعت علامة «${values.name}»`);
             onDone();
           }}
@@ -248,7 +252,7 @@ function BookmarkChoices({ quran, v, onToast, onDone }) {
                       type="button"
                       className="vmark__yes"
                       onClick={() => {
-                        unplaceBookmark(b.id, v);
+                        for (const h of hafsOf(quran, v)) unplaceBookmark(b.id, h);
                         setUnplacing(null);
                         onToast(`أُزيلت علامة «${b.name}» عن الآية`);
                       }}
@@ -386,7 +390,7 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
   if (kind === 'tafsir') {
     title = 'التفسير';
     const t = tafsirs[source];
-    const text = t ? tafsirText(source, t, v) : '';
+    const text = t ? shownTafsirText(source, t, quran, v) : '';
     const name = tafsirInfo(source).title;
     // نسخ التفسير وحده بفقراته، بلا الآية ولا اسم كتابه (٢٠٢٦-١١-١٤، بطلب صاحب المشروع: للآية مربع
     // «نسخ» خاص بها، والمشاركة مؤجلة إلى الملاحظات) — بزرّ النسخ في رأس البطاقة كالمعاني والعمل
@@ -468,15 +472,22 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
 // مستطيل منفصل في أول الملاحظة (لا يُكتب قبله ولا بعده، وزرّ ✕ في زاويته يزيله)، وتحته خانة التعليق.
 // وزرّ «مشاركة» بدل النسخ: الآية إن أُدرجت ثم التعليق ثم اسم التطبيق ورابطه؛ والنسخ بتحديد النص يدويًّا.
 // وحذف الملاحظة بزرّ الحذف وحده يزيل التعليق والآية معًا.
-function NoteCard({ quran, v, onClose, onBack, onToast, saveRef }) {
-  const initial = noteOf(readNotes(), v);
+// والملاحظة محفوظة بترقيم حفص (٢٠٢٦-١١-١٥): key آية حفص التي تُكتب بها (في ورش «الأصلية» لآيته، أو ما اختير من
+// القائمة اليمنى)، وما على آيات حفص الأخرى المقابلة لآية ورش من ملاحظات يظهر تحتها للقراءة
+function NoteCard({ quran, v, noteKey, onClose, onBack, onToast, saveRef }) {
+  const key = noteKey ?? hafsKey(quran, v);
+  const others = hafsOf(quran, v)
+    .filter((h) => h !== key)
+    .map((h) => ({ h, note: noteOf(readNotes(), h) }))
+    .filter((x) => x.note);
+  const initial = noteOf(readNotes(), key);
   const [text, setText] = useState(() => initial?.text ?? '');
   const [withVerse, setWithVerse] = useState(() => initial?.verse ?? false);
   const existed = useRef(Boolean(initial));
   const area = useRef(null);
   const keep = () => {
-    const before = noteOf(readNotes(), v);
-    if (text !== (before?.text ?? '') || withVerse !== (before?.verse ?? false)) setNote(v, text, withVerse);
+    const before = noteOf(readNotes(), key);
+    if (text !== (before?.text ?? '') || withVerse !== (before?.verse ?? false)) setNote(key, text, withVerse);
   };
   const save = () => {
     keep();
@@ -484,7 +495,7 @@ function NoteCard({ quran, v, onClose, onBack, onToast, saveRef }) {
   };
   if (saveRef) saveRef.current = save;
   const remove = () => {
-    setNote(v, '');
+    setNote(key, '');
     onToast('حُذفت الملاحظة');
     onClose();
   };
@@ -546,6 +557,12 @@ function NoteCard({ quran, v, onClose, onBack, onToast, saveRef }) {
           aria-label="نص الملاحظة"
           autoFocus
         />
+        {others.map(({ h, note }) => (
+          <div key={h} className="vnote__other">
+            <span>ملاحظة أخرى على هذه الآية</span>
+            {note.text.trim() ? <p>{note.text}</p> : <p className="vnote__otherVerse">الآية مُدرجة</p>}
+          </div>
+        ))}
       </div>
       <button type="button" className="vcard__save" onClick={save}>
         حفظ

@@ -10,7 +10,7 @@ import {
   copyContent,
   tafsirBlocks,
   tafsirInfo,
-  tafsirText,
+  shownTafsirText,
   useTafsirSource,
   verseLabel,
   verseText,
@@ -208,7 +208,7 @@ function TafsirTab({ quran, verses, pages, onToast }) {
     copyContent(
       quran,
       tafsirInfo(source).title,
-      tafsirBlocks(verses, (v) => tafsirText(source, t, v)).map((b) => ({ ...b, text: paragraphs(b.text).join('\n') }))
+      tafsirBlocks(verses, (v) => shownTafsirText(source, t, quran, v)).map((b) => ({ ...b, text: paragraphs(b.text).join('\n') }))
     );
 
   return (
@@ -235,7 +235,7 @@ function TafsirTab({ quran, verses, pages, onToast }) {
               )}
               <VerseCard quran={quran} v={v} />
               <div className="study__box study__box--explain">
-                <TafsirBody text={tafsirText(source, t, v)} source={source} />
+                <TafsirBody text={shownTafsirText(source, t, quran, v)} source={source} />
               </div>
             </div>
           );

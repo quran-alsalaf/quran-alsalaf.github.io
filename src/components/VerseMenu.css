@@ -384,6 +384,25 @@
   height: 14px;
 }
 
+/* ملاحظة أخرى على الآية نفسها (في ورش: آية تقابل آيتين من حفص، ولكلٍّ ملاحظتها) — للقراءة، وتُعدَّل من القائمة اليمنى */
+.vnote__other {
+  flex: none;
+  margin: 10px 14px 0;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  border: 1px dashed var(--border-strong);
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+.vnote__other p {
+  margin: 4px 0 0;
+  color: var(--ink);
+  white-space: pre-wrap;
+  max-height: 14vh;
+  overflow-y: auto;
+}
+
 .vcard__textarea {
   min-height: 180px;
   margin: 12px 14px 0;

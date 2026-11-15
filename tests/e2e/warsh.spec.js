@@ -1,5 +1,6 @@
 // مصحف ورش (٢٠٢٦-١١-١٥، «الروايات» الجلسة ١): اختيار الرواية عند أول فتح ومن الإعدادات، وعرض مصحف ورش،
-// والضغط المطوّل فيه، وما يتوقف فيه حتى يُربط ترقيمه بحفص (الجلسة ٢)
+// والضغط المطوّل فيه، وما يبقى متوقفًا فيه بعد ربط ترقيمه بحفص (الجلسة ٢): الاستماع والأرباع.
+// وما يعمل بالربط (المحتوى والعلامات والملاحظات والمقادير) في warsh-map.spec.js
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { clickTopbar, copied, isLaptop, openApp, prepare, savedPage, showChrome, shownPages, waitMushaf } from './helpers.js';
@@ -89,7 +90,7 @@ test.describe('مصحف ورش', () => {
     await expect(sheet.locator('.w--aya')).toHaveCount(4);
   });
 
-  test('الضغط المطوّل: اسم الآية بترقيم ورش، والنسخ بنصّها، وما سواه يُتاح لاحقًا', async ({ page }) => {
+  test('الضغط المطوّل: اسم الآية بترقيم ورش، والنسخ بنصّها، و«تشغيل» وحده يُتاح لاحقًا', async ({ page }) => {
     const v = at(2, 4);
     await longPressWarsh(page, v);
     const box = page.getByRole('dialog', { name: 'البقرة: ٤' });
@@ -97,13 +98,13 @@ test.describe('مصحف ورش', () => {
     await expect(wword(page, v)).toHaveClass(/w--selected/);
     const items = box.locator('.vmenu__picker [role="menuitem"]');
     await expect(items).toHaveText(['تشغيل', 'علامة', 'ملاحظة', 'تفسير', 'معاني', 'عمل', 'فوائد', 'نسخ']);
-    for (const name of ['تشغيل', 'علامة', 'ملاحظة', 'تفسير', 'معاني', 'عمل', 'فوائد']) {
-      await expect(box.getByRole('menuitem', { name })).toHaveAttribute('aria-disabled', 'true');
+    await expect(box.getByRole('menuitem', { name: 'تشغيل' })).toHaveAttribute('aria-disabled', 'true');
+    for (const name of ['علامة', 'ملاحظة', 'تفسير', 'معاني', 'عمل', 'فوائد', 'نسخ']) {
+      await expect(box.getByRole('menuitem', { name })).not.toHaveAttribute('aria-disabled', 'true');
     }
-    await expect(box.getByRole('menuitem', { name: 'نسخ' })).not.toHaveAttribute('aria-disabled', 'true');
     // المتوقف: رسالة، ويبقى المربع على حاله
     // (aria-disabled: يُعلن متوقفًا لقارئ الشاشة ويُضغط مع ذلك؛ وأداة الاختبار لا تضغطه إلا بـforce)
-    await box.getByRole('menuitem', { name: 'تفسير' }).click({ force: true });
+    await box.getByRole('menuitem', { name: 'تشغيل' }).click({ force: true });
     await expect(toast(page)).toHaveText(SOON);
     await expect(box.locator('.vmenu__picker')).toBeVisible();
     // النسخ بنص ورش وترقيمه
@@ -113,18 +114,14 @@ test.describe('مصحف ورش', () => {
     expect(await copied(page)).toBe(`﴿${text}﴾ [البقرة: ٤]`);
   });
 
-  test('الاستماع وصفحات المحتوى: رسالة بدل الفتح', async ({ page }) => {
+  test('الاستماع: رسالة بدل الفتح', async ({ page }) => {
     await showChrome(page);
     await page.locator('.dock').getByRole('button', { name: 'الاستماع للآيات' }).click({ force: true });
     await expect(toast(page)).toHaveText(SOON);
     await expect(page.locator('.listen')).toHaveCount(0);
-    await showChrome(page);
-    await page.locator('.dock').getByRole('button', { name: 'صفحات المحتوى' }).click({ force: true });
-    await expect(toast(page)).toHaveText(SOON);
-    await expect(page.locator('.study--open')).toHaveCount(0);
   });
 
-  test('القائمة: السور بعدد آيات ورش وتنقل إليها، والعلامات والملاحظات والأرباع تُتاح لاحقًا', async ({ page }) => {
+  test('القائمة: السور بعدد آيات ورش وتنقل إليها، والأرباع تُتاح لاحقًا', async ({ page }) => {
     await clickTopbar(page, 'القائمة');
     const menu = page.getByRole('dialog', { name: 'القائمة' });
     await menu.getByRole('tab', { name: 'السور' }).click();
@@ -138,11 +135,6 @@ test.describe('مصحف ورش', () => {
     // الانتقال يكتمل بعد إغلاق القائمة بقليل، فيُنتظر حفظ الصفحة الجديدة
     await expect.poll(() => savedPage(page)).toBe(262);
     await expect(warshPage(page)).toBeVisible();
-    await clickTopbar(page, 'القائمة');
-    for (const tab of ['العلامات', 'الملاحظات']) {
-      await menu.getByRole('tab', { name: tab }).click();
-      await expect(menu.locator('.sidemenu__empty')).toContainText(SOON);
-    }
   });
 
   test('البحث بالسورة ورقم الآية بترقيم ورش: ينقل إلى صفحتها ويميّزها', async ({ page }) => {

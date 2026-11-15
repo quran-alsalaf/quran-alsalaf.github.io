@@ -39,12 +39,14 @@ export function loadQuran() {
   return pending;
 }
 
-// مصحف ورش (٢٠٢٦-١١-١٥): ملف واحد بالبنية نفسها ومعه qcf (يبنيه scripts/data/12-warsh.mjs)، وفيه riwayah: 'warsh'.
-// لا يحفظه عامل الخدمة مسبقًا (vite.config.js): يُنزَّل أول مرة يختار فيها المستخدم ورش، ثم يعمل بلا إنترنت
+// مصحف ورش (٢٠٢٦-١١-١٥): ملف واحد بالبنية نفسها ومعه qcf (يبنيه scripts/data/12-warsh.mjs)، وفيه riwayah: 'warsh'،
+// وhafs: آيات حفص المقابلة لكل آية (scripts/data/13-warsh-map.mjs، src/lib/verseMap.js). ومعه محتوى المذكرات
+// بترقيم ورش (warsh/memos.json، بالبنية نفسها). لا يحفظهما عامل الخدمة مسبقًا (vite.config.js): يُنزَّلان أول مرة
+// يختار فيها المستخدم ورش، ثم يعملان بلا إنترنت
 let warshPending = null;
 export function loadWarsh() {
-  warshPending ??= getJson('warsh/quran.json')
-    .then((quran) => ({ ...quran, memos: null }))
+  warshPending ??= Promise.all([getJson('warsh/quran.json'), getJson('warsh/memos.json')])
+    .then(([quran, memos]) => ({ ...quran, memos }))
     .catch((err) => {
       warshPending = null;
       throw err;
