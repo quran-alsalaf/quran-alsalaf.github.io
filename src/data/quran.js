@@ -39,6 +39,19 @@ export function loadQuran() {
   return pending;
 }
 
+// مصحف ورش (٢٠٢٦-١١-١٥): ملف واحد بالبنية نفسها ومعه qcf (يبنيه scripts/data/12-warsh.mjs)، وفيه riwayah: 'warsh'.
+// لا يحفظه عامل الخدمة مسبقًا (vite.config.js): يُنزَّل أول مرة يختار فيها المستخدم ورش، ثم يعمل بلا إنترنت
+let warshPending = null;
+export function loadWarsh() {
+  warshPending ??= getJson('warsh/quran.json')
+    .then((quran) => ({ ...quran, memos: null }))
+    .catch((err) => {
+      warshPending = null;
+      throw err;
+    });
+  return warshPending;
+}
+
 export const linesPerPage = (page) => (page <= 2 ? 8 : 15);
 
 const DIGITS = '٠١٢٣٤٥٦٧٨٩';

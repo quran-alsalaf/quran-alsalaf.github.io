@@ -216,6 +216,19 @@
   transform: translateY(0.3em);
 }
 
+/* بسملة ورش: نصّ بخط المجمع العام لورش، لا رموز خط البسملة، فلا قلب للاتجاه ولا إنزال */
+.line--basmala-warsh {
+  font-family: 'WarshBasmala';
+  unicode-bidi: normal;
+  transform: none;
+  font-size: 1.1em;
+}
+
+/* رقم الآية في مصحف ورش: خطوطه بلون واحد، فيُلوَّن الرقم وإطاره بلون التطبيق كزخرفة علامة حفص */
+.mushaf-page--warsh .w--aya {
+  color: var(--accent-text);
+}
+
 /* ريثما يُنزَّل خط الصفحة (أول فتح لها فقط) */
 .mushaf-page--pending {
   display: grid;

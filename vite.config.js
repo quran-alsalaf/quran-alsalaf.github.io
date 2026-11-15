@@ -98,7 +98,9 @@ export default defineConfig({
         // وصفحة المعاينة الداخلية لا تُخزَّن مسبقًا: أداة لصاحب المشروع لا جزء من التطبيق
         // والتفاسير الكبيرة (السعدي والبغوي، ٢٠٢٦-١١-١٥) لا تُخزَّن مسبقًا: يحمّلها المستخدم بزرّ في قائمة
         // التفاسير إلى ذاكرة مستقلة (src/lib/tafsirDownload.js)
-        globIgnores: ['fonts/qcf4/**', 'preview/**', 'data/tafsir/**'],
+        // ومصحف ورش (٢٠٢٦-١١-١٥): بياناته وخطوط صفحاته لا تُخزَّن مسبقًا، فلا ينزّلها من يقرأ بحفص؛ وتُحفظ عند
+        // أول فتح لها (أدناه)، فتعمل بعدها بلا إنترنت. (وخط بسملته صغير، فيُخزَّن مع غيره)
+        globIgnores: ['fonts/qcf4/**', 'fonts/qcf4-warsh/**', 'data/warsh/**', 'preview/**', 'data/tafsir/**'],
         maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
         // نسبي إلى موضع عامل الخدمة (مجلد التطبيق)
         navigateFallback: 'index.html',
@@ -114,6 +116,25 @@ export default defineConfig({
             options: {
               cacheName: 'qcf4-pages',
               expiration: { maxEntries: 650 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /\/fonts\/qcf4-warsh\/p\d+\.woff2$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'qcf4-warsh-pages',
+              expiration: { maxEntries: 650 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          // بيانات مصحف ورش: تُحدَّث من الشبكة إن أمكن، وإلا فالمحفوظة (بلا إنترنت)
+          {
+            urlPattern: /\/data\/warsh\/quran\.json$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'warsh-data',
+              networkTimeoutSeconds: 4,
               cacheableResponse: { statuses: [0, 200] },
             },
           },

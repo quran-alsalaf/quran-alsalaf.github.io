@@ -75,8 +75,9 @@ export async function prepare(page, storage = {}) {
     if (sessionStorage.getItem('__seeded')) return;
     sessionStorage.setItem('__seeded', '1');
     localStorage.clear();
-    for (const [k, v] of Object.entries(data)) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v));
-  }, { 'hq.bg': 'beige', 'hq.accent': 'blue', ...storage });
+    // والقيمة null: لا يُكتب المفتاح (كأول فتح لم يُختر فيه شيء)
+    for (const [k, v] of Object.entries(data)) if (v !== null) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v));
+  }, { 'hq.bg': 'beige', 'hq.accent': 'blue', 'hq.riwayah': 'hafs', ...storage });
 }
 
 // يفتح التطبيق وينتظر ظهور المصحف بخطه (صفحة أو صفحتين)

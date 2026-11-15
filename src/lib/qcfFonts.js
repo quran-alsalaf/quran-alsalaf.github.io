@@ -1,14 +1,24 @@
 // خطوط صفحات المجمع (الإصدار الرابع): لكل صفحة خطّها، وكل كلمة فيه رمز واحد مرسوم
 // بيد الخطّاط. تُنزَّل الصفحة عند أول فتح لها ويحفظها عامل الخدمة، فتعمل بعدها بلا إنترنت.
 // ولا تُنزَّل الـ٦٠٤ كلها عند التثبيت (نحو ٤٨ ميغابايت).
+//
+// ولمصحف ورش (٢٠٢٦-١١-١٥) خطوط صفحاته (public/fonts/qcf4-warsh، تبنيها scripts/data/12-warsh.mjs)، بالطريقة
+// نفسها. فكل دالة هنا تأخذ الرواية (quran.riwayah: 'warsh'، أو لا شيء لحفص)، ولكل رواية أسماء خطوطها وأصنافها.
+// وخطوط ورش بلون واحد (بلا طبقات ألوان)، فتأخذ لون نص المصحف من الواجهة نفسها (color)، بلا قواعد ألوان هنا.
 import { useEffect, useState } from 'react';
 
 const BASE = import.meta.env.BASE_URL;
-const loading = new Map(); // صفحة → وعد التحميل
-const ready = new Set();
+const loading = new Map(); // «رواية:صفحة» → وعد التحميل
+const ready = new Set(); // «رواية:صفحة»
+const readyHafs = new Set(); // صفحات حفص المحمّلة (لقواعد ألوانها)
 let styleEl = null;
+let warshStyleEl = null;
 
-export const pageFontClass = (page) => `qp-${page}`;
+const WARSH = 'warsh';
+const keyOf = (page, r) => `${r === WARSH ? WARSH : 'hafs'}:${page}`;
+export const pageFontClass = (page, r) => (r === WARSH ? `qw-${page}` : `qp-${page}`);
+const familyOf = (page, r) => (r === WARSH ? `QCF4W${page}` : `QCF4P${page}`);
+const urlOf = (page, r) => (r === WARSH ? `${BASE}fonts/qcf4-warsh/p${page}.woff2` : `${BASE}fonts/qcf4/p${page}.woff2`);
 
 // ألوان الخط (٢٠٢٦-١١-١١): ألوانه مدمجة فيه (طبقات COLR بلوحات ثابتة: أسود للنهار وأبيض لليل)،
 // فلا يؤثر فيه لون النص من الواجهة. فتُستبدل خانات لوحته كلها بـoverride-colors من اختيار المستخدم
@@ -44,58 +54,70 @@ function writeRules() {
   const c = window.hqAppearance?.current?.colors;
   if (!c) return;
   styleEl ??= document.head.appendChild(document.createElement('style'));
-  styleEl.textContent = [...ready].map((p) => rulesFor(p, c)).join('');
+  styleEl.textContent = [...readyHafs].map((p) => rulesFor(p, c)).join('');
 }
 
 // تغيير الخلفية أو اللون من الإعدادات: تُعاد كتابة ألوان كل الصفحات المحمّلة
 window.addEventListener('hq:appearance', writeRules);
 
-export function loadPageFont(page) {
-  let pending = loading.get(page);
+// خطوط ورش: صنف كل صفحة باسم خطها وحده
+function addWarshRule(page) {
+  warshStyleEl ??= document.head.appendChild(document.createElement('style'));
+  warshStyleEl.textContent += `.qw-${page} { font-family: '${familyOf(page, WARSH)}'; }\n`;
+}
+
+export function loadPageFont(page, r) {
+  const key = keyOf(page, r);
+  let pending = loading.get(key);
   if (!pending) {
-    const face = new FontFace(`QCF4P${page}`, `url(${BASE}fonts/qcf4/p${page}.woff2)`, { display: 'block' });
+    const face = new FontFace(familyOf(page, r), `url(${urlOf(page, r)})`, { display: 'block' });
     pending = face
       .load()
       .then(() => {
         document.fonts.add(face);
-        ready.add(page);
-        writeRules();
+        ready.add(key);
+        if (r === WARSH) addWarshRule(page);
+        else {
+          readyHafs.add(page);
+          writeRules();
+        }
       })
       .catch((err) => {
-        loading.delete(page); // تُتاح إعادة المحاولة عند عودة الاتصال
+        loading.delete(key); // تُتاح إعادة المحاولة عند عودة الاتصال
         throw err;
       });
-    loading.set(page, pending);
+    loading.set(key, pending);
   }
   return pending;
 }
 
 // تنزيل مسبق لخطوط الصفحات المجاورة، ليكون القلب إليها فوريًّا
-export function prefetchPageFonts(pages) {
-  for (const p of pages) if (p >= 1 && p <= 604 && !ready.has(p)) loadPageFont(p).catch(() => {});
+export function prefetchPageFonts(pages, r) {
+  for (const p of pages) if (p >= 1 && p <= 604 && !ready.has(keyOf(p, r))) loadPageFont(p, r).catch(() => {});
 }
 
 // حال خط الصفحة: 'ready' | 'loading' | 'failed' (لا اتصال والصفحة لم تُنزَّل من قبل).
 // وإن فشل أُعيدت المحاولة تلقائيًّا متى عاد الاتصال.
-export function usePageFont(page) {
-  const [state, setState] = useState(() => (ready.has(page) ? 'ready' : 'loading'));
+export function usePageFont(page, r) {
+  const key = keyOf(page, r);
+  const [state, setState] = useState(() => (ready.has(key) ? 'ready' : 'loading'));
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (ready.has(page)) {
+    if (ready.has(key)) {
       setState('ready');
       return undefined;
     }
     let alive = true;
     setState('loading');
-    loadPageFont(page).then(
+    loadPageFont(page, r).then(
       () => alive && setState('ready'),
       () => alive && setState('failed')
     );
     return () => {
       alive = false;
     };
-  }, [page, attempt]);
+  }, [key, attempt]);
 
   useEffect(() => {
     if (state !== 'failed') return undefined;

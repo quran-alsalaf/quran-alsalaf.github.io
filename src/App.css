@@ -154,6 +154,11 @@
   transition: transform 240ms cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s;
 }
 
+/* ما يتوقف في مصحف ورش حتى يُربط ترقيمه بحفص (src/lib/riwayah.js): باهت، والضغط عليه رسالة */
+.dock__slot--off .dock__label {
+  opacity: 0.45;
+}
+
 .dock__slot {
   display: grid;
   place-items: center;

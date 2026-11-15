@@ -21,6 +21,13 @@
   font-display: block;
 }
 
+/* بسملة مصحف ورش — خط المجمع العام لرواية ورش (الإصدار ٢١)، بحروف البسملة وحدها */
+@font-face {
+  font-family: 'WarshBasmala';
+  src: url('/fonts/warsh-basmala.woff2') format('woff2');
+  font-display: block;
+}
+
 *,
 *::before,
 *::after {

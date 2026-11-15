@@ -1,0 +1,80 @@
+/* اختيار الرواية عند أول فتح: شاشة كاملة بخلفية القراءة، وفي وسطها العنوان والزرّان */
+.rchoose {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--safe-top) + 24px) 20px calc(var(--safe-bottom) + 24px);
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  animation: rchoose-in 320ms ease both;
+}
+
+.rchoose__card {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 420px);
+  text-align: center;
+}
+
+.rchoose__title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+
+.rchoose__hint {
+  margin: 0 0 10px;
+  font-size: var(--text-sm);
+  line-height: 1.8;
+  color: var(--ink-muted);
+}
+
+.rchoose__options {
+  display: grid;
+  gap: 12px;
+}
+
+.rchoose__option {
+  display: grid;
+  gap: 6px;
+  min-height: 88px;
+  padding: 18px 20px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--ink);
+  text-align: center;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.rchoose__option:hover,
+.rchoose__option:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.rchoose__name {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--accent-text);
+}
+
+.rchoose__note {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+@keyframes rchoose-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rchoose {
+    animation: none;
+  }
+}
