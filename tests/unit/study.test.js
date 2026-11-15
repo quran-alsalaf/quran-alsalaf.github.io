@@ -17,6 +17,8 @@ import {
   versePlain,
   actionsInRange,
   memoIndex,
+  noteShareText,
+  APP_SIGNATURE,
 } from '../../src/lib/study.js';
 import { copyText, shareText } from '../../src/lib/userdata.js';
 import { weekMap } from '../../src/lib/weeks.js';
@@ -168,6 +170,14 @@ describe('النسخ إلى الحافظة', () => {
     expect(document.querySelector('textarea')).toBeNull(); // لا يبقى أثر
     document.execCommand = vi.fn().mockReturnValue(false);
     expect(await copyText('نص')).toBe(false);
+  });
+
+  it('مشاركة الملاحظة: الآية إن أُدرجت، ثم التعليق، ثم اسم التطبيق ورابطه، بسطر فارغ بينها', () => {
+    const x = v(2, 255);
+    expect(APP_SIGNATURE).toBe('تطبيق قرآن السلف\nhttps://quran-alsalaf.github.io/');
+    expect(noteShareText(quran, x, { text: '  تأمل  ', verse: true })).toBe(`${copyVerse(quran, x)}\n\nتأمل\n\n${APP_SIGNATURE}`);
+    expect(noteShareText(quran, x, { text: 'تأمل', verse: false })).toBe(`تأمل\n\n${APP_SIGNATURE}`);
+    expect(noteShareText(quran, x, { text: '', verse: true })).toBe(`${copyVerse(quran, x)}\n\n${APP_SIGNATURE}`);
   });
 
   it('المشاركة: بقائمة الجهاز إن وُجدت، ولا شيء إن أغلقها المستخدم، وإلا فالنسخ', async () => {

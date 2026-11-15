@@ -28,10 +28,23 @@ function write(key, value) {
 }
 
 // ---------- الملاحظات: واحدة لكل آية، بلا حدّ لعددها ----------
+// الشكل المحفوظ: { آية: نص } — أو { آية: { text, verse: true } } إن أُدرجت الآية في الملاحظة
+// (٢٠٢٦-١١-١٥، «تطوير الملاحظات»). والملاحظات القديمة نصوص فتُقرأ كما هي بلا آية مُدرجة.
 export const readNotes = () => read(NOTES_KEY, {});
-export function setNote(v, text) {
+
+// ملاحظة الآية بشكل واحد: { text, verse } أو null إن لم تكن لها ملاحظة
+export function noteOf(notes, v) {
+  const n = notes?.[v];
+  if (n == null || n === '') return null;
+  if (typeof n === 'string') return { text: n, verse: false };
+  return { text: typeof n.text === 'string' ? n.text : '', verse: Boolean(n.verse) };
+}
+
+// تُحذف الملاحظة إن خلت من التعليق ومن الآية معًا؛ وتبقى بالآية وحدها إن أُدرجت بلا تعليق
+export function setNote(v, text, verse = false) {
   const notes = readNotes();
-  if (text.trim()) notes[v] = text;
+  if (verse) notes[v] = { text, verse: true };
+  else if (text.trim()) notes[v] = text;
   else delete notes[v];
   write(NOTES_KEY, notes);
 }

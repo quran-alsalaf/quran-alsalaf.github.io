@@ -432,6 +432,16 @@ function CopyBar({ getText, onToast, children }) {
   );
 }
 
+// أيقونة المشاركة: ثلاث دوائر موصولة
+export const ShareIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="17.5" cy="6" r="2.5" stroke="currentColor" strokeWidth="1.7" />
+    <circle cx="6.5" cy="12" r="2.5" stroke="currentColor" strokeWidth="1.7" />
+    <circle cx="17.5" cy="18" r="2.5" stroke="currentColor" strokeWidth="1.7" />
+    <path d="M8.7 10.8l6.6-3.6M8.7 13.2l6.6 3.6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+  </svg>
+);
+
 export function CopyIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">

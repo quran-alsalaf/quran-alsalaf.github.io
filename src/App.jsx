@@ -230,6 +230,13 @@ export default function App() {
   // صفحة الورد تنبّه ببداية الربع وحدها (KhatmaPage)
   const khatmaMarks = useMemo(() => ({ ...marks, range: null, playing: null, flash: null, rubFlash: null }), [marks]);
 
+  // تعديل الملاحظة من القائمة اليمنى (٢٠٢٦-١١-١٥): ينقل المصحف إلى صفحة الآية ويفتح بطاقة ملاحظتها نفسها
+  const editNote = (v) => {
+    gotoPageNumber(quran.verses[v].p);
+    setChromeOpen(false);
+    setPressed({ v, view: 'note' });
+  };
+
   const onLongPress = useCallback((v, rect) => {
     setChromeOpen(false);
     setPressed({ v, rect });
@@ -650,6 +657,7 @@ export default function App() {
           onGoto={gotoPageNumber}
           onClose={() => setSideMenuOpen(false)}
           onReadWird={openKhatma}
+          onEditNote={editNote}
           onToast={showToast}
         />
       )}

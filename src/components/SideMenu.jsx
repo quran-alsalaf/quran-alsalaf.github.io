@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { juzName, toArabicDigits } from '../data/quran.js';
 import { AYAT, countNoun } from '../lib/count.js';
-import { verseLabel } from '../lib/study.js';
-import { removeBookmark, setNote, unplaceBookmark, updateBookmark, useUserData } from '../lib/userdata.js';
+import { noteShareText, verseLabel } from '../lib/study.js';
+import { noteOf, removeBookmark, setNote, shareText, unplaceBookmark, updateBookmark, useUserData } from '../lib/userdata.js';
 import BookmarkForm, { bookmarkMeta } from './BookmarkForm.jsx';
 import KhatmaTab from './KhatmaTab.jsx';
+import { ShareIcon } from './StudySheet.jsx';
 import './SideMenu.css';
 import { useLayer } from '../lib/layers.js';
 import { juzStarts, rubName, rubOpening } from '../lib/rubs.js';
@@ -39,7 +40,7 @@ const readTab = () => {
   }
 };
 
-export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onToast }) {
+export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onEditNote, onToast }) {
   const [tab, setTabState] = useState(readTab);
   const setTab = (t) => {
     setTabState(t);
@@ -64,7 +65,11 @@ export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onT
   const user = useUserData();
   // الملاحظات مرتبة بترتيب الآيات في المصحف لا بوقت إضافتها
   const noteEntries = useMemo(
-    () => Object.entries(user.notes ?? {}).map(([v, text]) => ({ v: Number(v), text })).sort((a, b) => a.v - b.v),
+    () =>
+      Object.keys(user.notes ?? {})
+        .map((v) => ({ v: Number(v), note: noteOf(user.notes, v) }))
+        .filter((x) => x.note)
+        .sort((a, b) => a.v - b.v),
     [user.notes]
   );
   // العلامات بترتيب إنشائها؛ والضغط على إحداها يدخل فيها: آياتها وإعداداتها (٢٠٢٦-١١-١٤)
@@ -168,8 +173,19 @@ export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onT
           {tab === 'notes' &&
             (noteEntries.length ? (
               <ul className="sidemenu__list">
-                {noteEntries.map(({ v, text }) => (
-                  <NoteRow key={v} quran={quran} v={v} text={text} onGoto={() => goto(v)} />
+                {noteEntries.map(({ v, note }) => (
+                  <NoteRow
+                    key={v}
+                    quran={quran}
+                    v={v}
+                    note={note}
+                    onGoto={() => goto(v)}
+                    onEdit={() => {
+                      onClose();
+                      onEditNote(v);
+                    }}
+                    onToast={onToast}
+                  />
                 ))}
               </ul>
             ) : (
@@ -213,42 +229,28 @@ export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onT
 }
 
 // صفّ ملاحظة: يُنقل بالضغط على نصّها، وتُعدَّل بزرّ القلم وتُحذف بزرّ السلة
-function NoteRow({ quran, v, text, onGoto }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(text);
-
-  if (editing) {
-    return (
-      <li className="sidemenu__row sidemenu__row--edit">
-        <span className="sidemenu__rowLabel">{verseLabel(quran, [v])}</span>
-        <textarea className="sidemenu__textarea" value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus />
-        <div className="sidemenu__rowActions">
-          <button type="button" onClick={() => setEditing(false)}>
-            إلغاء
-          </button>
-          <button
-            type="button"
-            className="sidemenu__save"
-            onClick={() => {
-              setNote(v, draft);
-              setEditing(false);
-            }}
-          >
-            حفظ
-          </button>
-        </div>
-      </li>
-    );
-  }
-
+// سطر الملاحظة (٢٠٢٦-١١-١٥، «تطوير الملاحظات»): اسم الآية وبداية التعليق، وعلامة «الآية مُدرجة» إن
+// أُدرجت، ثم مشاركة وتعديل وحذف. والتعديل يفتح بطاقة الملاحظة نفسها (بدل خانة داخل القائمة)
+function NoteRow({ quran, v, note, onGoto, onEdit, onToast }) {
+  const share = async () => {
+    const result = await shareText(noteShareText(quran, v, note));
+    if (result === 'copied') onToast('نُسخت الملاحظة');
+    else if (result === 'failed') onToast('تعذّرت المشاركة');
+  };
   return (
     <li className="sidemenu__row">
       <button type="button" className="sidemenu__rowMain" onClick={onGoto}>
-        <span className="sidemenu__rowLabel">{verseLabel(quran, [v])}</span>
-        <span className="sidemenu__rowText">{text}</span>
+        <span className="sidemenu__rowLabel">
+          {verseLabel(quran, [v])}
+          {note.verse && <span className="sidemenu__withVerse">الآية مُدرجة</span>}
+        </span>
+        {note.text.trim() && <span className="sidemenu__rowText">{note.text}</span>}
       </button>
       <div className="sidemenu__rowActions">
-        <button type="button" aria-label="تعديل الملاحظة" onClick={() => setEditing(true)}>
+        <button type="button" aria-label="مشاركة الملاحظة" onClick={share}>
+          <ShareIcon />
+        </button>
+        <button type="button" aria-label="تعديل الملاحظة" onClick={onEdit}>
           <PencilIcon />
         </button>
         <button type="button" aria-label="حذف الملاحظة" onClick={() => setNote(v, '')}>

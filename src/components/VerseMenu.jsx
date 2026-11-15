@@ -1,7 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { toArabicDigits } from '../data/quran.js';
 import { FOREVER } from '../lib/player.js';
-import { copyVerse, loadTafsir, memoIndex, paragraphs, tafsirInfo, tafsirText, useTafsirSource, verseLabel } from '../lib/study.js';
+import {
+  copyVerse,
+  loadTafsir,
+  memoIndex,
+  noteShareText,
+  paragraphs,
+  tafsirInfo,
+  tafsirText,
+  useTafsirSource,
+  verseLabel,
+  verseText,
+} from '../lib/study.js';
 import {
   bookmarksAt,
   copyText,
@@ -9,13 +20,15 @@ import {
   defaultBookmarkColor,
   defaultBookmarkName,
   placeBookmark,
+  noteOf,
   readNotes,
   setNote,
+  shareText,
   unplaceBookmark,
   useUserData,
 } from '../lib/userdata.js';
 import BookmarkForm, { bookmarkMeta, typeName } from './BookmarkForm.jsx';
-import { CopyIcon, NO_ACTIONS, NO_MEANINGS, QuotedText, TafsirBody, UNAVAILABLE } from './StudySheet.jsx';
+import { CopyIcon, NO_ACTIONS, ShareIcon, NO_MEANINGS, QuotedText, TafsirBody, UNAVAILABLE } from './StudySheet.jsx';
 import TafsirPicker from './TafsirPicker.jsx';
 import './VerseMenu.css';
 import { useLayer } from '../lib/layers.js';
@@ -33,7 +46,7 @@ import { useLayer } from '../lib/layers.js';
   • تفسير/معاني/عمل ⇐ بطاقة عائمة أعلى الشاشة بمحتوى هذه الآية وحدها بلا نص الآية (٢٠٢٦-١١-١٤)،
     فيها زرّا نسخ وإغلاق، ونسخ المعاني والعمل للمحتوى وحده.
     والتفسير (٢٠٢٦-١١-١٤) تفسير واحد هو المختار، وفي أعلاه قائمة التبديل (TafsirPicker) وأزرار نسخه ومشاركته.
-  • ملاحظة ⇐ كتابة ملاحظة الآية أو تعديلها (واحدة لكل آية)، ونسخها ينسخ نصها وحده.
+  • ملاحظة ⇐ كتابة ملاحظة الآية أو تعديلها (واحدة لكل آية)، و«إدراج الآية» فيها، ومشاركتها (NoteCard).
   • فوائد ⇐ بطاقة فيها أن الفوائد تُضاف لاحقًا (تنتظر ملفاتها).
   • نسخ ⇐ ينسخ الآية فورًا ﴿…﴾ [السورة: رقم] ويغلق المربع.
   • علامة ⇐ (٢٠٢٦-١١-١٤) تختفي المربعات ويظهر في المربع نفسه (بزرّ رجوع): «علامة جديدة» (اسم ولون
@@ -65,7 +78,8 @@ const repeatName = (n) => (n === 1 ? 'مرة' : n === FOREVER ? 'بلا نهاي
 
 // noPlay: بلا مربع «تشغيل» (في صفحة ورد الختمة: الاستماع من المصحف نفسه)
 export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, onPlayAlone, noPlay }) {
-  const [view, setView] = useState('menu');
+  // pressed.view: يُفتح المربع على بطاقة بعينها (تعديل الملاحظة من القائمة اليمنى يفتحه على 'note')
+  const [view, setView] = useState(pressed.view ?? 'menu');
   const { v } = pressed;
   // Esc يغلق المربع؛ وفي خيارات التشغيل يرجع إلى المربعات؛ وفي الملاحظة يحفظها أولًا كزرّ ✕ فيها
   const saveNote = useRef(null);
@@ -438,12 +452,19 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
 
 // ملاحظة الآية: تُكتب وتُعدَّل، وتُحفظ عند الحفظ أو الإغلاق؛ وتُحذف بزرّها أو بتفريغها
 // والرجوع إلى المربعات يحفظها أولًا كالإغلاق
+// بطاقة الملاحظة (٢٠٢٦-١١-١٥، «تطوير الملاحظات»): زرّ «إدراج الآية» يُظهر الآية بخط المصحف وتشكيله في
+// مستطيل منفصل في أول الملاحظة (لا يُكتب قبله ولا بعده، وزرّ ✕ في زاويته يزيله)، وتحته خانة التعليق.
+// وزرّ «مشاركة» بدل النسخ: الآية إن أُدرجت ثم التعليق ثم اسم التطبيق ورابطه؛ والنسخ بتحديد النص يدويًّا.
+// وحذف الملاحظة بزرّ الحذف وحده يزيل التعليق والآية معًا.
 function NoteCard({ quran, v, onClose, onBack, onToast, saveRef }) {
-  const [text, setText] = useState(() => readNotes()[v] ?? '');
-  const existed = useRef(Boolean(readNotes()[v]));
+  const initial = noteOf(readNotes(), v);
+  const [text, setText] = useState(() => initial?.text ?? '');
+  const [withVerse, setWithVerse] = useState(() => initial?.verse ?? false);
+  const existed = useRef(Boolean(initial));
+  const area = useRef(null);
   const keep = () => {
-    const before = readNotes()[v] ?? '';
-    if (text !== before) setNote(v, text);
+    const before = noteOf(readNotes(), v);
+    if (text !== (before?.text ?? '') || withVerse !== (before?.verse ?? false)) setNote(v, text, withVerse);
   };
   const save = () => {
     keep();
@@ -455,8 +476,15 @@ function NoteCard({ quran, v, onClose, onBack, onToast, saveRef }) {
     onToast('حُذفت الملاحظة');
     onClose();
   };
-  const copy = async () => {
-    onToast((await copyText(text)) ? 'نُسخت الملاحظة' : 'تعذّر النسخ');
+  const share = async () => {
+    keep();
+    const result = await shareText(noteShareText(quran, v, { text, verse: withVerse }));
+    if (result === 'copied') onToast('نُسخت الملاحظة');
+    else if (result === 'failed') onToast('تعذّرت المشاركة');
+  };
+  const toggleVerse = (on) => {
+    setWithVerse(on);
+    area.current?.focus();
   };
   return (
     <section className="vcard vcard--note" role="dialog" aria-label="ملاحظة">
@@ -470,7 +498,11 @@ function NoteCard({ quran, v, onClose, onBack, onToast, saveRef }) {
           onBack();
         }}
       >
-        {text.trim() && <CopyButton onCopy={copy} />}
+        {(withVerse || text.trim()) && (
+          <button type="button" className="vcard__btn" onClick={share} aria-label="مشاركة">
+            <ShareIcon />
+          </button>
+        )}
         {existed.current && (
           <button type="button" className="vcard__btn" onClick={remove} aria-label="حذف الملاحظة">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -479,16 +511,34 @@ function NoteCard({ quran, v, onClose, onBack, onToast, saveRef }) {
           </button>
         )}
       </CardHead>
-      <textarea
-        className="vcard__textarea"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="اكتب ملاحظتك على هذه الآية…"
-        autoFocus
-      />
+      <div className="vnote">
+        {withVerse ? (
+          <div className="vnote__verse" role="group" aria-label="الآية المُدرجة">
+            <p>{verseText(quran, v)}</p>
+            <button type="button" className="vnote__unverse" onClick={() => toggleVerse(false)} aria-label="إزالة الآية من الملاحظة">
+              <Icon d="M6 6l12 12M18 6 6 18" />
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="vnote__insert" onClick={() => toggleVerse(true)}>
+            <Icon d="M12 5v14M5 12h14" />
+            إدراج الآية
+          </button>
+        )}
+        <textarea
+          ref={area}
+          className="vcard__textarea"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={withVerse ? 'اكتب تعليقك على الآية…' : 'اكتب ملاحظتك على هذه الآية…'}
+          aria-label="نص الملاحظة"
+          autoFocus
+        />
+      </div>
       <button type="button" className="vcard__save" onClick={save}>
         حفظ
       </button>
     </section>
   );
 }
+
