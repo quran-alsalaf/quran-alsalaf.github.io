@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { covers, groupReciters, reciterById, reciterTitle, RECITERS } from '../lib/reciters.js';
+import { covers, groupReciters, reciterById, reciterTitle, recitersOf } from '../lib/reciters.js';
 import { previewReciter, stopPreview, usePlayer } from '../lib/player.js';
 import { freeSpaceMB, pauseDownload, startDownload, supported, useOffline } from '../lib/offline.js';
 import { toArabicDigits } from '../data/quran.js';
@@ -25,8 +25,9 @@ const pctOf = (it) => (it.total ? Math.floor((it.count / it.total) * 100) : 0);
   يذكر حجمه: أثناءه دائرة تقدّم يوقفه الضغط عليها مؤقتًا، ومتوقفًا يُستأنف بالضغط، ومكتملًا علامة ✓
   لا تُضغط (٢٠٢٦-١١-١٥، بطلب صاحب المشروع: لا حذف لما حُمِّل؛ وكان الضغط عليها يحذفه بعد تأكيد).
   وحالته مكتوبة تحت الاسم.
+  ولا يظهر فيها إلا قرّاء رواية المصحف المعروض riwayah (٢٠٢٦-١١-١٥، بقرار صاحب المشروع): في ورش قرّاء ورش وحدهم.
 */
-export default function ReciterPicker({ chosen, suras, onPick, onClose, onToast }) {
+export default function ReciterPicker({ chosen, riwayah = 'hafs', suras, onPick, onClose, onToast }) {
   useLayer(onClose);
   const { preview } = usePlayer();
   const offline = useOffline();
@@ -34,7 +35,7 @@ export default function ReciterPicker({ chosen, suras, onPick, onClose, onToast 
   // تأكيد التحميل المفتوح: { id, free }
   const [ask, setAsk] = useState(null);
   useEffect(() => stopPreview, []);
-  const shown = RECITERS.filter((r) => covers(r, suras));
+  const shown = recitersOf(riwayah).filter((r) => covers(r, suras));
 
   const download = async (id) => {
     const result = await startDownload(id);

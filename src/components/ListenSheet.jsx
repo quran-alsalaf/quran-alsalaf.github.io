@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { toArabicDigits } from '../data/quran.js';
-import { covers, reciterById, reciterTitle } from '../lib/reciters.js';
-import { FOREVER, REPEATS, cancelDownload, downloadRange, isDownloaded, setSettings, usePlayer } from '../lib/player.js';
+import { covers, reciterTitle } from '../lib/reciters.js';
+import { FOREVER, REPEATS, cancelDownload, chosenReciter, downloadRange, isDownloaded, reciterKey, setSettings, usePlayer } from '../lib/player.js';
 import ReciterPicker from './ReciterPicker.jsx';
 import RangeBar from './RangeBar.jsx';
 import './ListenSheet.css';
@@ -17,6 +17,7 @@ import { useLayer } from '../lib/layers.js';
   label: وصف المقدار المسموع (مقدار الاستماع المحدد، وإلا «من الصفحة … متتابعًا»)، suras: سوره.
   وفي أعلاها شريط «تحديد مقدار الآيات» خاص بالاستماع (٢٠٢٦-١١-١٠): range وonPickStart/onPickEnd/onClearRange،
   مستقل عن مقدار صفحات المحتوى، ولا يُخفت شيئًا في المصحف. وتعديله أثناء التشغيل يُطبَّق عند الإغلاق («تم»).
+  والقارئ قارئ رواية المصحف المعروض (٢٠٢٦-١١-١٥): في ورش قرّاء ورش وحدهم، ولكل رواية قارئها المختار.
 */
 export default function ListenSheet({ quran, verses, continuous, label, suras, range, onPickStart, onPickEnd, onClearRange, onPlay, onClose, onToast }) {
   const player = usePlayer();
@@ -25,13 +26,14 @@ export default function ListenSheet({ quran, verses, continuous, label, suras, r
   const [pickerOpen, setPickerOpen] = useState(false);
   useLayer(onClose);
   const [downloaded, setDownloaded] = useState(false);
-  useEffect(() => setDownloaded(isDownloaded(quran, verses)), [quran, verses, settings.reciter, download?.done]);
+  const key = reciterKey(quran);
+  useEffect(() => setDownloaded(isDownloaded(quran, verses)), [quran, verses, settings[key], download?.done]);
 
-  const chosen = reciterById(settings.reciter);
+  const chosen = chosenReciter(quran, settings);
   const missing = !covers(chosen, suras);
 
   const chooseReciter = (id) => {
-    if (!setSettings({ reciter: id })) onToast('تسجيل هذا القارئ لا يشمل هذا الموضع؛ اختر قارئًا آخر.');
+    if (!setSettings({ [key]: id })) onToast('تسجيل هذا القارئ لا يشمل هذا الموضع؛ اختر قارئًا آخر.');
   };
 
   const startDownload = async () => {
@@ -127,7 +129,8 @@ export default function ListenSheet({ quran, verses, continuous, label, suras, r
 
       {pickerOpen && (
         <ReciterPicker
-          chosen={settings.reciter}
+          chosen={chosen.id}
+          riwayah={quran.riwayah === 'warsh' ? 'warsh' : 'hafs'}
           suras={suras}
           onPick={chooseReciter}
           onClose={() => setPickerOpen(false)}

@@ -32,7 +32,6 @@ import { CopyIcon, NO_ACTIONS, ShareIcon, NO_MEANINGS, QuotedText, TafsirBody, U
 import TafsirPicker from './TafsirPicker.jsx';
 import './VerseMenu.css';
 import { useLayer } from '../lib/layers.js';
-import { isWarsh, WARSH_SOON } from '../lib/riwayah.js';
 import { hafsKey, hafsOf, shownBookmarks } from '../lib/verseMap.js';
 
 /*
@@ -89,12 +88,10 @@ export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, on
     view === 'note' && saveNote.current ? saveNote.current() : view === 'play' || view === 'bookmark' ? setView('menu') : onClose()
   );
 
-  // في مصحف ورش (٢٠٢٦-١١-١٥، «الروايات» الجلسة ٢) تعمل المربعات كلها بربط ترقيمه بحفص (src/lib/verseMap.js)،
-  // إلا «تشغيل» حتى يُضاف قرّاء ورش (الجلسة ٣)
-  const warsh = isWarsh(quran);
+  // في مصحف ورش (٢٠٢٦-١١-١٥، «الروايات» الجلستان ٢ و٣) تعمل المربعات كلها: المحتوى بربط ترقيمه بحفص
+  // (src/lib/verseMap.js)، و«تشغيل» بقرّاء ورش (src/lib/player.js)
   // «نسخ» ينسخ الآية فورًا ويغلق المربع، وما سواه يفتح ما خلفه
   const choose = async (id) => {
-    if (warsh && id === 'play') return onToast(WARSH_SOON);
     if (id !== 'copy') return setView(id);
     onClose();
     onToast((await copyText(copyVerse(quran, v))) ? 'نُسخت الآية' : 'تعذّر النسخ');
@@ -109,7 +106,7 @@ export default function VerseMenu({ quran, pressed, onClose, onToast, onPlay, on
       {boxed && (
         <VerseBox quran={quran} v={v} sub={sub} onBack={() => setView('menu')} onClose={onClose}>
           {view === 'menu' ? (
-            <Tiles onChoose={choose} noPlay={noPlay} off={warsh ? (id) => id === 'play' : null} />
+            <Tiles onChoose={choose} noPlay={noPlay} />
           ) : view === 'bookmark' ? (
             <BookmarkChoices quran={quran} v={v} onToast={onToast} onDone={onClose} />
           ) : (
@@ -169,8 +166,7 @@ function VerseBox({ quran, v, sub, onBack, onClose, children }) {
 }
 
 // المربعات الكبيرة: لكلٍّ أيقونة وتسمية تحتها
-// off: المربعات المتوقفة (في مصحف ورش) — باهتة، والضغط عليها رسالة
-function Tiles({ onChoose, noPlay, off }) {
+function Tiles({ onChoose, noPlay }) {
   return (
     <div className="vmenu__picker" role="menu">
       {ACTIONS.filter((a) => !(noPlay && a.id === 'play')).map((a) => (
@@ -179,8 +175,7 @@ function Tiles({ onChoose, noPlay, off }) {
           type="button"
           role="menuitem"
           onClick={() => onChoose(a.id)}
-          className={`vmenu__action${off?.(a.id) ? ' vmenu__action--off' : ''}`}
-          aria-disabled={off?.(a.id) || undefined}
+          className="vmenu__action"
         >
           <Icon d={a.icon} />
           <span className="vmenu__label">{a.name}</span>

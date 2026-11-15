@@ -2,37 +2,26 @@
 // الاستماع بصوته بلا إنترنت ولو أُغلق التطبيق وفُتح من جديد — بخلاف «تنزيل للاستماع بلا إنترنت» في
 // نافذة الاستماع (src/lib/player.js) الذي يبقى في الذاكرة طوال الجلسة وحدها.
 //   • لكل قارئ ذاكرة مستقلة باسم reciter-audio-<id>، فيها ملف كل آية (٦٢٣٦ ملفًّا) بمفتاح رابطه في الشبكة.
-//     وملف الفاتحة ١:١ منها هو البسملة نفسها قبل أول كل سورة.
+//     وملف الفاتحة ١:١ منها هو البسملة نفسها قبل أول كل سورة. ولقارئ ورش ملفاته وملفات البسملة (allFiles).
 //   • قارئ واحد يُحمَّل في كل مرة. والتحميل يجري في الخلفية ولو أُغلقت صفحة اختيار القارئ.
 //   • الإيقاف والاستئناف وانقطاع الاتصال والتخزين الدائم: محرّك التحميل المشترك (src/lib/downloader.js).
 //   • لا حذف لصوت قارئ محمَّل (٢٠٢٦-١١-١٥، بطلب صاحب المشروع؛ كان الضغط على ✓ يحذفه).
 //   • التشغيل (player.js) يقرأ من هنا كل آية موجودة لقارئها — ولو كان تحميله ناقصًا — ويبثّ الباقي.
 // الحالة المحفوظة (localStorage «hq.offline»): { [id]: { status: 'paused' | 'done', count, total } }
-import { ayahUrl, reciterById, reciterTitle } from './reciters.js';
+import { allFiles, reciterById, reciterTitle } from './reciters.js';
 import { createDownloader, freeSpaceMB, onDownloadNotice, supported } from './downloader.js';
 
 const CACHE_PREFIX = 'reciter-audio-';
 
-// عدد آيات كل سورة (المجموع ٦٢٣٦) — يطابق public/data/quran.json (tests/unit/offline.test.js)
-export const AYAH_COUNTS = [
-  7, 286, 200, 176, 120, 165, 206, 75, 129, 109, 123, 111, 43, 52, 99, 128, 111, 110, 98, 135, 112, 78, 118, 64, 77, 227, 93, 88, 69,
-  60, 34, 30, 73, 54, 45, 83, 182, 88, 75, 85, 54, 53, 89, 59, 37, 35, 38, 29, 18, 45, 60, 49, 62, 55, 78, 96, 29, 22, 24, 13, 14, 11,
-  11, 18, 12, 12, 30, 52, 52, 44, 28, 28, 20, 56, 40, 31, 50, 40, 46, 42, 29, 19, 36, 25, 22, 17, 19, 26, 30, 20, 15, 21, 11, 8, 8, 19,
-  5, 8, 8, 11, 11, 8, 3, 9, 5, 4, 7, 3, 6, 3, 5, 4, 5, 6,
-];
+// عدد آيات كل سورة بترقيم حفص (المجموع ٦٢٣٦)
+export { HAFS_COUNTS as AYAH_COUNTS } from './reciters.js';
 
 export const cacheName = (id) => CACHE_PREFIX + id;
 export { supported, freeSpaceMB };
 
-// روابط ملفات القارئ كلها بترتيب المصحف (بلا السور التي لا يشملها تسجيله إن وُجدت)
-export function reciterUrls(r) {
-  const urls = [];
-  AYAH_COUNTS.forEach((n, i) => {
-    if (r.missing?.includes(i + 1)) return;
-    for (let a = 1; a <= n; a++) urls.push(ayahUrl(r, i + 1, a));
-  });
-  return urls;
-}
+// روابط ملفات القارئ كلها بترتيب المصحف (بلا السور التي لا يشملها تسجيله إن وُجدت)، ومنها البسملة؛
+// ولقرّاء ورش ملفاتهم كما يُقرأ بها مصحف ورش (allFiles في src/lib/reciters.js)
+export const reciterUrls = (r) => allFiles(r);
 
 const nameOf = (id) => reciterTitle(reciterById(id));
 const D = createDownloader({

@@ -21,7 +21,7 @@ const OPENING_HEADER_ROW = OPENING_TEXT_ROW - 1;
 */
 // marks: ما يُرسم فوق الآيات من بيانات المستخدم —
 //   notes { آية: نص }، bookmarks قائمة العلامات (تُظلَّل الآية بلون آخرها وضعًا)، range [أول، آخر] (يُخفت ما خارجه)،
-//   selected الآية المضغوط عليها ضغطًا مطوّلًا، playing الآية الجاري تلاوتها،
+//   selected الآية المضغوط عليها ضغطًا مطوّلًا، playing الآيات الجاري تلاوتها (مصفوفة)،
 //   flash الآية المنتقَل إليها من البحث (تمييز مؤقت يتلاشى)،
 //   rubFlash { verses: [أول آية في كل ربع], n } الأرباع التي يومض موضع بدايتها (src/lib/rubs.js)
 function MushafPage({ quran, page, fontSize, width, height, shortLines, marks }) {
@@ -152,7 +152,7 @@ function Line({ quran, page, line, glyphs, width, opening, centered, gridRow, ma
         if (outside(v)) cls += ' w--out';
         if (marks?.selected === v) cls += ' w--selected';
         else if (marks?.flash === v) cls += ' w--flash';
-        else if (marks?.playing === v) cls += ' w--playing';
+        else if (marks?.playing?.includes(v)) cls += ' w--playing';
         // الآية ذات الملاحظة (بطلب صاحب المشروع): علامة الآية ورقمها كما هما، ودفتر ملاحظات صغير أعلى
         // الدائرة يمينًا. (وأُلغيت شريطة العلامة المرجعية ٢٠٢٦-١١-١٤؛ العلامة تظليل الآية بلونها)
         const marked = note;
