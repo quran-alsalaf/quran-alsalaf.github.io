@@ -62,7 +62,9 @@ const LONG_PRESS_MS = 450;
 //   bounds [أول صفحة، آخر صفحة]: لا يُقلَّب خارجها، وفي عرض الصفحتين تبهت صفحة الزوج الواقعة خارجها
 //   startPage: الصفحة التي يُفتح عليها · persist=false: لا يُقرأ آخر موضع ولا يُحفظ
 //   layer: مدخل طبقته (useLayer)، فيستقبل مفاتيح التقليب ما دامت طبقته في الأعلى
-export default function Reader({ quran, onTap, onColumn, onPage, onSpread, onLongPress, goto, marks, arrows, bounds, startPage, persist = true, layer }) {
+// onWordTap(صفحة، ترتيب الكلمة): لمسة على كلمة مكشوفة في وضع التسميع (src/lib/recite.js)؛ ومعه لا تُبلَّغ
+// اللمسة onTap، ولا ضغط مطوّل (لا يُعطى onLongPress)
+export default function Reader({ quran, onTap, onWordTap, onColumn, onPage, onSpread, onLongPress, goto, marks, arrows, bounds, startPage, persist = true, layer }) {
   const MIN = bounds?.[0] ?? FIRST_PAGE;
   const MAX = bounds?.[1] ?? LAST_PAGE;
   const [page, setPage] = useState(() => startPage ?? readLastPage());
@@ -247,6 +249,12 @@ export default function Reader({ quran, onTap, onColumn, onPage, onSpread, onLon
     if (d.longPressed) return;
     // لم يتحرك الإصبع (أقل من ٨ بكسل) ورُفع سريعًا: لمسة لا سحبة
     if (!d.axis && e.type === 'pointerup' && e.timeStamp - d.t0 < TAP_MS) {
+      if (onWordTap) {
+        const word = e.target.closest?.('.w[data-wi]:not(.w--hidden)');
+        const sheet = word?.closest('.mushaf-page');
+        if (word && sheet) onWordTap(+sheet.dataset.page, +word.dataset.wi);
+        return;
+      }
       onTap?.(e.pointerType, e.clientX, e.clientY);
       return;
     }

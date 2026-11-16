@@ -30,7 +30,7 @@
   font-display: block;
 }
 
-:root[data-riwayah='warsh'] :is(.study__box--verse, .study__words th, .searchov__verseText, .vnote__verse p, .rpick__text) {
+:root[data-riwayah='warsh'] :is(.study__box--verse, .study__words th, .searchov__verseText, .vnote__verse p, .rpick__text, .mistakes__text) {
   font-family: 'UthmanicWarsh', 'UthmanicHafs', 'Traditional Arabic', serif;
 }
 

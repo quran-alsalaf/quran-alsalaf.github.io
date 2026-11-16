@@ -3,6 +3,7 @@ import { pageFontClass } from '../lib/qcfFonts.js';
 import { weekMap } from '../lib/weeks.js';
 import { bookmarkShades } from '../lib/userdata.js';
 import { rubStarts } from '../lib/rubs.js';
+import { lineGlyphs } from '../lib/recite.js';
 import './MushafPage.css';
 
 // الفاتحة وأول البقرة (بلا زخرفة، بقرار صاحب المشروع): الأسطر السبعة (البسملة منها في
@@ -24,12 +25,23 @@ const OPENING_HEADER_ROW = OPENING_TEXT_ROW - 1;
 //   selected الآية المضغوط عليها ضغطًا مطوّلًا، playing الآيات الجاري تلاوتها (مصفوفة)،
 //   flash الآية المنتقَل إليها من البحث (تمييز مؤقت يتلاشى)،
 //   rubFlash { verses: [أول آية في كل ربع], n } الأرباع التي يومض موضع بدايتها (src/lib/rubs.js)
+//   recite { صفحة: عدد كلماتها المكشوفة } في وضع التسميع (src/lib/recite.js): ما بعد المكشوف مخفي مكانه
+//          باقٍ، ورؤوس الآيات ظاهرة. ولكل كلمة ترتيبها في صفحتها (data-wi) ليُخفى ما بعدها بلمسها
 function MushafPage({ quran, page, fontSize, width, height, shortLines, marks }) {
   const lines = quran.pages[page - 1];
   const glyphs = quran.qcf.pages[page - 1];
   const opening = page <= 2;
   let row = OPENING_TEXT_ROW;
   const bookmarkOf = bookmarkShades(marks?.bookmarks);
+  // وضع التسميع: ترتيب أول كلمة في كل سطر من كلمات الصفحة، وعدد المكشوف منها
+  const recite = marks?.recite ? { shown: marks.recite[page] ?? 0, starts: [] } : null;
+  if (recite) {
+    let n = 0;
+    lines.forEach((line, i) => {
+      recite.starts[i] = n;
+      if (line.g) n += lineGlyphs(quran, line, glyphs[i]).filter(([, , wi]) => wi != null).length;
+    });
+  }
 
   // الجوال الأفقي: الصفحة تُمرَّر رأسيًّا داخل ورقتها، فتُحضر الآية المميَّزة إلى منظر العين
   const ref = useRef(null);
@@ -46,7 +58,8 @@ function MushafPage({ quran, page, fontSize, width, height, shortLines, marks })
   return (
     <div
       ref={ref}
-      className={`mushaf-page no-select${opening ? ' mushaf-page--opening' : ''}${quran.riwayah === 'warsh' ? ' mushaf-page--warsh' : ''}`}
+      className={`mushaf-page no-select${opening ? ' mushaf-page--opening' : ''}${quran.riwayah === 'warsh' ? ' mushaf-page--warsh' : ''}${recite ? ' mushaf-page--recite' : ''}`}
+      data-page={page}
       style={{ '--fs': `${fontSize}px`, width: `${width}px`, ...(height ? { height: `${height}px` } : {}) }}
       lang="ar"
     >
@@ -63,13 +76,14 @@ function MushafPage({ quran, page, fontSize, width, height, shortLines, marks })
           gridRow={opening ? (line.h ? OPENING_HEADER_ROW : row++) : undefined}
           marks={marks}
           bookmarkOf={bookmarkOf}
+          recite={recite && { shown: recite.shown, start: recite.starts[i] }}
         />
       ))}
     </div>
   );
 }
 
-function Line({ quran, page, line, glyphs, width, opening, centered, gridRow, marks, bookmarkOf }) {
+function Line({ quran, page, line, glyphs, width, opening, centered, gridRow, marks, bookmarkOf, recite }) {
   const range = marks?.range;
   const outside = (v) => range && (v < range[0] || v > range[1]);
   // عنوان السورة وبسملتها يُخفتان إن كانت السورة كلها خارج النطاق المحدد
@@ -133,11 +147,13 @@ function Line({ quran, page, line, glyphs, width, opening, centered, gridRow, ma
   const rubs = rubStarts(quran);
   // الآيات التي تبدأ في هذا السطر (أول كلمة فيها عليه): عند أولها تُرسم علامة الربع
   const startsHere = new Set(line.g.filter(([, from]) => from === 0).map(([v]) => v));
+  // وضع التسميع: ترتيب كل كلمة في صفحتها (null لرأس الآية، فلا يُخفى)
+  const order = recite ? lineGlyphs(quran, line, glyphs, recite.start).map(([, , wi]) => wi) : null;
   return (
     <div
       className={`line ${pageFontClass(page, quran.riwayah)}${centered ? ' line--centered' : ''}`}
       style={place}
-      aria-label={text}
+      aria-label={recite ? undefined : text}
     >
       {glyphs.k.map(([v, code], i) => {
         const isEnd = endsHere.has(v) && lastIndexOf.get(v) === i;
@@ -150,6 +166,8 @@ function Line({ quran, page, line, glyphs, width, opening, centered, gridRow, ma
         if (weeks.shaded(v)) cls += ' w--week';
         if (bookmark) cls += ' w--mark';
         if (outside(v)) cls += ' w--out';
+        const wi = order?.[i];
+        if (wi != null && wi >= recite.shown) cls += ' w--hidden';
         if (marks?.selected === v) cls += ' w--selected';
         else if (marks?.flash === v) cls += ' w--flash';
         else if (marks?.playing?.includes(v)) cls += ' w--playing';
@@ -157,6 +175,7 @@ function Line({ quran, page, line, glyphs, width, opening, centered, gridRow, ma
         // الدائرة يمينًا. (وأُلغيت شريطة العلامة المرجعية ٢٠٢٦-١١-١٤؛ العلامة تظليل الآية بلونها)
         const marked = note;
         const markStyle = bookmark ? { '--mark': bookmark } : undefined;
+        const wordAttr = wi != null ? { 'data-wi': wi } : undefined;
         // أول كلمة في الربع: علامة ۞ رمز مستقل أول رموزها في خط الصفحة (٢٠٢٦-١١-١٣)، فتُفصل عنها
         // لتتلوّن وحدها بلون التطبيق عند الوصول إلى الصفحة: العلامة الأصلية نفسها، بلا نسخة ثانية
         const rub = rubs.has(v) && startsHere.has(v) && firstIndexOf.get(v) === i && quran.verses[v].t[0] === '۞';
@@ -164,7 +183,7 @@ function Line({ quran, page, line, glyphs, width, opening, centered, gridRow, ma
           const flashing = marks?.rubFlash?.verses.includes(v);
           const mark = code.slice(0, 1);
           return (
-            <span key={i} className={cls} style={markStyle} data-v={v} aria-hidden="true">
+            <span key={i} className={cls} style={markStyle} data-v={v} {...wordAttr} aria-hidden="true">
               <span>
                 <span key={flashing ? `f${marks.rubFlash.n}` : 'r'} className={`w__rub${flashing ? ' w__rub--flash' : ''}`}>
                   {mark}
@@ -175,7 +194,7 @@ function Line({ quran, page, line, glyphs, width, opening, centered, gridRow, ma
           );
         }
         return (
-          <span key={i} className={cls} style={markStyle} data-v={v} aria-hidden="true">
+          <span key={i} className={cls} style={markStyle} data-v={v} {...wordAttr} aria-hidden="true">
             {marked ? (
               <span className="w__end">
                 {code}

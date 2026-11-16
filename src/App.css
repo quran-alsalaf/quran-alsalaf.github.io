@@ -376,3 +376,19 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* ===== وضع التسميع (Recite.jsx) =====
+   يُحجز للشريط السفلي مكانه تحت المصحف، فتصغر الصفحة قليلًا ولا يُغطّى آخر سطر منها */
+.app {
+  --recite-bar: 50px;
+}
+
+.app--recite {
+  padding-bottom: calc(var(--recite-bar) + 16px + var(--safe-bottom));
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+  .app {
+    --recite-bar: 42px;
+  }
+}
