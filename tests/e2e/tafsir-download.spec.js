@@ -1,4 +1,4 @@
-// تحميل التفاسير الكبيرة بزرّ (٢٠٢٦-١١-١٥، «تفاسير كثيرة» المرحلة ٢): السعدي والبغوي وابن كثير في قائمة
+// تحميل التفاسير الكبيرة بزرّ (٢٠٢٦-١١-١٥، «تفاسير كثيرة» المرحلة ٢): السعدي والبغوي وابن كثير والطبري في قائمة
 // التفاسير لا تُختار قبل تحميلها، وزرّ التحميل في آخر السطر بتأكيد يذكر الحجم وينبّه إلى إبقاء التطبيق مفتوحًا،
 // ثم دائرة تقدّم ونسبة وإيقاف واستئناف، وبعد الاكتمال يختفي الزرّ ويُختار التفسير ويعمل بلا شبكة.
 // والتحميل في صفحات المحتوى أو بطاقة الآية حالته واحدة في الموضعين.
@@ -10,6 +10,7 @@ const study = (page) => page.locator('section.study');
 const toast = (page) => page.locator('.toast');
 const BAGHAWY = tafsirData('baghawy');
 const KATHEER = tafsirData('katheer');
+const TABARY = tafsirData('tabary');
 
 const openStudy = async (page) => {
   await clickDock(page, 'صفحات المحتوى');
@@ -73,12 +74,12 @@ test('قبل التحميل لا يُختار، والتأكيد يذكر الح
   await expect(study(page).locator('.study__box--explain').first()).toContainText(paragraphs(BAGHAWY.verses[0])[0].slice(0, 40));
 });
 
-test('ابن كثير: آخر القائمة، يحتاج تحميلًا بتأكيد يذكر حجمه، ثم يُختار ويُعرض تفسيره واسم كتابه', async ({ page }) => {
+test('ابن كثير: بعد البغوي، يحتاج تحميلًا بتأكيد يذكر حجمه، ثم يُختار ويُعرض تفسيره واسم كتابه', async ({ page }) => {
   await openStudy(page);
   const picker = study(page).locator('.tpick__btn');
   await picker.click();
   const list = study(page).getByRole('listbox', { name: 'مصدر التفسير' });
-  await expect(list.locator('.tpick__name').last()).toHaveText('ابن كثير');
+  await expect(list.locator('.tpick__name')).toHaveText(['الميسّر', 'المختصر', 'السعدي', 'البغوي', 'ابن كثير', 'الطبري']);
   await expect(option(list, 'ابن كثير')).toHaveClass(/tpick__item--locked/);
   await option(list, 'ابن كثير').locator('.tpick__name').click();
   await expect(picker).toHaveText('الميسّر');
@@ -109,6 +110,35 @@ test('ابن كثير: آخر القائمة، يحتاج تحميلًا بتأ�
   await picker.click();
   await option(list, 'الميسّر').click();
   await expect(study(page).locator('.study__box--explain .study__ayah').first()).toBeVisible();
+});
+
+test('الطبري (٢٠٢٦-١١-١٦): آخر القائمة، يحتاج تحميلًا بتأكيد يذكر حجمه، ثم يُعرض تفسيره بلا أرقام تعليقات المحقق', async ({ page }) => {
+  // نحو ٢٩ ميغابايت
+  test.setTimeout(120_000);
+  await openStudy(page);
+  const picker = study(page).locator('.tpick__btn');
+  await picker.click();
+  const list = study(page).getByRole('listbox', { name: 'مصدر التفسير' });
+  await expect(list.locator('.tpick__name').last()).toHaveText('الطبري');
+  await expect(option(list, 'الطبري')).toHaveClass(/tpick__item--locked/);
+  await option(list, 'الطبري').locator('.tpick__name').click();
+  await expect(picker).toHaveText('الميسّر');
+
+  await list.getByRole('button', { name: 'تحميل تفسير الطبري' }).click();
+  const ask = page.getByRole('alertdialog', { name: 'تحميل تفسير الطبري' });
+  await expect(ask).toContainText(/نحو [٠-٩]+ ميغابايت/);
+  await ask.getByRole('button', { name: 'تحميل' }).click();
+  await expect(toast(page)).toContainText('اكتمل تحميل تفسير الطبري', { timeout: 60000 });
+  expect(await page.evaluate(async () => (await (await caches.open('tafsir-tabary')).keys()).length)).toBe(114);
+
+  await picker.click();
+  await option(list, 'الطبري').click();
+  await expect(picker).toHaveText('الطبري');
+  const box = study(page).locator('.study__box--explain').first();
+  await expect(box).toContainText(paragraphs(TABARY.verses[0])[0].slice(0, 40));
+  await expect(box.locator('.study__ayah').first()).toBeVisible();
+  expect(await box.innerText()).not.toMatch(/\([0-9٠-٩]+\)|الهوامش/);
+  await expect(study(page).locator('.study__credit')).toHaveText('جامع البيان عن تأويل آي القرآن (تفسير الطبري)');
 });
 
 test('أثناء التحميل: دائرة تقدّم ونسبة، والضغط إيقاف مؤقت ثم استئناف يكمل الناقص', async ({ page }) => {

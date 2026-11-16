@@ -61,8 +61,8 @@ beforeEach(async () => {
 });
 
 describe('ملفات التفاسير التي تُحمَّل بزرّ', () => {
-  it('السعدي والبغوي وابن كثير تُحمَّل بزرّ، والميسّر والمختصر مبنيان مع التطبيق', () => {
-    expect(DOWNLOADABLE).toEqual(['saadi', 'baghawy', 'katheer']);
+  it('السعدي والبغوي وابن كثير والطبري تُحمَّل بزرّ، والميسّر والمختصر مبنيان مع التطبيق', () => {
+    expect(DOWNLOADABLE).toEqual(['saadi', 'baghawy', 'katheer', 'tabary']);
   });
 
   it.each(DOWNLOADABLE)('%s: ١١٤ ملفًّا، آياتها بعدد آيات كل سورة، وحجمها المكتوب يطابق مجموع الملفات', (id) => {

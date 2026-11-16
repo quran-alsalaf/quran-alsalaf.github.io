@@ -84,6 +84,15 @@ function found(Q, ns, { start = true, end = true } = {}) {
 }
 const inQuran = (Q, ns) => found(Q, ns);
 
+// هل النص كله (كلمات عربية وعلامات ترقيم مفردة، بلا سطر جديد) آية أو آيات متوالية من المصحف؟
+// تستعمله الخطوة ١٦ (الطبري) لاقتباساتها بين علامتي التنصيص وللآيات المكتوبة بلا قوسين
+export function wholeVerse(Q, s) {
+  const { toks, seps } = tokens(s);
+  if (!toks.length || toks[0].n === DOT || toks.at(-1).n === DOT) return false;
+  if (!toks.every((x) => x.n) || seps.some((x) => x.includes('\n'))) return false;
+  return inQuran(Q, norms(toks));
+}
+
 // كلمات المقطع: [{ t: نصّها, n: صورتها للمقارنة }]، والفاصل بين كل كلمتين في sep.
 // وعلامة الترقيم وغير العربي والسطر الجديد تقطع المطابقة (n فارغ).
 function tokens(s) {
