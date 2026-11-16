@@ -1,11 +1,12 @@
 // نظافة نصوص البيانات (scripts/data/07-tidy.mjs): التفسيران و«العمل بالآيات»، وتفسير السعدي (10-saadi.mjs)
-// وتفسير البغوي (11-baghawy.mjs) وتفسير ابن كثير (15-katheer.mjs)
+// وتفسير البغوي (11-baghawy.mjs) وتفسير ابن كثير (15-katheer.mjs) وتفسير الطبري (16-tabary.mjs)
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { tidyAction, tidyMukhtasar, tidyMukhtasarVerse, tidyMuyassar } from '../../scripts/data/07-tidy.mjs';
 import { cleanSaadi } from '../../scripts/data/10-saadi.mjs';
 import { applyFixes, cleanBaghawy } from '../../scripts/data/11-baghawy.mjs';
 import * as K from '../../scripts/data/15-katheer.mjs';
+import * as TBR from '../../scripts/data/16-tabary.mjs';
 
 const load = (f) => JSON.parse(readFileSync(`public/data/${f}.json`, 'utf8'));
 const MY = load('tafsir-muyassar');
@@ -17,6 +18,7 @@ const loadSplit = (id) => ({
 const SA = loadSplit('saadi');
 const BG = loadSplit('baghawy');
 const KT = loadSplit('katheer');
+const TB = loadSplit('tabary');
 const ME = load('memos');
 const QURAN = load('quran');
 const ref = (i) => `${QURAN.verses[i].s}:${QURAN.verses[i].a}`;
@@ -214,5 +216,85 @@ describe('تفسير ابن كثير', () => {
   it('فقرات ابن كثير: لا يضيع شيء من النص', async () => {
     const { paragraphs } = await import('../../src/lib/study.js');
     for (const t of KT.verses.filter(Boolean)) expect(paragraphs(t).join(' ').replace(/\s+/g, '')).toBe(t.replace(/\s+/g, ''));
+  });
+});
+
+describe('تفسير الطبري', () => {
+  // ترتيب الشدة والحركة يختلف بين النسخة والنص المكتوب هنا، فالمقارنة بالصورة القياسية
+  const at = (s, a) => TB.verses[QURAN.verses.findIndex((x) => x.s === s && x.a === a)].normalize('NFC');
+  const Q = K.quranIndex(QURAN);
+  const clean = (html, recent) => TBR.cleanTabary(Q, TBR.dropNotes(TBR.paras(`x|||${html}`), recent));
+  const SUP = JSON.parse(readFileSync(TBR.SUPPLEMENT_FILE, 'utf8'));
+
+  it('تعليقات المحقق تُحذف: بعد سطر الشرطات و«الهوامش» إلى عنوان «القول في تأويل»، وأرقامها في النص', () => {
+    expect(clean('<p>قال أبو جعفر: كذا <span class="t3">(34)</span> كما:-</p><p>----------------</p><p>الهوامش:</p><p><span class="t3">(34)</span> انظر معاني القرآن للفراء 1 : 60 .</p><p>وشيخه مثله : ضعيف .</p><p>القول في تأويل قوله : الصِّرَاطَ الْمُسْتَقِيمَ .</p><p>قال أبو جعفر: أجمعت الأمة</p>')).toBe(
+      'قال أبو جعفر: كذا كما:-\nالقول في تأويل قوله: ﴿الصِّرَاطَ الْمُسْتَقِيمَ﴾\nقال أبو جعفر: أجمعت الأمة'
+    );
+    // الشرطات في وسط الفقرة
+    expect(clean('<p>فيكون لها ظالمًا.  -----------الهوامش :(15) في المطبوعة: كذا</p><p>(16) في المخطوطة</p>')).toBe('فيكون لها ظالمًا.');
+    // تعليقات في أول الجواب لأرقام مرّت قبلها، بلا سطر الشرطات؛ وفقرة الكلام التي تبدأ برقم جديد تبقى
+    expect(clean('<p>القول في تأويل قوله تعالى : قل</p><p><span class="t3">(48)</span> هكذا جاء في المخطوطة</p><p>(49) لم أعرف قائله.</p>', new Set([48, 49]))).toBe('القول في تأويل قوله تعالى: ﴿قل﴾');
+    expect(clean('<p><span class="t3">(24)</span> وقد زعم بعض أهل العربية</p>', new Set([23]))).toBe('وقد زعم بعض أهل العربية');
+  });
+
+  it('الآيات ﴿…﴾ إذا طابقت المصحف: بقوسين أو بمعقوصين أو بين علامتي التنصيص (ثلاث كلمات فأكثر) أو مشكولة بلا قوسين', () => {
+    expect(clean('<p>يعني بقوله: <span class="t3">(وإذا قيل لهم)</span>، وإذا قيل</p>')).toBe('يعني بقوله: ﴿وإذا قيل لهم﴾، وإذا قيل');
+    expect(clean('<p>قوله : <span class="t4">{ أحل لكم ليلة الصيام الرفث إلى نسائكم }</span> يعني</p>')).toBe('قوله: ﴿أحل لكم ليلة الصيام الرفث إلى نسائكم﴾ يعني');
+    expect(clean('<p>في تأويل قوله : { ولا فسوق ولا جدال في الحج }</p>')).toBe('في تأويل قوله: ﴿ولا فسوق ولا جدال في الحج﴾');
+    expect(clean('<p>قال: <span class="t1">" ثم أتموا الصيام إلى الليل "</span> فإذا</p>')).toBe('قال: ﴿ثم أتموا الصيام إلى الليل﴾ فإذا');
+    // كلمة أو كلمتان بين علامتي التنصيص تبقيان كما هما
+    expect(clean('<p>وتأويل <span class="t1">" وراءه "</span> في هذا الموضع <span class="t1">" سوى "</span>.</p>')).toBe('وتأويل "وراءه" في هذا الموضع "سوى".');
+    expect(clean('<p>ومنه قول الله جل ثناؤه: وَاللَّهُ لا يَهْدِي الْقَوْمَ الظَّالِمِينَ في غير آية</p>')).toBe('ومنه قول الله جل ثناؤه: ﴿وَاللَّهُ لا يَهْدِي الْقَوْمَ الظَّالِمِينَ﴾ في غير آية');
+    expect(clean('<p>ومعنى قوله: (اهدنا الصراط المستقيم)، في هذا</p>')).toBe('ومعنى قوله: ﴿اهدنا الصراط المستقيم﴾، في هذا');
+    // الشعر المشكول بالتطويل لا يُعدّ آية
+    expect(clean('<p>أمــيرُ المــؤمنين عَـلَى صِـرَاطٍ</p>')).toBe('أمــيرُ المــؤمنين عَـلَى صِـرَاطٍ');
+    expect(clean('<p>حَسِبْتُ بُغامَ رَاحِلَتِي عنَاقا ... ومَا هِيَ وَيْبَ غيرِكِ بالعْنَاقِ</p>')).toBe('حَسِبْتُ بُغامَ رَاحِلَتِي عنَاقا ... ومَا هِيَ وَيْبَ غيرِكِ بالعْنَاقِ');
+  });
+
+  it('الفاصل «* * *» ورقم الصفحة يُحذفان، والحديث في الأجزاء بلا فقرات يبدأ سطرًا', () => {
+    expect(clean('<p>كذا.</p><p>* * *</p><p>ص[ 1-169 ] وكذا &; 24-218 &; وكذا [ص: 440] وكذا</p>')).toBe('كذا.\nوكذا وكذا وكذا');
+    const long = 'قال: الجماع. '.repeat(60);
+    expect(clean(`<p>${long}2397 - حدثنا الحسن، قال: كذا. * - حدثني المثنى، قال: مثله.</p>`).split('\n').slice(-2)).toEqual(['2397 - حدثنا الحسن، قال: كذا.', '* - حدثني المثنى، قال: مثله.']);
+  });
+
+  it('ما سقط من النسخة يُكمَل من الشاملة: من موضع الانقطاع، بلا أرقام الحواشي', () => {
+    const raw = 'آية|||<p>قال: كذا. وفعلهم ذلك نظير ما كان عمر يأمرهم به بقوله : " اخشوشنوا وتمعددوا وانزوا على الخيل نزوا وا</p>';
+    const sup = { cutAt: 'وفعلهم ذلك نظير', text: 'وفعلهم ذلك نظيرُ ما كان عمر يأمرهم به بقوله: "اخشَوشِنوا" (٣) .\nيأمرهم في ذلك بالتخشن ﷺ.' };
+    expect(TBR.cleanTabary(Q, TBR.dropNotes(TBR.paras(TBR.applySupplement(raw, sup))))).toBe(
+      'قال: كذا.\nوفعلهم ذلك نظيرُ ما كان عمر يأمرهم به بقوله: "اخشَوشِنوا".\nيأمرهم في ذلك بالتخشن صلى الله عليه وسلم.'
+    );
+    expect(() => TBR.applySupplement(raw, { cutAt: 'نص آخر', text: 'كذا' })).toThrow();
+    // كل إكمال في الملف يجد موضعه في جوابه
+    for (const sup of Object.values(SUP)) {
+      if (sup.text) expect(sup.cutAt.length, sup.key).toBeGreaterThan(8);
+    }
+  });
+
+  it('لكل آيات المصحف، في مواضعها (طوبقت بطبعة شاكر في الشاملة)، بلا وسوم ولا تعليقات المحقق ولا أرقامها', () => {
+    expect(TB.verses).toHaveLength(QURAN.verses.length);
+    expect(where(TB.verses, /[<>{}\u200f]|&[a-z]*;/).map(ref)).toEqual([]);
+    expect(where(TB.verses, /\(\s*[\d٠-٩]+\s*\)|الهوامش|-{4,}/).map(ref)).toEqual([]);
+    expect(where(TB.verses, /[؀-ۿ] ?, ?[؀-ۿ]/).map(ref)).toEqual([]);
+    // آيات لم يُفرد لها كلامًا (تظهر عندها رسالة التفسير المشترك)
+    expect(where(TB.verses, /^$/).length).toBeLessThanOrEqual(25);
+    // ما قُطع عند حدّ التخزين في المصدر أُكمل من الشاملة إلى آخر كلامه على الآية
+    const letters = (t) => t.replace(/[^ء-ي]/g, '');
+    for (const [key, sup] of Object.entries(SUP)) {
+      if (!sup.text) continue;
+      const [s, a] = key.split(':').map(Number);
+      expect(letters(at(s, a)).endsWith(letters(sup.text.trim().split('\n').at(-1)).slice(-40)), key).toBe(true);
+    }
+    expect(Object.values(SUP).filter((x) => x.text).length).toBe(16);
+    // ولا يبقى من تعليقات المحقق ما ينقله من آخر أجزاء المخطوطة
+    expect(where(TB.verses, /من مخطوطتنا|يتلوه في الجزء/).map(ref)).toEqual([]);
+    expect(at(2, 91)).toMatch(/^القول في تأويل قوله تعالى: ﴿وَإِذَا قِيلَ لَهُمْ آمِنُوا بِمَا أَنْزَلَ اللَّهُ قَالُوا نُؤْمِنُ بِمَا أُنْزِلَ عَلَيْنَا﴾\nقال أبو جعفر: يعني بقوله جل ثناؤه: ﴿وإذا قيل لهم﴾، وإذا قيل لليهود من بني إسرائيل/);
+    expect(at(67, 2)).toMatch(/^وقوله: ﴿الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ﴾ فأمات من شاء وما شاء، وأحيا من أراد وما أراد إلى أجل معلوم/);
+    expect(at(1, 6)).toContain('قال أبو جعفر: ومعنى قوله: ﴿اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ﴾، في هذا الموضع عندنا: وَفِّقْنا للثبات عليه');
+    expect(at(2, 187)).toContain('يأمرهم في ذلك بالتخشن في عيشهم');
+  });
+
+  it('فقرات الطبري: لا يضيع شيء من النص', async () => {
+    const { paragraphs } = await import('../../src/lib/study.js');
+    for (const t of TB.verses.filter(Boolean)) expect(paragraphs(t).join(' ').replace(/\s+/g, '')).toBe(t.replace(/\s+/g, ''));
   });
 });
