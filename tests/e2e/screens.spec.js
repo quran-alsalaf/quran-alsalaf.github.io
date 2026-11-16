@@ -27,6 +27,7 @@ for (const [theme, bg] of THEMES) {
       await expect(page).toHaveScreenshot(`mushaf-${theme}.png`);
     });
 
+    // نص التفسير بخط المحتوى (Scheherazade New منذ ٢٠٢٦-١١-١٦) وآياته المقتبسة بلون التطبيق
     test('صفحات المحتوى', async ({ page }) => {
       await clickDock(page, 'صفحات المحتوى');
       await expect(page.locator('.study .study__item').first()).toBeVisible();
