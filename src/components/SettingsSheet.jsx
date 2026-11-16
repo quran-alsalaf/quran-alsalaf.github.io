@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ACCENTS, BACKGROUNDS, readAppearance, setAccent, setBackground } from '../lib/appearance.js';
 import { readRubAlert, readWeeksTint, setRubAlert, setWeeksTint } from '../lib/settings.js';
 import AboutContent from './AboutPage.jsx';
+import BackupRows from './BackupRows.jsx';
 import ReadingInfo from './ReadingInfo.jsx';
 import './SettingsSheet.css';
 import { useLayer } from '../lib/layers.js';
@@ -99,6 +100,10 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
               <LinkRow label="وضع القراءة" onClick={() => onPage('reading')} />
               <SwitchRow label="تمييز مقررات الأسابيع" checked={weeks} onChange={toggleWeeks} />
               <SwitchRow label="التنبيه ببداية الربع" checked={rubAlert} onChange={toggleRubAlert} />
+            </Section>
+
+            <Section title="النسخة الاحتياطية">
+              <BackupRows />
             </Section>
 
             <Section>
