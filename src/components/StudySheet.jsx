@@ -260,10 +260,15 @@ function TafsirTab({ quran, verses, pages, onToast }) {
 }
 
 // نص تفسير آية مقسّمًا فقرات للقراءة (paragraphs)، أو تنبيه الآية التي لم يُفرد لها المفسّر (السعدي أو
-// البغوي) كلامًا خاصًّا
+// البغوي أو ابن كثير) كلامًا خاصًّا
+// والآيات المقتبسة ﴿…﴾ بلون التطبيق، وبين الفقرات خط فاصل (٢٠٢٦-١١-١٦، كتطبيق «آية»)
 export function TafsirBody({ text, source }) {
   if (!text) return <p className="study__shared">{sharedNote(source)}</p>;
-  return paragraphs(text).map((p, i) => <p key={i}>{p}</p>);
+  return paragraphs(text).map((p, i) => (
+    <p key={i}>
+      <QuotedText text={p} open="﴿" close="﴾" keepMarks className="study__ayah" />
+    </p>
+  ));
 }
 
 // ---------- معاني الكلمات: جدول لكل آية — الكلمة بلفظها من المصحف، ومعناها ----------
@@ -375,7 +380,7 @@ export function VerseCard({ quran, v }) {
 }
 
 // نصّ فيه اقتباسات قرآنية بين علامتين (العمل بالآيات): يُكتب المقتبس بخط المصحف
-export function QuotedText({ text, open, close, keepMarks }) {
+export function QuotedText({ text, open, close, keepMarks, className = 'study__quote' }) {
   const parts = [];
   let rest = text;
   let key = 0;
@@ -389,7 +394,7 @@ export function QuotedText({ text, open, close, keepMarks }) {
     if (a > 0) parts.push(rest.slice(0, a));
     const inner = rest.slice(a + open.length, b);
     parts.push(
-      <span key={key++} className="study__quote">
+      <span key={key++} className={className}>
         {keepMarks ? `${open}${inner}${close}` : inner}
       </span>
     );

@@ -1,5 +1,5 @@
-// تحميل التفاسير الكبيرة بزرّ (٢٠٢٦-١١-١٥، «تفاسير كثيرة» المرحلة ٢): السعدي والبغوي في قائمة التفاسير لا
-// يُختاران قبل تحميلهما، وزرّ التحميل في آخر السطر بتأكيد يذكر الحجم وينبّه إلى إبقاء التطبيق مفتوحًا،
+// تحميل التفاسير الكبيرة بزرّ (٢٠٢٦-١١-١٥، «تفاسير كثيرة» المرحلة ٢): السعدي والبغوي وابن كثير في قائمة
+// التفاسير لا تُختار قبل تحميلها، وزرّ التحميل في آخر السطر بتأكيد يذكر الحجم وينبّه إلى إبقاء التطبيق مفتوحًا،
 // ثم دائرة تقدّم ونسبة وإيقاف واستئناف، وبعد الاكتمال يختفي الزرّ ويُختار التفسير ويعمل بلا شبكة.
 // والتحميل في صفحات المحتوى أو بطاقة الآية حالته واحدة في الموضعين.
 import { test, expect } from '@playwright/test';
@@ -9,6 +9,7 @@ import { paragraphs } from '../../src/lib/study.js';
 const study = (page) => page.locator('section.study');
 const toast = (page) => page.locator('.toast');
 const BAGHAWY = tafsirData('baghawy');
+const KATHEER = tafsirData('katheer');
 
 const openStudy = async (page) => {
   await clickDock(page, 'صفحات المحتوى');
@@ -70,6 +71,44 @@ test('قبل التحميل لا يُختار، والتأكيد يذكر الح
   await openStudy(page);
   await expect(picker).toHaveText('البغوي');
   await expect(study(page).locator('.study__box--explain').first()).toContainText(paragraphs(BAGHAWY.verses[0])[0].slice(0, 40));
+});
+
+test('ابن كثير: آخر القائمة، يحتاج تحميلًا بتأكيد يذكر حجمه، ثم يُختار ويُعرض تفسيره واسم كتابه', async ({ page }) => {
+  await openStudy(page);
+  const picker = study(page).locator('.tpick__btn');
+  await picker.click();
+  const list = study(page).getByRole('listbox', { name: 'مصدر التفسير' });
+  await expect(list.locator('.tpick__name').last()).toHaveText('ابن كثير');
+  await expect(option(list, 'ابن كثير')).toHaveClass(/tpick__item--locked/);
+  await option(list, 'ابن كثير').locator('.tpick__name').click();
+  await expect(picker).toHaveText('الميسّر');
+
+  await list.getByRole('button', { name: 'تحميل تفسير ابن كثير' }).click();
+  const ask = page.getByRole('alertdialog', { name: 'تحميل تفسير ابن كثير' });
+  await expect(ask).toContainText('نحو ١٥ ميغابايت');
+  await ask.getByRole('button', { name: 'تحميل' }).click();
+  await expect(toast(page)).toContainText('اكتمل تحميل تفسير ابن كثير');
+  expect(await page.evaluate(async () => (await (await caches.open('tafsir-katheer')).keys()).length)).toBe(114);
+
+  await picker.click();
+  await expect(list.getByRole('button', { name: /تحميل تفسير ابن كثير/ })).toHaveCount(0);
+  await option(list, 'ابن كثير').click();
+  await expect(picker).toHaveText('ابن كثير');
+  // الفاتحة ١: البسملة ﴿…﴾ أول تفسيرها
+  await expect(study(page).locator('.study__box--explain').first()).toContainText(paragraphs(KATHEER.verses[0])[0].slice(0, 40));
+  await expect(study(page).locator('.study__box--explain').first()).toContainText('﴿بسم الله الرحمن الرحيم﴾');
+  await expect(study(page).locator('.study__credit')).toHaveText('تفسير القرآن العظيم (تفسير ابن كثير)');
+  // الآيات المقتبسة بلون التطبيق، وبين الفقرات خط فاصل (كتطبيق «آية»)
+  const ayah = study(page).locator('.study__box--explain .study__ayah').first();
+  await expect(ayah).toHaveText('﴿بسم الله الرحمن الرحيم﴾');
+  const [quote, body] = await ayah.evaluate((el) => [getComputedStyle(el).color, getComputedStyle(el.parentElement).color]);
+  expect(quote).not.toBe(body);
+  const second = study(page).locator('.study__box--explain p:nth-of-type(2)').first();
+  expect(await second.evaluate((el) => getComputedStyle(el).borderTopStyle)).toBe('solid');
+  // والميسّر كذلك
+  await picker.click();
+  await option(list, 'الميسّر').click();
+  await expect(study(page).locator('.study__box--explain .study__ayah').first()).toBeVisible();
 });
 
 test('أثناء التحميل: دائرة تقدّم ونسبة، والضغط إيقاف مؤقت ثم استئناف يكمل الناقص', async ({ page }) => {
