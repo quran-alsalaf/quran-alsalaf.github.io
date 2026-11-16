@@ -1,13 +1,12 @@
 // مصحف ورش (٢٠٢٦-١١-١٥، «الروايات» الجلسة ١): اختيار الرواية عند أول فتح ومن الإعدادات، وعرض مصحف ورش،
-// والضغط المطوّل فيه، وما يبقى متوقفًا فيه: الأرباع. والاستماع بقرّاء ورش (الجلسة ٣) بمحاكاة الصوت.
-// وما يعمل بالربط (المحتوى والعلامات والملاحظات والمقادير) في warsh-map.spec.js
+// والضغط المطوّل فيه. والاستماع بقرّاء ورش (الجلسة ٣) بمحاكاة الصوت.
+// وما يعمل بالربط (المحتوى والعلامات والملاحظات والمقادير) في warsh-map.spec.js، والأثمان في warsh-athman.spec.js
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { clickTopbar, copied, isLaptop, openApp, prepare, savedPage, showChrome, shownPages, waitMushaf } from './helpers.js';
 
 const W = JSON.parse(readFileSync(new URL('../../public/data/warsh/quran.json', import.meta.url), 'utf8'));
 const at = (s, a) => W.verses.findIndex((v) => v.s === s && v.a === a);
-const SOON = 'تُتاح برواية ورش قريبًا';
 const warshPage = (page) => page.locator('.sheet--current .mushaf-page--warsh:not(.mushaf-page--pending)').first();
 const wword = (page, v) => page.locator(`.sheet--current .mushaf-page--warsh .w[data-v="${v}"]`).first();
 const toast = (page) => page.locator('.toast');
@@ -181,15 +180,17 @@ test.describe('مصحف ورش', () => {
     await expect(page.locator('.w--playing')).toHaveCount(0);
   });
 
-  test('القائمة: السور بعدد آيات ورش وتنقل إليها، والأرباع تُتاح لاحقًا', async ({ page }) => {
+  test('القائمة: السور بعدد آيات ورش وتنقل إليها، والفهرس الثالث «الأثمان»', async ({ page }) => {
     await clickTopbar(page, 'القائمة');
     const menu = page.getByRole('dialog', { name: 'القائمة' });
     await menu.getByRole('tab', { name: 'السور' }).click();
     const baqara = menu.locator('.sidemenu__suras button').nth(1);
     await expect(baqara).toContainText('سورة البقرة');
     await expect(baqara).toContainText('٢٨٥');
-    await menu.getByRole('radio', { name: 'الأرباع' }).click();
-    await expect(menu.locator('.sidemenu__empty')).toContainText(SOON);
+    await expect(menu.locator('.sidemenu__index [role="radio"]')).toHaveText(['السور', 'الأجزاء', 'الأثمان']);
+    await menu.getByRole('radio', { name: 'الأثمان' }).click();
+    await expect(menu.locator('.sidemenu__empty')).toHaveCount(0);
+    await expect(menu.locator('.sidemenu__rubs > li')).toHaveCount(480);
     await menu.getByRole('radio', { name: 'السور' }).click();
     await menu.locator('.sidemenu__suras button').filter({ hasText: /سورة الحجر(?!ات)/ }).click();
     // الانتقال يكتمل بعد إغلاق القائمة بقليل، فيُنتظر حفظ الصفحة الجديدة

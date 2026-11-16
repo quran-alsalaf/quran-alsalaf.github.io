@@ -2,7 +2,7 @@ import { memo, useEffect, useRef } from 'react';
 import { pageFontClass } from '../lib/qcfFonts.js';
 import { weekMap } from '../lib/weeks.js';
 import { bookmarkShades } from '../lib/userdata.js';
-import { rubStarts } from '../lib/rubs.js';
+import { rubGlyphs } from '../lib/rubs.js';
 import { lineGlyphs } from '../lib/recite.js';
 import './MushafPage.css';
 
@@ -24,7 +24,7 @@ const OPENING_HEADER_ROW = OPENING_TEXT_ROW - 1;
 //   notes { آية: نص }، bookmarks قائمة العلامات (تُظلَّل الآية بلون آخرها وضعًا)، range [أول، آخر] (يُخفت ما خارجه)،
 //   selected الآية المضغوط عليها ضغطًا مطوّلًا، playing الآيات الجاري تلاوتها (مصفوفة)،
 //   flash الآية المنتقَل إليها من البحث (تمييز مؤقت يتلاشى)،
-//   rubFlash { verses: [أول آية في كل ربع], n } الأرباع التي يومض موضع بدايتها (src/lib/rubs.js)
+//   rubFlash { verses: [أول آية في كل قسم], n } الأقسام (أرباع، أو أثمان ورش) التي يومض موضع بدايتها (src/lib/rubs.js)
 //   recite { صفحة: عدد كلماتها المكشوفة } في وضع التسميع (src/lib/recite.js): ما بعد المكشوف مخفي مكانه
 //          باقٍ، ورؤوس الآيات ظاهرة. ولكل كلمة ترتيبها في صفحتها (data-wi) ليُخفى ما بعدها بلمسها
 //   reciteScope مجموعة آيات: التسميع عليها وحدها (ختمة الحفظ)، وبقية الصفحة ظاهرة
@@ -142,14 +142,9 @@ function Line({ quran, page, line, glyphs, width, opening, centered, gridRow, ma
   // الآيات التي تنتهي في هذا السطر: آخر رمز لها فيه علامتها، وعندها تُرسم إشارتا الملاحظة والعلامة
   const endsHere = new Set(line.g.filter(([v, , to]) => to === quran.verses[v].t.length - 1).map(([v]) => v));
   const lastIndexOf = new Map();
-  const firstIndexOf = new Map();
-  glyphs.k.forEach(([v], i) => {
-    lastIndexOf.set(v, i);
-    if (!firstIndexOf.has(v)) firstIndexOf.set(v, i);
-  });
-  const rubs = rubStarts(quran);
-  // الآيات التي تبدأ في هذا السطر (أول كلمة فيها عليه): عند أولها تُرسم علامة الربع
-  const startsHere = new Set(line.g.filter(([, from]) => from === 0).map(([v]) => v));
+  glyphs.k.forEach(([v], i) => lastIndexOf.set(v, i));
+  // رموز علامة ۞ التي يبدأ بها قسم في هذا السطر (ربع، أو ثمن في ورش ولو في وسط آية)
+  const rubAt = rubGlyphs(quran, line, glyphs);
   // وضع التسميع: ترتيب كل كلمة في صفحتها (null لرأس الآية، فلا يُخفى)
   const order = recite?.order ?? null;
   return (
@@ -180,8 +175,9 @@ function Line({ quran, page, line, glyphs, width, opening, centered, gridRow, ma
         const markStyle = bookmark ? { '--mark': bookmark } : undefined;
         const wordAttr = wi != null ? { 'data-wi': wi } : undefined;
         // أول كلمة في الربع: علامة ۞ رمز مستقل أول رموزها في خط الصفحة (٢٠٢٦-١١-١٣)، فتُفصل عنها
-        // لتتلوّن وحدها بلون التطبيق عند الوصول إلى الصفحة: العلامة الأصلية نفسها، بلا نسخة ثانية
-        const rub = rubs.has(v) && startsHere.has(v) && firstIndexOf.get(v) === i && quran.verses[v].t[0] === '۞';
+        // لتتلوّن وحدها بلون التطبيق عند الوصول إلى الصفحة: العلامة الأصلية نفسها، بلا نسخة ثانية.
+        // وفي ورش العلامة رمز وحدها، فيبقى ما بعدها فارغًا
+        const rub = rubAt.has(i);
         if (rub) {
           const flashing = marks?.rubFlash?.verses.includes(v);
           const mark = code.slice(0, 1);

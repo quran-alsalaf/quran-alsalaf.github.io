@@ -229,6 +229,11 @@
   color: var(--accent-text);
 }
 
+/* بداية الثمن في ورش (٢٠٢٦-١١-١٦): خطوطه بلون واحد بلا لوحة ألوان، فتتلوّن العلامة بلون التطبيق مباشرة */
+.mushaf-page--warsh .w__rub--flash {
+  color: var(--accent-text);
+}
+
 /* ريثما يُنزَّل خط الصفحة (أول فتح لها فقط) */
 .mushaf-page--pending {
   display: grid;
