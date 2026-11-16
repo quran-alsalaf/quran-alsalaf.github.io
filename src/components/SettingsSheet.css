@@ -342,3 +342,91 @@
     padding: 10px 0;
   }
 }
+
+/* ---------- النسخة الاحتياطية (BackupRows.jsx، ٢٠٢٦-١١-١٦) ---------- */
+/* أيقونة السطر الذي يفعل شيئًا (حفظ، استعادة) مكان سهم الفتح */
+.settings__icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+}
+
+.settings__link:disabled {
+  opacity: 0.6;
+}
+
+/* آخر نسخة: سطر هادئ تحت «حفظ نسخة احتياطية» */
+.backup__last {
+  margin-top: 2px;
+}
+
+.backup__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.38);
+}
+
+.backup__dialog {
+  width: min(100%, 380px);
+  padding: 20px 20px 14px;
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-float);
+  text-align: start;
+}
+
+.backup__dialog h3 {
+  margin: 0 0 10px;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.backup__dialog p {
+  margin: 0 0 8px;
+  line-height: 1.7;
+}
+
+.backup__date span {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.backup__summary {
+  margin: 0 0 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  list-style: none;
+  line-height: 1.9;
+}
+
+.backup__warn {
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+
+.backup__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.backup__btn {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.backup__btn--primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
