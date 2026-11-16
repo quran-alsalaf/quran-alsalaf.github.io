@@ -244,3 +244,39 @@
 .listen__row--off {
   opacity: 0.45;
 }
+
+/* مؤقّت التلاوة (٢٠٢٦-١١-١٦): ما بقي تحت اسم السطر، وخانة «وقت آخر…» */
+.listen__label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.listen__left {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.listen__minutes {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+
+.listen__minutes input {
+  width: 72px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+}
+
+.listen__minutes input[aria-invalid] {
+  border-color: var(--danger);
+}

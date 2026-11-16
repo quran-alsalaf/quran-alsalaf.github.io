@@ -14,7 +14,8 @@ import SideMenu from './components/SideMenu.jsx';
 import SearchOverlay from './components/SearchOverlay.jsx';
 import KhatmaPage from './components/KhatmaPage.jsx';
 import { completeWird, useKhatma, wirdState } from './lib/khatma.js';
-import { FOREVER, pause, play, resume, retarget, setSettings as setListenSettings, stop, usePlayer } from './lib/player.js';
+import { FOREVER, pause, play, resume, retarget, setSettings as setListenSettings, stop, timerShort, usePlayer, useTimerTick } from './lib/player.js';
+import { countText, MINUTES } from './lib/count.js';
 import { toArabicDigits } from './data/quran.js';
 import { pageVerses, verseLabel } from './lib/study.js';
 import { saveContentRange, saveRange, useUserData } from './lib/userdata.js';
@@ -200,6 +201,10 @@ export default function App() {
   useEffect(() => {
     if (player.error) showToast(player.error.text);
   }, [player.error, showToast]);
+  // انتهاء مؤقّت التلاوة (src/lib/player.js)
+  useEffect(() => {
+    if (player.notice) showToast(player.notice.text);
+  }, [player.notice, showToast]);
   // التقليب التلقائي: عند بدء كل آية (ومنها إعادة المقدار وتكرار الآية) إن لم تكن صفحتها ظاهرة انتقل
   // المصحف إليها — صفحةً في عرض الصفحة الواحدة، وزوجًا في عرض الصفحتين (فالانتقال إلى صفحة من الزوج
   // الظاهر لا يغيّره). ويُقارَن بالصفحات الظاهرة فعلًا لا بآخر صفحة طُلبت، فإن قلّب المستخدم بيده أعاده
@@ -686,9 +691,7 @@ export default function App() {
                 >
                   {player.status === 'paused' ? <PlayIcon /> : player.status === 'loading' ? <span className="dock__spin" /> : <PauseIcon />}
                 </button>
-                <button type="button" className="dock__ctl" onClick={() => setListenOpen(true)} aria-label="إعدادات الاستماع">
-                  <SettingsIcon />
-                </button>
+                <ListenSettingsButton onClick={() => setListenOpen(true)} />
                 <button type="button" className="dock__ctl" onClick={stop} aria-label="إيقاف">
                   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -829,6 +832,30 @@ function PlayIcon() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M8 5.5v13l10.5-6.5Z" fill="currentColor" />
     </svg>
+  );
+}
+
+// زرّ إعدادات الاستماع أثناء التشغيل، وما دام مؤقّت التلاوة مضبوطًا يصير الزرّ نفسه ما بقي منه
+// («٢٨ د» بأيقونة ساعة)، فيفتح النافذة كما هو لتغييره أو إلغائه (٢٠٢٦-١١-١٦). مكوّن مستقل يُعاد رسمه
+// كل ثانية وحده لا التطبيق كله
+function ListenSettingsButton({ onClick }) {
+  const left = useTimerTick();
+  if (left == null) {
+    return (
+      <button type="button" className="dock__ctl" onClick={onClick} aria-label="إعدادات الاستماع">
+        <SettingsIcon />
+      </button>
+    );
+  }
+  const spoken = left > 0 ? `يتبقى ${countText(Math.ceil(left / 60000), MINUTES, toArabicDigits, true)}` : 'تقف التلاوة بعد الآية الجارية';
+  return (
+    <button type="button" className="dock__ctl dock__ctl--timer" onClick={onClick} aria-label={`إعدادات الاستماع، مؤقّت التلاوة: ${spoken}`}>
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="13" r="7.5" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M12 9.5V13l2.3 1.6M10 3h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span>{timerShort(left)}</span>
+    </button>
   );
 }
 

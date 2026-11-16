@@ -23,4 +23,5 @@ export function countText(n, forms, digits = String, nominative = false) {
 export const DAYS = { one: 'يوم واحد', two: ['يومان', 'يومين'], plural: 'أيام', acc: 'يوما', gen: 'يوم' }; // بلا تنوين: نصوص الختمة بلا تشكيل (بطلب صاحب المشروع)
 export const PAGES = { one: 'صفحة واحدة', two: ['صفحتان', 'صفحتين'], plural: 'صفحات', acc: 'صفحة' };
 export const KHATMAS = { one: 'ختمة واحدة', two: ['ختمتان', 'ختمتين'], plural: 'ختمات', acc: 'ختمة' };
+export const MINUTES = { one: 'دقيقة واحدة', two: ['دقيقتان', 'دقيقتين'], plural: 'دقائق', acc: 'دقيقة' };
 export const AYAT = { one: 'آية واحدة', two: ['آيتان', 'آيتين'], plural: 'آيات', acc: 'آية' };
