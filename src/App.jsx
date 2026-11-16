@@ -284,11 +284,13 @@ export default function App() {
     () => ({ ...marks, bookmarks: null, range: null, selected: null, playing: null, flash: null, rubFlash: null, recite }),
     [marks, recite]
   );
-  // «كشف كلمتين» (max = 2) و«كشف الآية» (بقيتها): في الصفحة الظاهرة، أو في الزوج اليمنى ثم اليسرى
+  // «كشف كلمتين» (max = 2) و«كشف الآية» (بقيتها): في الصفحة الظاهرة، أو في الزوج اليمنى ثم اليسرى.
+  // وإن كُشفت كلها قُلّبت إلى التالية (بطلب صاحب المشروع)، فتظهر مخفية ويكشفها الضغط التالي
   const revealNext = (max) => {
     const next = reveal(quran, shownPages, recite, max);
     if (next) setRecite(next);
-    else showToast(spread ? 'كُشفت الصفحتان كلتاهما؛ قلّب إلى ما بعدهما' : 'كُشفت الصفحة كلها؛ قلّب إلى التالية');
+    else if (shownPages.at(-1) >= 604) showToast('بلغت آخر المصحف');
+    else setGotoPage({ turn: 1, n: Date.now() });
   };
   // لمس كلمة مكشوفة: تُخفى هي وما بعدها في الصفحة الظاهرة (وفي الزوج: واليسرى إن كانت في اليمنى)
   const onWordTap = useCallback((p, wi) => {

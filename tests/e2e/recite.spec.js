@@ -7,12 +7,12 @@ const cur = (page) => page.locator('.sheet--current .mushaf-page');
 const words = (page) => page.locator('.sheet--current .w[data-wi]');
 const hidden = (page) => page.locator('.sheet--current .w.w--hidden');
 const shown = (page) => page.locator('.sheet--current .w[data-wi]:not(.w--hidden)');
-const bar = (page) => page.getByRole('toolbar', { name: 'التحكم في التسميع' });
+const bar = (page) => page.getByRole('toolbar', { name: 'التحكم في وضع التسميع' });
 
 async function startRecite(page) {
   await clickTopbar(page, 'الإعدادات');
-  await page.locator('.settings').getByRole('button', { name: 'التسميع', exact: true }).click();
-  await page.locator('.settings').getByRole('button', { name: 'ابدأ التسميع' }).click();
+  await page.locator('.settings').getByRole('button', { name: 'وضع التسميع', exact: true }).click();
+  await page.locator('.settings').getByRole('button', { name: 'ابدأ وضع التسميع' }).click();
   await expect(bar(page)).toBeVisible();
 }
 
@@ -46,7 +46,7 @@ test('الدخول يخفي كلمات الصفحة وتبقى رؤوس الآي
   // المكشوف أول الصفحة متصلًا
   expect(await shown(page).evaluateAll((els) => els.map((e) => +e.dataset.wi))).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
 
-  await bar(page).getByRole('button', { name: 'الخروج من التسميع' }).click();
+  await bar(page).getByRole('button', { name: 'الخروج من وضع التسميع' }).click();
   await expect(bar(page)).toHaveCount(0);
   await expect(page.locator('.sheet--current .w--hidden')).toHaveCount(0);
   await expect(page.locator('.sheet--current .w[data-wi]')).toHaveCount(0);
@@ -68,7 +68,7 @@ test('الصفحة التالية مخفية، والرجوع يُبقي ما ك
   await expect(cur(page).first()).toHaveAttribute('data-page', first);
   await expect(shown(page)).toHaveCount(n);
   // الخروج والدخول من جديد: كله مخفي
-  await bar(page).getByRole('button', { name: 'الخروج من التسميع' }).click();
+  await bar(page).getByRole('button', { name: 'الخروج من وضع التسميع' }).click();
   await startRecite(page);
   await expect(shown(page)).toHaveCount(0);
   if (isLaptop(testInfo)) expect(await cur(page).count()).toBe(2);
@@ -100,7 +100,7 @@ test('لمس كلمة مكشوفة يخفيها وما بعدها، ولمس ا�
   await expect(bar(page)).toBeVisible();
 });
 
-test('اكتمال الصفحة: رسالة بالتقليب، وفي عرض الصفحتين يُكشف اليمنى ثم اليسرى', async ({ page }, testInfo) => {
+test('اكتمال الصفحة: الضغط على زرّ الكشف يقلّب إلى التالية مخفية، وفي عرض الصفحتين يُكشف اليمنى ثم اليسرى', async ({ page }, testInfo) => {
   await openApp(page, { 'hq.page': '1' });
   await startRecite(page);
   const right = page.locator('.sheet--current .mushaf-page[data-page="1"] .w[data-wi]');
@@ -108,6 +108,7 @@ test('اكتمال الصفحة: رسالة بالتقليب، وفي عرض ا�
   for (let i = 0; i < 7; i++) await bar(page).getByRole('button', { name: 'كشف الآية' }).click();
   await expect(page.locator('.sheet--current .mushaf-page[data-page="1"] .w--hidden')).toHaveCount(0);
   expect(await right.count()).toBe(rightCount);
+  let next = 2;
   if (isLaptop(testInfo)) {
     // أول البقرة «الٓمٓ» كلمة واحدة: تُكشف وحدها، ثم الآية التي بعدها
     const left = page.locator('.sheet--current .mushaf-page[data-page="2"] .w[data-wi]:not(.w--hidden)');
@@ -115,10 +116,29 @@ test('اكتمال الصفحة: رسالة بالتقليب، وفي عرض ا�
     await expect(left).toHaveCount(1);
     await bar(page).getByRole('button', { name: 'كشف كلمتين' }).click();
     await expect(left).toHaveCount(3);
-  } else {
-    await bar(page).getByRole('button', { name: 'كشف كلمتين' }).click();
-    await expect(page.getByRole('status')).toHaveText('كُشفت الصفحة كلها؛ قلّب إلى التالية');
+    for (let i = 0; i < 4; i++) await bar(page).getByRole('button', { name: 'كشف الآية' }).click();
+    await expect(page.locator('.sheet--current .mushaf-page[data-page="2"] .w--hidden')).toHaveCount(0);
+    next = 3;
   }
+  // الصفحة (أو الزوج) كلها مكشوفة: الضغط التالي يقلّب، والجديدة مخفية، والضغط بعده يكشف فيها
+  await bar(page).getByRole('button', { name: 'كشف كلمتين' }).click();
+  await expect(cur(page).first()).toHaveAttribute('data-page', String(next));
+  await expect(shown(page)).toHaveCount(0);
+  await bar(page).getByRole('button', { name: 'كشف كلمتين' }).click();
+  // الصفحة ٢ أولها «الٓمٓ» كلمة واحدة، والثالثة «إِنَّ ٱلَّذِينَ»
+  await expect(shown(page)).toHaveCount(next === 2 ? 1 : 2);
+});
+
+test('آخر المصحف: بعد كشفه كله لا تقليب، ورسالة ببلوغ آخره', async ({ page }) => {
+  await openApp(page, { 'hq.page': '604' });
+  await startRecite(page);
+  for (let i = 0; i < 40; i++) {
+    if (!(await page.locator('.sheet--current .mushaf-page[data-page="604"] .w--hidden').count())) break;
+    await bar(page).getByRole('button', { name: 'كشف الآية' }).click();
+  }
+  await bar(page).getByRole('button', { name: 'كشف الآية' }).click();
+  await expect(page.getByRole('status')).toHaveText('بلغت آخر المصحف');
+  await expect(page.locator('.sheet--current .mushaf-page[data-page="604"]')).toBeVisible();
 });
 
 test('«أخطائي»: قائمة الآيات المكشوفة الأحدث أولًا، والاختيار يسجّلها في علامة «أخطائي» ويكمل التسميع', async ({ page }) => {
@@ -162,7 +182,7 @@ test('«أخطائي»: قائمة الآيات المكشوفة الأحدث أ
   expect((await stored(page, 'hq.bookmarks'))[0].verses.map((x) => x.v)).toEqual([1, 2]);
 
   // بعد الخروج تظهر الآيتان مظلّلتين بلون العلامة
-  await bar(page).getByRole('button', { name: 'الخروج من التسميع' }).click();
+  await bar(page).getByRole('button', { name: 'الخروج من وضع التسميع' }).click();
   await expect(page.locator('.sheet--current .w--mark[data-v="1"]').first()).toBeVisible();
   await expect(page.locator('.sheet--current .w--mark[data-v="2"]').first()).toBeVisible();
 });

@@ -24,6 +24,7 @@ export function ReciteInfo({ onStart }) {
 
       <ul className="readinfo__list">
         <li>«كشف كلمتين» يكشف الكلمتين التاليتين من الآية الجارية، و«كشف الآية» يكشف بقيتها.</li>
+        <li>إذا انتهت الصفحة فالضغط على زرّ الكشف يقلّبها إلى التالية.</li>
         <li>قلّب الصفحات يمينًا ويسارًا كالعادة، وكل صفحة تقلب إليها تظهر مخفية، وما كشفته يبقى مكشوفًا إذا رجعت إليه.</li>
         <li>إذا لمست كلمة مكشوفة أُخفيت هي وما بعدها في الصفحة، فتعيد التسميع منها.</li>
         <li>«أخطائي» يعرض الآيات التي كشفتها، فتختار الآية التي أخطأت فيها فتُسجَّل في علامة «أخطائي»، وتجدها في القائمة اليمنى ← «العلامات».</li>
@@ -36,7 +37,7 @@ export function ReciteInfo({ onStart }) {
           <path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
           <circle cx="12" cy="12" r="2.8" stroke="currentColor" strokeWidth="1.8" />
         </svg>
-        ابدأ التسميع
+        ابدأ وضع التسميع
       </button>
     </div>
   );
@@ -44,7 +45,7 @@ export function ReciteInfo({ onStart }) {
 
 export function ReciteBar({ onWords, onVerse, onMistakes, onExit }) {
   return (
-    <div className="recitebar" role="toolbar" aria-label="التحكم في التسميع">
+    <div className="recitebar" role="toolbar" aria-label="التحكم في وضع التسميع">
       <button type="button" className="recitebar__main" onClick={onWords}>
         كشف كلمتين
       </button>
@@ -58,7 +59,7 @@ export function ReciteBar({ onWords, onVerse, onMistakes, onExit }) {
         </svg>
         <span>أخطائي</span>
       </button>
-      <button type="button" className="recitebar__btn recitebar__exit" onClick={onExit} aria-label="الخروج من التسميع">
+      <button type="button" className="recitebar__btn recitebar__exit" onClick={onExit} aria-label="الخروج من وضع التسميع">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>

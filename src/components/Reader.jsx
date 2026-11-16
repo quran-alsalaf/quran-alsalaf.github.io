@@ -55,6 +55,7 @@ const LONG_PRESS_MS = 450;
 // (صفحات المحتوى لا تُفتح بالسحب منذ ٢٠٢٦-١١-١٠: بزرّها في الشريط السفلي وحده)
 // onLongPress(آية، مستطيل كلمتها): ضغط مطوّل على آية
 // goto { page, n }: انتقال إلى صفحة بطلب من خارج القارئ (كاختيار آية من قائمة النطاق)
+//   أو { turn: ‎+1 | ‎-1, n }: قلب الصفحة (أو الزوج) إلى التالية أو السابقة بحركة القلب نفسها (وضع التسميع)
 // marks: إشارات بيانات المستخدم على الآيات (MushafPage)
 // onSpread(bool): يُبلَّغ به هل تُعرض الصفحتان معًا
 // arrows: إظهار سهمي التقليب على جانبي الزوج (عند تحريك الفأرة) — في عرض الصفحتين وحده
@@ -81,6 +82,10 @@ export default function Reader({ quran, onTap, onWordTap, onColumn, onPage, onSp
 
   useEffect(() => {
     if (goto?.page) setPage(goto.page);
+  }, [goto]);
+  const turnRef = useRef(null);
+  useEffect(() => {
+    if (goto?.turn) turnRef.current?.(goto.turn);
   }, [goto]);
 
   const viewRef = useRef(null);
@@ -279,6 +284,11 @@ export default function Reader({ quran, onTap, onWordTap, onColumn, onPage, onSp
   // المصحف مغطّى: بطبقة فوقه، أو (لمصحف داخل طبقة) بطبقة فوق طبقته
   const covered = () => (layer ? !isTopLayer(layer) : hasOpenLayer());
   api.current = { settle, canTurn, moveTrack, completeNow, covered, w: box?.w ?? 0 };
+  turnRef.current = (dir) => {
+    if (drag.current) return;
+    if (animating.current) completeNow();
+    settle(dir);
+  };
   useEffect(() => {
     const onKey = (e) => {
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || api.current.covered()) return;

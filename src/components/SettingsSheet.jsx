@@ -100,7 +100,7 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
 
             <Section title="القراءة">
               <LinkRow label="وضع القراءة" onClick={() => onPage('reading')} />
-              <LinkRow label="التسميع" onClick={() => onPage('recite')} />
+              <LinkRow label="وضع التسميع" onClick={() => onPage('recite')} />
               <SwitchRow label="تمييز مقررات الأسابيع" checked={weeks} onChange={toggleWeeks} />
               <SwitchRow label="التنبيه ببداية الربع" checked={rubAlert} onChange={toggleRubAlert} />
             </Section>
@@ -115,7 +115,7 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
         <SubPage title="وضع القراءة" shown={page === 'reading'} onBack={() => onPage('main')} onClose={onClose}>
           <ReadingInfo onStart={onStartReading} />
         </SubPage>
-        <SubPage title="التسميع" shown={page === 'recite'} onBack={() => onPage('main')} onClose={onClose}>
+        <SubPage title="وضع التسميع" shown={page === 'recite'} onBack={() => onPage('main')} onClose={onClose}>
           <ReciteInfo onStart={onStartRecite} />
         </SubPage>
         <SubPage title="النسخة الاحتياطية" shown={page === 'backup'} onBack={() => onPage('main')} onClose={onClose}>
