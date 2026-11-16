@@ -1,7 +1,7 @@
 // منطق المشغّل: المقادير، وتكرار الآية والمقدار، والبسملة، والاستماع المتتابع، وتعديل المقدار
 // أثناء التشغيل، وتغيير القارئ — src/lib/player.js بعنصر صوت محاكى (بلا صوت حقيقي)
 import { existsSync, statSync } from 'node:fs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 class FakeAudio extends EventTarget {
   constructor() {
@@ -291,5 +291,128 @@ describe('معاينة صوت القارئ', () => {
     await flush();
     expect(fail2).toHaveBeenCalledTimes(1);
     expect(P.playerState().preview).toBeNull();
+  });
+});
+
+// مؤقّت التلاوة (٢٠٢٦-١١-١٦): يعدّ ما دامت التلاوة تعمل، ويتجمّد في الإيقاف المؤقت، ويقف بعد الآية
+// الجارية إذا انتهى الوقت، ثم يرجع إلى «بلا مؤقت» — بساعة محاكاة
+describe('مؤقّت التلاوة', () => {
+  const MIN = 60000;
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-16T22:00:00Z'));
+  });
+  afterEach(() => vi.useRealTimers());
+  const after = (ms) => vi.setSystemTime(Date.now() + ms);
+  const status = () => P.playerState().status;
+  const playing = () => FakeAudio.last.dispatchEvent(new Event('playing'));
+
+  it('الخيارات ١٥ · ٣٠ · ٤٥ · ٦٠ · ٩٠ دقيقة، وأقصى «وقت آخر» ٣٦٠', () => {
+    expect(P.TIMER_OPTIONS).toEqual([15, 30, 45, 60, 90]);
+    expect(P.TIMER_MAX).toBe(360);
+  });
+
+  it('«وقت آخر»: عدد صحيح ١–٣٦٠ بالأرقام العربية أو الغربية أو الفارسية', () => {
+    expect(P.parseMinutes('20')).toBe(20);
+    expect(P.parseMinutes('٢٠')).toBe(20);
+    expect(P.parseMinutes('۲۰')).toBe(20);
+    expect(P.parseMinutes(' ٥ ')).toBe(5);
+    expect(P.parseMinutes('1')).toBe(1);
+    expect(P.parseMinutes('360')).toBe(360);
+    for (const bad of ['', '0', '٠', '361', '1000', '2.5', '-3', 'عشرون', null, undefined]) expect(P.parseMinutes(bad)).toBeNull();
+  });
+
+  it('قبل التشغيل لا يعدّ، ويبدأ العدّ مع التشغيل', () => {
+    P.setTimer(15);
+    after(10 * MIN);
+    expect(P.timerLeft()).toBe(15 * MIN);
+    P.play(q, [idx(1, 1), idx(1, 2), idx(1, 3)]);
+    after(5 * MIN);
+    expect(P.timerLeft()).toBe(10 * MIN);
+  });
+
+  it('إذا انتهى الوقت أكملت الآية الجارية ثم وقفت، ورجع إلى «بلا مؤقت» برسالة', () => {
+    P.setTimer(15);
+    P.play(q, [idx(1, 1), idx(1, 2), idx(1, 3)]);
+    after(10 * MIN);
+    ended(); // الآية الأولى انتهت قبل الوقت: تكمل
+    expect(lastFile()).toBe(shuraym(1, 2));
+    after(6 * MIN); // انتهى الوقت أثناء الآية الثانية: لا تنقطع
+    expect(status()).not.toBe('idle');
+    expect(P.timerLeft()).toBe(0);
+    const n = FakeAudio.srcs.length;
+    ended(); // نهاية الآية الثانية: تقف
+    expect(status()).toBe('idle');
+    expect(FakeAudio.srcs.length).toBe(n);
+    expect(P.playerState().timer).toBeNull();
+    expect(P.playerState().notice.text).toBe('انتهى مؤقّت التلاوة');
+  });
+
+  it('الإيقاف المؤقت يجمّد العدّ، والاستئناف يكمله', () => {
+    P.setTimer(30);
+    P.play(q, [idx(1, 1), idx(1, 2)]);
+    after(10 * MIN);
+    P.pause();
+    after(60 * MIN);
+    expect(P.timerLeft()).toBe(20 * MIN);
+    P.resume();
+    playing();
+    after(5 * MIN);
+    expect(P.timerLeft()).toBe(15 * MIN);
+  });
+
+  it('مع تكرار الآية: يقف بعد القراءة الجارية ولا ينتظر بقية التكرار', () => {
+    P.setSettings({ verseRepeat: 20 });
+    P.setTimer(1);
+    P.play(q, [idx(1, 1), idx(1, 2)]);
+    ended();
+    ended();
+    after(MIN);
+    ended();
+    expect(status()).toBe('idle');
+  });
+
+  it('إذا انتهى أثناء البسملة: تكمل البسملة ثم الآية الأولى ثم تقف', () => {
+    P.setTimer(1);
+    P.play(q, [idx(2, 1), idx(2, 2)]);
+    expect(lastFile()).toBe(shuraym(1, 1)); // البسملة
+    after(MIN);
+    ended();
+    expect(lastFile()).toBe(shuraym(2, 1));
+    expect(status()).not.toBe('idle');
+    ended();
+    expect(status()).toBe('idle');
+  });
+
+  it('ضبطه أثناء التشغيل يبدأ العدّ من الآن، و«بلا مؤقت» يلغيه', () => {
+    P.setTimer(15);
+    P.play(q, [idx(1, 1), idx(1, 2)]);
+    after(10 * MIN);
+    P.setTimer(30);
+    expect(P.timerLeft()).toBe(30 * MIN);
+    P.setTimer(null);
+    expect(P.playerState().timer).toBeNull();
+    after(60 * MIN);
+    ended();
+    expect(status()).not.toBe('idle');
+  });
+
+  it('الإيقاف التام وانتهاء التلاوة يلغيانه', () => {
+    P.setTimer(15);
+    P.play(q, [idx(1, 1)]);
+    P.stop();
+    expect(P.playerState().timer).toBeNull();
+    P.setTimer(15);
+    P.play(q, [idx(1, 1)]);
+    ended(); // انتهى المقدار قبل الوقت
+    expect(status()).toBe('idle');
+    expect(P.playerState().timer).toBeNull();
+  });
+
+  it('العرض المختصر لما بقي', () => {
+    expect(P.timerShort(28 * MIN)).toBe('٢٨ د');
+    expect(P.timerShort(27 * MIN + 1)).toBe('٢٨ د');
+    expect(P.timerShort(1000)).toBe('١ د');
+    expect(P.timerShort(0)).toBe('بعد الآية');
   });
 });

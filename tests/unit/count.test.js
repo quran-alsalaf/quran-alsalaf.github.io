@@ -1,7 +1,7 @@
 // صيغ العدد والمعدود (src/lib/count.js): بحسب آخر رقمين من العدد
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { AYAT, countNoun, countText, DAYS, KHATMAS, PAGES } from '../../src/lib/count.js';
+import { AYAT, countNoun, countText, DAYS, KHATMAS, MINUTES, PAGES } from '../../src/lib/count.js';
 import { toArabicDigits } from '../../src/data/quran.js';
 
 const NS = [1, 2, 3, 10, 11, 100, 103, 111];
@@ -19,6 +19,12 @@ describe('صيغ العدد', () => {
   it('الختمات والآيات', () => {
     expect(all(KHATMAS)).toEqual(['ختمة واحدة', 'ختمتين', '٣ ختمات', '١٠ ختمات', '١١ ختمة', '١٠٠ ختمة', '١٠٣ ختمات', '١١١ ختمة']);
     expect(all(AYAT)).toEqual(['آية واحدة', 'آيتين', '٣ آيات', '١٠ آيات', '١١ آية', '١٠٠ آية', '١٠٣ آيات', '١١١ آية']);
+  });
+
+  it('الدقائق (مؤقّت التلاوة): ١٥ دقيقة · ٥ دقائق، و«يتبقى دقيقتان» مرفوعًا', () => {
+    expect(all(MINUTES)).toEqual(['دقيقة واحدة', 'دقيقتين', '٣ دقائق', '١٠ دقائق', '١١ دقيقة', '١٠٠ دقيقة', '١٠٣ دقائق', '١١١ دقيقة']);
+    expect([15, 30, 45, 60, 90].map((n) => countNoun(n, MINUTES))).toEqual(Array(5).fill('دقيقة'));
+    expect(countText(2, MINUTES, toArabicDigits, true)).toBe('دقيقتان');
   });
 
   it('المثنى مرفوعًا حين يأتي العدد مستقلًا: يومان · صفحتان', () => {

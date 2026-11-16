@@ -13,7 +13,8 @@
 //     معًا (verseFiles): آيتان في ملف واحد تُقرآن مرة وتُظلَّلان معًا (state.vs)، وآية في ملفين يُقرآن متتاليين
 //   • التشغيل في الخلفية وأزرار شاشة القفل عبر Media Session
 //   • القارئ المحمَّل على الجهاز (src/lib/offline.js): تُقرأ كل آية من ملفه المحفوظ إن وُجد، وإلا بُثّت
-import { useSyncExternalStore } from 'react';
+//   • مؤقّت التلاوة (٢٠٢٦-١١-١٦): تقف التلاوة بعد مدة بالدقائق، عند نهاية الآية الجارية — setTimer()
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { basmalaFile, covers, DEFAULT_RECITER, reciterById, reciterFor, reciterTitle, riwayahOf, verseFiles } from './reciters.js';
 import { isWarsh } from './riwayah.js';
 import { hasOfflineFiles, isOfflineComplete, localAudioUrl } from './offline.js';
@@ -43,10 +44,13 @@ function readSettings() {
 // status: 'idle' | 'loading' | 'playing' | 'paused' — v: الآية الجاري تلاوتها (أول آيات المقطع)، vs: آيات المقطع كلها
 // n: يُزاد عند بدء كل مقطع (آية أو بسملة أو إعادتها)، فيُعرف به بدء الآية التالية ولو كانت هي نفسها
 // download: null أو { active, done, fileIndex, fileCount, pct } — تقدّم التنزيل المنفصل
-let state = { status: 'idle', v: null, vs: null, n: 0, settings: readSettings(), error: null, download: null, preview: null };
+// timer: null أو { minutes, left: ما بقي (ملي ثانية) عند آخر تجميد، endsAt: موعد انتهائه ما دام يعدّ (وإلا null) } — مؤقّت التلاوة
+// notice: { text, n } رسالة إعلامية للواجهة (انتهاء المؤقّت)
+let state = { status: 'idle', v: null, vs: null, n: 0, settings: readSettings(), error: null, download: null, preview: null, timer: null, notice: null };
 const listeners = new Set();
 function set(patch) {
   state = { ...state, ...patch };
+  if ('status' in patch) syncTimer();
   listeners.forEach((l) => l());
 }
 const subscribe = (l) => {
@@ -249,6 +253,69 @@ export function retarget(q, verses, cont = false) {
   return 'continued';
 }
 
+// ---------- مؤقّت التلاوة (٢٠٢٦-١١-١٦) ----------
+// يُختار من نافذة الاستماع بالدقائق. يعدّ ما دامت التلاوة تعمل (أو تتحمّل)، ويتجمّد في الإيقاف المؤقت،
+// ولا يبدأ قبل التشغيل. وإذا انتهى الوقت أكملت الآية الجارية ثم وقفت التلاوة — يُفحص عند نهاية كل
+// آية، فيصح ولو قُفلت الشاشة (المؤقّتات العادية تتأخر في الخلفية، ونهاية الآية تصل دائمًا).
+// وبعد أن يوقفها يرجع إلى «بلا مؤقت»، وكذا الإيقاف التام وانتهاء التلاوة
+export const TIMER_OPTIONS = [15, 30, 45, 60, 90];
+export const TIMER_MAX = 360;
+const counting = () => state.status === 'playing' || state.status === 'loading';
+
+// يبدأ العدّ أو يجمّده بحسب حالة التشغيل (يُستدعى عند كل تغيّر في status)
+function syncTimer() {
+  const t = state.timer;
+  if (!t) return;
+  const now = Date.now();
+  if (counting() && t.endsAt == null) state = { ...state, timer: { ...t, endsAt: now + t.left } };
+  else if (!counting() && t.endsAt != null) state = { ...state, timer: { ...t, left: Math.max(0, t.endsAt - now), endsAt: null } };
+}
+
+// ما بقي من المؤقّت بالملي ثانية (null بلا مؤقّت)
+export function timerLeft(t = state.timer, now = Date.now()) {
+  if (!t) return null;
+  return Math.max(0, t.endsAt != null ? t.endsAt - now : t.left);
+}
+
+// يضبط المؤقّت بالدقائق (أو يلغيه بـnull). أثناء التشغيل يبدأ العدّ من الآن، وقبله ينتظر التشغيل
+export function setTimer(minutes) {
+  if (!minutes) {
+    set({ timer: null });
+    return;
+  }
+  const left = minutes * 60000;
+  set({ timer: { minutes, left, endsAt: counting() ? Date.now() + left : null } });
+}
+
+// يقرأ عدد الدقائق الذي كتبه المستخدم (بالأرقام العربية أو الغربية): عدد صحيح ١–٣٦٠، وإلا null
+export function parseMinutes(text) {
+  const s = String(text ?? '')
+    .trim()
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x660))
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x6f0));
+  if (!/^\d{1,3}$/.test(s)) return null;
+  const n = Number(s);
+  return n >= 1 && n <= TIMER_MAX ? n : null;
+}
+
+// يعيد رسم المكوّن كل ثانية ما دام المؤقّت يعدّ (لعرض ما بقي منه)
+export function useTimerTick() {
+  const { timer } = usePlayer();
+  const [, tick] = useState(0);
+  const running = timer?.endsAt != null;
+  useEffect(() => {
+    if (!running) return undefined;
+    const id = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [running]);
+  return timer ? timerLeft(timer) : null;
+}
+
+// ما بقي من المؤقّت مختصرًا للعرض («٢٨ د»)، وبعد انتهاء الوقت تكمل الآية الجارية: «بعد الآية»
+export const timerShort = (ms) => (ms > 0 ? `${toArabicDigits(Math.ceil(ms / 60000))} د` : 'بعد الآية');
+
+const timerExpired = () => state.timer != null && timerLeft() <= 0;
+
 const suraList = (verses) => [...new Set(verses.map((v) => quran.verses[v].s))];
 
 // يقرأ المقطع الجاري (مسبوقًا بالبسملة إن كان أول سورته وهذه أول قراءة له)
@@ -299,6 +366,12 @@ function segmentDone() {
   if (done.basmala) return startVerse(false);
   // ملف المقطع التالي إن بقي له ملف (آية ورش في ملفين من ملفات حفص)
   if (done.part + 1 < done.unit.files.length) return playSegment({ unit: done.unit, part: done.part + 1 });
+  // انتهى مؤقّت التلاوة: تقف بعد الآية الجارية (ولو بقي من تكرارها)
+  if (timerExpired()) {
+    stop();
+    set({ notice: { text: 'انتهى مؤقّت التلاوة', n: Date.now() } });
+    return;
+  }
   const { verseRepeat, rangeRepeat } = state.settings;
   // تكرار الآية: يُقفز إلى أولها من جديد
   if (++verseRep < verseRepeat) return startVerse(false);
@@ -325,6 +398,8 @@ export function resume() {
 export function stop() {
   gen++;
   seg = null;
+  // الإيقاف التام وانتهاء التلاوة يلغيان المؤقّت (لا قبل التشغيل: المؤقّت المختار حينها ينتظر «تشغيل»)
+  if (state.status !== 'idle') state = { ...state, timer: null };
   if (audio) {
     audio.pause();
     audio.removeAttribute('src');
