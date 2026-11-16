@@ -20,13 +20,16 @@ const DEVICE_A = {
     { id: 2, name: 'وقفت هنا', color: '#2e7bc4', multi: false, verses: [{ v: 310, at: 3 }] },
     { id: 3, name: 'مراجعة', color: '#3f8f3f', multi: true, verses: [] },
   ],
-  'hq.rubAlert': 'off',
+  'hq.rubAlert': 'on',
   'hq.searchHistory': ['الصبر'],
 };
 
+// يفتح الإعدادات ثم صفحة «النسخة الاحتياطية» الفرعية (سطر واحد في الإعدادات، وفيها خياراها)
 async function openSettings(page) {
   await clickTopbar(page, 'الإعدادات');
   await expect(settings(page)).toHaveClass(/settings--open/);
+  await settings(page).getByRole('button', { name: 'النسخة الاحتياطية' }).click();
+  await expect(saveButton(page)).toBeVisible();
 }
 
 // يحفظ نسخة من الإعدادات ويرجع نص الملف واسمه
@@ -34,6 +37,24 @@ async function saveBackup(page) {
   const [download] = await Promise.all([page.waitForEvent('download'), saveButton(page).click()]);
   return { name: download.suggestedFilename(), text: await readFile(await download.path(), 'utf8') };
 }
+
+test('النسخة الاحتياطية سطر واحد في الإعدادات يفتح صفحة فيها خياراها، وسهم الرجوع يعيد إلى الإعدادات', async ({ page }) => {
+  await openApp(page, DEVICE_A);
+  await clickTopbar(page, 'الإعدادات');
+  const row = settings(page).getByRole('button', { name: 'النسخة الاحتياطية' });
+  await expect(row).toBeVisible();
+  // الخياران داخل الصفحة الفرعية لا في الإعدادات نفسها
+  await expect(saveButton(page)).not.toBeVisible();
+  await expect(restoreButton(page)).not.toBeVisible();
+  await row.click();
+  const sub = settings(page).locator('.settings__page--in');
+  await expect(sub.getByRole('heading', { name: 'النسخة الاحتياطية' })).toBeVisible();
+  await expect(sub.getByRole('button', { name: /حفظ نسخة احتياطية/ })).toBeVisible();
+  await expect(sub.getByRole('button', { name: 'استعادة من نسخة' })).toBeVisible();
+  await sub.getByRole('button', { name: 'رجوع' }).click();
+  await expect(row).toBeVisible();
+  await expect(saveButton(page)).not.toBeVisible();
+});
 
 test('حفظ نسخة: ملف فيه البيانات، وسطر «آخر نسخة» يتحدّث', async ({ page }) => {
   await openApp(page, DEVICE_A);
@@ -89,7 +110,7 @@ test('الاستعادة على جهاز آخر: الملخّص ثم التأك�
 
   expect(await stored(page, 'hq.notes')).toEqual({ 300: 'تدبّر هذه الآية' });
   expect((await stored(page, 'hq.bookmarks')).map((b) => b.name)).toEqual(['أخطائي', 'وقفت هنا', 'مراجعة']);
-  expect(await page.evaluate(() => localStorage.getItem('hq.rubAlert'))).toBe('off');
+  expect(await page.evaluate(() => localStorage.getItem('hq.rubAlert'))).toBe('on');
   // سجل البحث خاص بالجهاز: يبقى
   expect(await stored(page, 'hq.searchHistory')).toEqual(['الرحمن']);
   // الموضع والمظهر

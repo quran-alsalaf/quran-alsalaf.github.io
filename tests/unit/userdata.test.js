@@ -263,8 +263,11 @@ describe('إعدادات أخرى', () => {
     expect(document.documentElement.getAttribute('data-weeks')).toBe('on');
   });
 
-  it('التنبيه ببداية الربع مفعَّل افتراضيًّا، وإلغاؤه يُحفظ', () => {
+  it('التنبيه ببداية الربع ملغى افتراضيًّا، وتفعيله وإلغاؤه يُحفظان', () => {
+    expect(readRubAlert()).toBe(false);
+    setRubAlert(true);
     expect(readRubAlert()).toBe(true);
+    expect(localStorage.getItem('hq.rubAlert')).toBe('on');
     setRubAlert(false);
     expect(readRubAlert()).toBe(false);
     expect(localStorage.getItem('hq.rubAlert')).toBe('off');

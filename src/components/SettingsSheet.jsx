@@ -14,8 +14,9 @@ import { RIWAYAT, setRiwayah, useRiwayah } from '../lib/riwayah.js';
   والعلامات)، واليسار للإعدادات والميزات.
   تُغلق بزرّ ✕، وبالنقر خارجها، وبسحبها نحو اليسار (إصبعًا أو فأرة)، وبـEsc، وبزرّ الرجوع في أندرويد
   (فتحها يضيف خطوة إلى سجل المتصفح — App.jsx).
-  «عن التطبيق» و«وضع القراءة» صفحتان فرعيتان داخل اللوحة نفسها بسهم رجوع (SubPage أدناه)؛ وفي صفحة
+  «عن التطبيق» و«وضع القراءة» و«النسخة الاحتياطية» صفحات فرعية داخل اللوحة نفسها بسهم رجوع (SubPage أدناه)؛ وفي صفحة
   «وضع القراءة» شرحه وزرّ يبدأه (٢٠٢٦-١١-١٤، كان السطر يبدأ الوضع مباشرة).
+  و«النسخة الاحتياطية» (٢٠٢٦-١١-١٦) سطر واحد يفتح صفحة فرعية فيها خياراها: حفظ نسخة، واستعادة من نسخة.
 
   إضافة إعداد أو ميزة جديدة: سطر في قسمه بأحد الأسطر الجاهزة أدناه
   (SegmentRow للاختيار من خيارات، SwatchRow للاختيار من ألوان، SwitchRow للتشغيل والإيقاف،
@@ -102,11 +103,8 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
               <SwitchRow label="التنبيه ببداية الربع" checked={rubAlert} onChange={toggleRubAlert} />
             </Section>
 
-            <Section title="النسخة الاحتياطية">
-              <BackupRows />
-            </Section>
-
             <Section>
+              <LinkRow label="النسخة الاحتياطية" onClick={() => onPage('backup')} />
               <LinkRow label="عن التطبيق" onClick={() => onPage('about')} />
             </Section>
           </div>
@@ -114,6 +112,9 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
 
         <SubPage title="وضع القراءة" shown={page === 'reading'} onBack={() => onPage('main')} onClose={onClose}>
           <ReadingInfo onStart={onStartReading} />
+        </SubPage>
+        <SubPage title="النسخة الاحتياطية" shown={page === 'backup'} onBack={() => onPage('main')} onClose={onClose}>
+          <BackupRows />
         </SubPage>
         <SubPage title="عن التطبيق" shown={page === 'about'} onBack={() => onPage('main')} onClose={onClose}>
           <AboutContent />

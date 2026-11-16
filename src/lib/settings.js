@@ -27,15 +27,15 @@ export function setWeeksTint(on) {
   applyWeeksTint(on);
 }
 
-// التنبيه ببداية الربع (٢٠٢٦-١١-١٤): مفعَّل افتراضيًّا، ويُلغيه المستخدم من الإعدادات. يُقرأ عند كل
+// التنبيه ببداية الربع (٢٠٢٦-١١-١٤): ملغى افتراضيًّا (٢٠٢٦-١١-١٦، كان مفعَّلًا)، ويُفعّله المستخدم من الإعدادات. يُقرأ عند كل
 // وصول إلى صفحة (useRubAlert في src/lib/rubs.js)، فيسري تغييره فورًا في المصحف وصفحة الورد.
 const RUB_ALERT_KEY = 'hq.rubAlert';
 // احتياط لتعذّر التخزين: آخر اختيار في هذه الجلسة
-let rubAlertSession = true;
+let rubAlertSession = false;
 
 export function readRubAlert() {
   try {
-    return localStorage.getItem(RUB_ALERT_KEY) !== 'off';
+    return localStorage.getItem(RUB_ALERT_KEY) === 'on';
   } catch {
     return rubAlertSession;
   }
