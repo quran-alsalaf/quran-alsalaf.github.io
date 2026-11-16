@@ -15,7 +15,7 @@ import { deliverBackup } from '../lib/backupFile.js';
 import { useLayer } from '../lib/layers.js';
 
 /*
-  أسطر قسم «النسخة الاحتياطية» في الإعدادات (٢٠٢٦-١١-١٦):
+  صفحة «النسخة الاحتياطية» الفرعية في الإعدادات (٢٠٢٦-١١-١٦؛ يفتحها سطر واحد في الإعدادات، وفيها خياران):
     • «حفظ نسخة احتياطية» — وتحته سطر هادئ بتاريخ آخر نسخة على هذا الجهاز (بلا رسائل منبثقة).
     • «استعادة من نسخة» — يختار المستخدم الملف، فيرى ملخّص ما فيه وتنبيه الاستبدال الكامل، ثم يؤكّد؛
       فتُستبدل البيانات ويُعاد تحميل التطبيق على موضع القراءة المحفوظ في النسخة.
@@ -68,21 +68,24 @@ export default function BackupRows() {
 
   return (
     <>
-      <button type="button" className="settings__row settings__link" onClick={save} disabled={busy}>
-        <span className="settings__label">
-          حفظ نسخة احتياطية
-          <small className="backup__last">{last}</small>
-        </span>
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="settings__icon">
-          <path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 19.5h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-      <button type="button" className="settings__row settings__link" onClick={() => input.current?.click()}>
-        <span className="settings__label">استعادة من نسخة</span>
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="settings__icon">
-          <path d="M12 15V4m-4.5 4.5L12 4l4.5 4.5M5 19.5h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
+      <p className="backup__lead">تحفظ علاماتك وملاحظاتك وختماتك وإعداداتك في ملف واحد، تحتفظ به أو تنقله إلى جهاز آخر وتستعيدها منه.</p>
+      <div className="settings__group">
+        <button type="button" className="settings__row settings__link" onClick={save} disabled={busy}>
+          <span className="settings__label">
+            حفظ نسخة احتياطية
+            <small className="backup__last">{last}</small>
+          </span>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="settings__icon">
+            <path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 19.5h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <button type="button" className="settings__row settings__link" onClick={() => input.current?.click()}>
+          <span className="settings__label">استعادة من نسخة</span>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="settings__icon">
+            <path d="M12 15V4m-4.5 4.5L12 4l4.5 4.5M5 19.5h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
       <input ref={input} type="file" accept=".json,application/json" hidden onChange={onFile} aria-label="ملف النسخة الاحتياطية" />
       {ask && createPortal(<RestoreDialog ask={ask} onClose={() => setAsk(null)} onConfirm={confirm} />, document.body)}
     </>

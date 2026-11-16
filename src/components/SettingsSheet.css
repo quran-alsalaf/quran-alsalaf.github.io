@@ -356,6 +356,14 @@
   opacity: 0.6;
 }
 
+/* صفحة «النسخة الاحتياطية»: سطر شرح قصير فوق خياريها */
+.backup__lead {
+  margin: 8px 0 4px;
+  font-size: var(--text-sm);
+  line-height: 1.9;
+  color: var(--ink-muted);
+}
+
 /* آخر نسخة: سطر هادئ تحت «حفظ نسخة احتياطية» */
 .backup__last {
   margin-top: 2px;

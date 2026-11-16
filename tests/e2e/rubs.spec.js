@@ -17,7 +17,7 @@ async function flipTo(page, p) {
 }
 
 test('الوصول إلى صفحة فيها ۞: تتلوّن العلامة الأصلية بلون التطبيق وحولها تظليل صغير وتظهر «بداية ربع الحزب» ثم يزول الوميض', async ({ page }) => {
-  await openApp(page, { 'hq.page': '3' });
+  await openApp(page, { 'hq.rubAlert': 'on', 'hq.page': '3' });
   await expect(toast(page)).toHaveCount(0);
   const v = idx(2, 26); // ۞ إن الله لا يستحيي — الربع الثاني من الحزب الأول، صفحة ٥
   await flipTo(page, 5);
@@ -57,7 +57,7 @@ test('الوصول إلى صفحة فيها ۞: تتلوّن العلامة ال
 });
 
 test('الربع الذي يبدأ بأول سورة: يومض إطار اسمها، والرسالة «بداية نصف الحزب»', async ({ page }) => {
-  await openApp(page, { 'hq.page': '75' });
+  await openApp(page, { 'hq.rubAlert': 'on', 'hq.page': '75' });
   await flipTo(page, 77); // أول النساء: الربع ٣١ (نصف الحزب ٨)
   await expect(toast(page)).toHaveText('بداية نصف الحزب');
   await expect(page.locator('.sheet--current .line--rubflash')).toHaveAttribute('aria-label', 'سورة النساء');
@@ -66,15 +66,26 @@ test('الربع الذي يبدأ بأول سورة: يومض إطار اسمه
 
 test('بداية الحزب: الرسالة «بداية الحزب»، وصفحة بلا بداية ربع لا تنبيه فيها', async ({ page }, testInfo) => {
   // الحزب ٢ يبدأ بـ«۞ أفتطمعون» (البقرة ٧٥) في صفحة ١١؛ والصفحة ١٠ بلا بداية ربع
-  await openApp(page, { 'hq.page': isLaptop(testInfo) ? '9' : '10' });
+  await openApp(page, { 'hq.rubAlert': 'on', 'hq.page': isLaptop(testInfo) ? '9' : '10' });
   await expect(toast(page)).toHaveCount(0);
   await flipTo(page, 11);
   await expect(toast(page)).toHaveText('بداية الحزب');
   await expect(page.locator(`.sheet--current .w[data-v="${idx(2, 75)}"] .w__rub--flash`)).toHaveCount(1);
 });
 
-test('إلغاء التنبيه ببداية الربع من الإعدادات: لا رسالة ولا وميض، ويُحفظ، وإعادة تفعيله تعيده', async ({ page }, testInfo) => {
+test('التنبيه ببداية الربع ملغى افتراضيًّا: لا رسالة ولا وميض، ومفتاحه في الإعدادات غير مفعَّل', async ({ page }, testInfo) => {
   await openApp(page, { 'hq.page': isLaptop(testInfo) ? '9' : '10' });
+  // الحزب ٢ في صفحة ١١
+  await flipTo(page, 11);
+  await page.waitForTimeout(500);
+  await expect(toast(page)).toHaveCount(0);
+  await expect(page.locator('.w__rub--flash, .line--rubflash')).toHaveCount(0);
+  await clickTopbar(page, 'الإعدادات');
+  await expect(page.locator('.settings').getByRole('switch', { name: 'التنبيه ببداية الربع' })).toHaveAttribute('aria-checked', 'false');
+});
+
+test('إلغاء التنبيه ببداية الربع من الإعدادات بعد تفعيله: لا رسالة ولا وميض، ويُحفظ، وإعادة تفعيله تعيده', async ({ page }, testInfo) => {
+  await openApp(page, { 'hq.rubAlert': 'on', 'hq.page': isLaptop(testInfo) ? '9' : '10' });
   await clickTopbar(page, 'الإعدادات');
   const sw = () => page.locator('.settings').getByRole('switch', { name: 'التنبيه ببداية الربع' });
   await expect(sw()).toHaveAttribute('aria-checked', 'true');
@@ -106,7 +117,7 @@ test('إلغاء التنبيه ببداية الربع من الإعدادات:
 });
 
 test('لا تنبيه عند فتح التطبيق على صفحة فيها بداية ربع، ولا عند الرجوع إليها بلا تقليب', async ({ page }) => {
-  await openApp(page, { 'hq.page': '5' });
+  await openApp(page, { 'hq.rubAlert': 'on', 'hq.page': '5' });
   await page.waitForTimeout(500);
   await expect(toast(page)).toHaveCount(0);
   await expect(page.locator('.w__rub--flash')).toHaveCount(0);
@@ -138,7 +149,7 @@ test('تبويب السور: شريط «السور · الأجزاء · الأر
 });
 
 test('الأرباع: ٢٤٠ ربعا تحت عناوين الأجزاء بأول كلماتها، والضغط ينقل إليه وينبّه', async ({ page }) => {
-  await openApp(page, { 'hq.page': '300' });
+  await openApp(page, { 'hq.rubAlert': 'on', 'hq.page': '300' });
   await clickTopbar(page, 'القائمة');
   await side(page).locator('.sidemenu__index').getByRole('radio', { name: 'الأرباع' }).click();
   await expect(side(page).locator('.sidemenu__rubs > li')).toHaveCount(240);
@@ -162,6 +173,7 @@ test('الأرباع: ٢٤٠ ربعا تحت عناوين الأجزاء بأو�
 test('صفحة الورد: فتحها على صفحة فيها بداية ربع ينبّه به', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-11-12T10:00:00'));
   await openApp(page, {
+    'hq.rubAlert': 'on',
     'hq.khatmas': [{ type: 'wird', created: '2026-11-12', mode: 'days', value: 30, from: 1, planStart: '2026-11-12', done: 0, doneBefore: 0, lastDone: null, finished: null }],
   });
   await clickTopbar(page, 'القائمة');
