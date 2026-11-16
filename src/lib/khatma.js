@@ -11,7 +11,7 @@ import { FIRST_PAGE, LAST_PAGE } from './position.js';
 import { countText, DAYS, PAGES } from './count.js';
 
 const KEY = 'hq.khatmas';
-const DONE_KEY = 'hq.khatmasDone'; // عدد الختمات المتمة: { wird: n }
+const DONE_KEY = 'hq.khatmasDone'; // عدد الختمات المتمة لكل نوع: { wird: n, hifz: n }
 const EVENT = 'hq-khatma';
 
 export const TOTAL_PAGES = LAST_PAGE - FIRST_PAGE + 1;
@@ -100,12 +100,15 @@ function write(key, value) {
 
 export const readKhatmas = () => read(KEY, []);
 export const readWird = () => readKhatmas().find((k) => k.type === 'wird') ?? null;
-export const readDoneCount = () => read(DONE_KEY, {}).wird ?? 0;
+export const readDoneCount = (type = 'wird') => read(DONE_KEY, {})[type] ?? 0;
+export const bumpDoneCount = (type) => write(DONE_KEY, { ...read(DONE_KEY, {}), [type]: readDoneCount(type) + 1 });
 
-function saveWird(k) {
-  const others = readKhatmas().filter((x) => x.type !== 'wird');
+// حفظ ختمة من نوع (أو حذفها بـnull) دون مساس بختمات الأنواع الأخرى (ختمة الحفظ: src/lib/hifz.js)
+export function saveKhatma(type, k) {
+  const others = readKhatmas().filter((x) => x.type !== type);
   write(KEY, k ? [...others, k] : others);
 }
+const saveWird = (k) => saveKhatma('wird', k);
 
 /*
   ختمة الورد المحفوظة:
@@ -149,7 +152,7 @@ export function completeWird(today = dayKey()) {
   const done = k.done + 1;
   const finished = done >= wirds.length;
   saveWird({ ...k, done, lastDone: today, finished: finished ? today : null });
-  if (finished) write(DONE_KEY, { ...read(DONE_KEY, {}), wird: readDoneCount() + 1 });
+  if (finished) bumpDoneCount('wird');
   return finished ? 'finished' : 'next';
 }
 
@@ -194,7 +197,15 @@ export const daysText = (n, digits, nominative) => countText(n, DAYS, digits, no
 export const pagesText = (n, digits, nominative) => countText(n, PAGES, digits, nominative);
 
 // تتحدث عند أي تغيير في الختمة
-const snapshot = () => ({ wird: readWird(), doneCount: readDoneCount() });
+const snapshot = () => {
+  const list = readKhatmas();
+  return {
+    wird: list.find((k) => k.type === 'wird') ?? null,
+    hifz: list.find((k) => k.type === 'hifz') ?? null,
+    doneCount: readDoneCount('wird'),
+    hifzDoneCount: readDoneCount('hifz'),
+  };
+};
 export function useKhatma() {
   const [data, setData] = useState(snapshot);
   useEffect(() => {

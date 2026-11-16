@@ -37,12 +37,19 @@ export function lineGlyphs(quran, line, glyphs, start = 0) {
 
 const shownCount = (state, page) => state?.[page] ?? 0;
 
+// التسميع على آيات معيّنة (ختمة الحفظ، ٢٠٢٦-١١-١٦: ورد اليوم والمراجعتان): scope مجموعة آياتها، فلا يُخفى
+// ولا يُعدّ إلا كلماتها، وبقية آيات الصفحة ظاهرة كما هي. وبلا scope فالكلمات كلها (وضع التسميع العام)
+export const scopedWords = (quran, page, scope) => {
+  const words = pageWords(quran, page);
+  return scope ? words.filter((v) => scope.has(v)) : words;
+};
+
 // الكشف التالي في الصفحات الظاهرة (صفحة، أو صفحتا الزوج يمنى ثم يسرى): في أول صفحة لم تُكشف كلها،
 // من أول كلمة مخفية حتى max كلمة لا يتجاوز آيتها (Infinity: بقية الآية). والآية الممتدة إلى الصفحة
 // التالية تنتهي هنا بآخر الصفحة. النتيجة: الحال الجديدة، أو null إن كانت الصفحات كلها مكشوفة
-export function reveal(quran, pages, state, max) {
+export function reveal(quran, pages, state, max, scope = null) {
   for (const p of pages) {
-    const words = pageWords(quran, p);
+    const words = scopedWords(quran, p, scope);
     const n = shownCount(state, p);
     if (n >= words.length) continue;
     const v = words[n];
@@ -52,6 +59,10 @@ export function reveal(quran, pages, state, max) {
   }
   return null;
 }
+
+// هل كُشفت كلمات الصفحات كلها (في نطاق scope)؟
+export const allRevealed = (quran, pages, state, scope = null) =>
+  pages.every((p) => shownCount(state, p) >= scopedWords(quran, p, scope).length);
 
 // لمس كلمة مكشوفة (ترتيبها wi في صفحتها page): تُخفى هي وما بعدها في الصفحات الظاهرة. فإن كانت في
 // اليمنى من الزوج أُخفيت اليسرى كلها معها. ولمس كلمة مخفية لا يغيّر شيئًا (النتيجة null)
@@ -63,10 +74,10 @@ export function hideFrom(state, pages, page, wi) {
 }
 
 // آيات الصفحات الظاهرة التي كُشف منها شيء، الأحدث كشفًا أولًا (الآية الجارية ثم ما قبلها)
-export function revealedVerses(quran, pages, state) {
+export function revealedVerses(quran, pages, state, scope = null) {
   const seen = [];
   for (const p of pages) {
-    const words = pageWords(quran, p).slice(0, shownCount(state, p));
+    const words = scopedWords(quran, p, scope).slice(0, shownCount(state, p));
     for (const v of words) if (seen.at(-1) !== v) seen.push(v);
   }
   return [...new Set(seen.reverse())];

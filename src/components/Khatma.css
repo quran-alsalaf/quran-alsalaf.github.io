@@ -393,3 +393,216 @@
     background: var(--surface-2);
   }
 }
+
+/* ===== ختمة الحفظ (٢٠٢٦-١١-١٦، HifzTab.jsx) ===== */
+.khatma-extra {
+  padding: 12px 12px 0;
+}
+
+.khatma-extra--add {
+  display: grid;
+  padding-bottom: 16px;
+}
+
+.khatma__add {
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  color: var(--accent-text);
+}
+
+.hifz__field {
+  display: grid;
+  gap: 8px;
+}
+
+.hifz__label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.hifz__range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.hifz__pick {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  text-align: start;
+  color: var(--ink);
+}
+
+.hifz__pick span {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.hifz__pick strong {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.hifz__error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+
+.hifz__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+}
+
+.hifz__check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.hifz__note {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  font-size: var(--text-sm);
+  line-height: 1.7;
+}
+
+.hifz__note p {
+  margin: 0;
+}
+
+.hifz__note--warn {
+  background: var(--surface-2);
+  color: var(--danger);
+}
+
+.hifz__noteActions {
+  display: flex;
+  gap: 14px;
+}
+
+.hifz__steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hifz__step {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.hifz__num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.hifz__step--done .hifz__num {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.hifz__body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.hifz__detail {
+  font-size: var(--text-base);
+}
+
+.hifz__body .khatma__actions {
+  margin-top: 4px;
+}
+
+/* صفحة ختمة الحفظ (HifzPage.jsx): ذيلها أدوات الاستماع، أو شريط التسميع، أو زرّ الإتمام */
+.hpage__foot {
+  padding-inline: 10px;
+}
+
+.hpage__learn {
+  display: grid;
+  gap: 8px;
+  width: min(560px, 100%);
+}
+
+.hpage__repeats {
+  display: grid;
+  gap: 6px;
+}
+
+.hpage__repeat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs);
+}
+
+.hpage__repeat span {
+  flex: none;
+  width: 6.5em;
+  color: var(--ink-muted);
+}
+
+.hpage__repeat button {
+  min-width: 40px;
+  min-height: 30px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: var(--text-xs);
+}
+
+.hpage__repeat button[aria-checked='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.hpage .recitebar--inline {
+  max-width: 560px;
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+  .hpage__repeats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hpage__learn .khatma__btn {
+    min-height: 34px;
+  }
+}
+
+/* منتقي البداية والنهاية فوق القائمة اليمنى (يُفتح منها) */
+.hifz-picklayer > .rpick {
+  z-index: 60;
+}
