@@ -55,6 +55,7 @@ const LONG_PRESS_MS = 450;
 // (صفحات المحتوى لا تُفتح بالسحب منذ ٢٠٢٦-١١-١٠: بزرّها في الشريط السفلي وحده)
 // onLongPress(آية، مستطيل كلمتها): ضغط مطوّل على آية
 // goto { page, n }: انتقال إلى صفحة بطلب من خارج القارئ (كاختيار آية من قائمة النطاق)
+//   أو { turn: ‎+1 | ‎-1, n }: قلب الصفحة (أو الزوج) إلى التالية أو السابقة بحركة القلب نفسها (وضع التسميع)
 // marks: إشارات بيانات المستخدم على الآيات (MushafPage)
 // onSpread(bool): يُبلَّغ به هل تُعرض الصفحتان معًا
 // arrows: إظهار سهمي التقليب على جانبي الزوج (عند تحريك الفأرة) — في عرض الصفحتين وحده
@@ -62,7 +63,9 @@ const LONG_PRESS_MS = 450;
 //   bounds [أول صفحة، آخر صفحة]: لا يُقلَّب خارجها، وفي عرض الصفحتين تبهت صفحة الزوج الواقعة خارجها
 //   startPage: الصفحة التي يُفتح عليها · persist=false: لا يُقرأ آخر موضع ولا يُحفظ
 //   layer: مدخل طبقته (useLayer)، فيستقبل مفاتيح التقليب ما دامت طبقته في الأعلى
-export default function Reader({ quran, onTap, onColumn, onPage, onSpread, onLongPress, goto, marks, arrows, bounds, startPage, persist = true, layer }) {
+// onWordTap(صفحة، ترتيب الكلمة): لمسة على كلمة مكشوفة في وضع التسميع (src/lib/recite.js)؛ ومعه لا تُبلَّغ
+// اللمسة onTap، ولا ضغط مطوّل (لا يُعطى onLongPress)
+export default function Reader({ quran, onTap, onWordTap, onColumn, onPage, onSpread, onLongPress, goto, marks, arrows, bounds, startPage, persist = true, layer }) {
   const MIN = bounds?.[0] ?? FIRST_PAGE;
   const MAX = bounds?.[1] ?? LAST_PAGE;
   const [page, setPage] = useState(() => startPage ?? readLastPage());
@@ -79,6 +82,10 @@ export default function Reader({ quran, onTap, onColumn, onPage, onSpread, onLon
 
   useEffect(() => {
     if (goto?.page) setPage(goto.page);
+  }, [goto]);
+  const turnRef = useRef(null);
+  useEffect(() => {
+    if (goto?.turn) turnRef.current?.(goto.turn);
   }, [goto]);
 
   const viewRef = useRef(null);
@@ -247,6 +254,12 @@ export default function Reader({ quran, onTap, onColumn, onPage, onSpread, onLon
     if (d.longPressed) return;
     // لم يتحرك الإصبع (أقل من ٨ بكسل) ورُفع سريعًا: لمسة لا سحبة
     if (!d.axis && e.type === 'pointerup' && e.timeStamp - d.t0 < TAP_MS) {
+      if (onWordTap) {
+        const word = e.target.closest?.('.w[data-wi]:not(.w--hidden)');
+        const sheet = word?.closest('.mushaf-page');
+        if (word && sheet) onWordTap(+sheet.dataset.page, +word.dataset.wi);
+        return;
+      }
       onTap?.(e.pointerType, e.clientX, e.clientY);
       return;
     }
@@ -271,6 +284,11 @@ export default function Reader({ quran, onTap, onColumn, onPage, onSpread, onLon
   // المصحف مغطّى: بطبقة فوقه، أو (لمصحف داخل طبقة) بطبقة فوق طبقته
   const covered = () => (layer ? !isTopLayer(layer) : hasOpenLayer());
   api.current = { settle, canTurn, moveTrack, completeNow, covered, w: box?.w ?? 0 };
+  turnRef.current = (dir) => {
+    if (drag.current) return;
+    if (animating.current) completeNow();
+    settle(dir);
+  };
   useEffect(() => {
     const onKey = (e) => {
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || api.current.covered()) return;

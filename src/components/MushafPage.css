@@ -240,3 +240,13 @@
   color: var(--ink-muted);
   padding-inline: 12%;
 }
+
+/* وضع التسميع (٢٠٢٦-١١-١٦، src/lib/recite.js): الكلمة المخفية يبقى مكانها فارغًا فيبقى السطر بطوله ورؤوس
+   الآيات في مواضعها، فيُعرف طول كل آية ولا يُقرأ نصّها. ولمس الكلمة المكشوفة يخفيها وما بعدها */
+.w--hidden {
+  visibility: hidden;
+}
+
+.mushaf-page--recite .w[data-wi]:not(.w--hidden) {
+  cursor: pointer;
+}

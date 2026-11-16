@@ -20,12 +20,14 @@ import { toArabicDigits } from './data/quran.js';
 import { pageVerses, verseLabel } from './lib/study.js';
 import { saveContentRange, saveRange, useUserData } from './lib/userdata.js';
 import { spreadStart } from './lib/layout.js';
-import { hasOpenLayer } from './lib/layers.js';
 import { useRubAlert } from './lib/rubs.js';
 import { onOfflineNotice, verifyDownloads } from './lib/offline.js';
 import { verifyTafsirDownloads } from './lib/tafsirDownload.js';
 import { readRiwayah, setRiwayah, useRiwayah } from './lib/riwayah.js';
 import RiwayahChooser from './components/RiwayahChooser.jsx';
+import { MistakesPicker, ReciteBar } from './components/Recite.jsx';
+import { hideFrom, reveal } from './lib/recite.js';
+import { hasMouse, hasOpenLayer } from './lib/layers.js';
 import { hafsList, hafsRange, shownBookmarks, shownNotes, shownRange } from './lib/verseMap.js';
 import './App.css';
 
@@ -70,6 +72,11 @@ export default function App() {
   const [studyOpen, setStudyOpen] = useState(false);
   // وضع القراءة (٢٠٢٦-١٠-١٨): تدفّق رأسي بتمرير تلقائي. لا يُحفظ بين الجلسات: يفتح التطبيق بالعادي دائمًا
   const [reading, setReading] = useState(false);
+  // التسميع بالكشف (٢٠٢٦-١١-١٦، src/lib/recite.js): null خارجه، وفيه حال الكشف { صفحة: عدد كلماتها المكشوفة }.
+  // لا يُحفظ: الخروج منه يُنسي ما كُشف. وقائمة «أخطائي» فوقه
+  const [recite, setRecite] = useState(null);
+  const reciting = recite !== null;
+  const [mistakesOpen, setMistakesOpen] = useState(false);
   const [page, setPage] = useState(readLastPage);
   // الصفحتان معًا (الشاشات الكبيرة): يبلّغ به القارئ بحسب المساحة المتاحة
   const [spread, setSpread] = useState(false);
@@ -226,7 +233,7 @@ export default function App() {
   const rubFlash = useRubAlert({
     quran,
     pages: shownPages,
-    enabled: !!quran && splashDone && !reading && !studyOpen && !khatmaOpen,
+    enabled: !!quran && splashDone && !reading && !reciting && !studyOpen && !khatmaOpen,
     onToast: showToast,
   });
   // الملاحظات والعلامات بترقيم المصحف المعروض (في ورش: كل آية حفص ⇐ ما يقابلها). والآيات الجارية تلاوتها:
@@ -259,6 +266,36 @@ export default function App() {
     setReading(false);
   };
   const readingMarks = useMemo(() => ({ ...marks, range: null, playing: null, rubFlash: null }), [marks]);
+
+  // التسميع: يدخل من صفحته في الإعدادات على الصفحة الظاهرة، ويُوقَف الصوت (فلا يُسمع ما يُسمَّع ولا يقلّب
+  // المصحف وحده). وفيه لا تُظلَّل الآيات بالعلامات ولا غيرها، ولا إخفات لمقدار المحتوى
+  const startRecite = () => {
+    closeSettings();
+    setChromeOpen(false);
+    if (player.status !== 'idle') stop();
+    setReading(false);
+    setRecite({});
+  };
+  const exitRecite = () => {
+    setMistakesOpen(false);
+    setRecite(null);
+  };
+  const reciteMarks = useMemo(
+    () => ({ ...marks, bookmarks: null, range: null, selected: null, playing: null, flash: null, rubFlash: null, recite }),
+    [marks, recite]
+  );
+  // «كشف كلمتين» (max = 2) و«كشف الآية» (بقيتها): في الصفحة الظاهرة، أو في الزوج اليمنى ثم اليسرى.
+  // وإن كُشفت كلها قُلّبت إلى التالية (بطلب صاحب المشروع)، فتظهر مخفية ويكشفها الضغط التالي
+  const revealNext = (max) => {
+    const next = reveal(quran, shownPages, recite, max);
+    if (next) setRecite(next);
+    else if (shownPages.at(-1) >= 604) showToast('بلغت آخر المصحف');
+    else setGotoPage({ turn: 1, n: Date.now() });
+  };
+  // لمس كلمة مكشوفة: تُخفى هي وما بعدها في الصفحة الظاهرة (وفي الزوج: واليسرى إن كانت في اليمنى)
+  const onWordTap = useCallback((p, wi) => {
+    setRecite((s) => (s ? hideFrom(s, shownRef.current, p, wi) ?? s : s));
+  }, []);
   // صفحة الورد تنبّه ببداية الربع وحدها (KhatmaPage)
   const khatmaMarks = useMemo(() => ({ ...marks, range: null, playing: null, flash: null, rubFlash: null }), [marks]);
 
@@ -422,7 +459,8 @@ export default function App() {
   const quiet = useRef(null); // موضع نقرة أخفت الأزرار: لا تعود بحركة يسيرة بعدها
   const overChrome = useRef(false);
   const readingRef = useRef(false);
-  readingRef.current = reading;
+  // وفي التسميع كوضع القراءة: لا تظهر الأزرار العائمة بالفأرة ولا بلوحة المفاتيح
+  readingRef.current = reading || reciting;
   const scheduleHide = useCallback(() => {
     clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
@@ -586,7 +624,7 @@ export default function App() {
   // شاشة اختيار الرواية عند أول فتح (بعد الافتتاح، وما لم تُختر رواية)
   const choosing = splashDone && !!hafs && riwayah === null;
   const covered =
-    studyOpen || settingsOpen || sideMenuOpen || searchOpen || !!pressed || !!picking || listenOpen || khatmaOpen || choosing;
+    studyOpen || settingsOpen || sideMenuOpen || searchOpen || !!pressed || !!picking || listenOpen || khatmaOpen || choosing || mistakesOpen;
   const chromeShown = chromeOpen && !covered;
 
   return (
@@ -594,7 +632,7 @@ export default function App() {
       {!splashDone && <SplashScreen leaving={splashLeaving} />}
 
       <div
-        className={`app${spread ? ' app--spread' : ''}`}
+        className={`app${spread ? ' app--spread' : ''}${reciting ? ' app--recite' : ''}`}
         style={column ? { '--col-w': `${column}px` } : undefined}
         inert={covered ? '' : undefined}
       >
@@ -643,14 +681,15 @@ export default function App() {
             <Reader
               key={warsh ? 'warsh' : 'hafs'}
               quran={quran}
-              onTap={onReaderTap}
+              onTap={reciting ? undefined : onReaderTap}
+              onWordTap={reciting ? onWordTap : undefined}
               onColumn={setColumn}
               onPage={setPage}
               onSpread={setSpread}
-              arrows={chromeShown && mouseUi}
-              onLongPress={onLongPress}
+              arrows={reciting ? hasMouse() : chromeShown && mouseUi}
+              onLongPress={reciting ? undefined : onLongPress}
               goto={gotoPage}
-              marks={marks}
+              marks={reciting ? reciteMarks : marks}
             />
           )}
           {failed && <LoadError />}
@@ -662,7 +701,15 @@ export default function App() {
             وهما مخفيتان أصلًا (بطلب صاحب المشروع)، تنزلقان من الأسفل فوق الصفحة عند اللمس أو
             تحريك الفأرة، فلا يتغير حجم خط المصحف بظهورهما. وفي عرض الصفحتين يقع كل زرّ تحت
             صفحته بعرض سطرها كاملًا (App.css) */}
-        {!reading && (
+        {reciting && quran && (
+          <ReciteBar
+            onWords={() => revealNext(2)}
+            onVerse={() => revealNext(Infinity)}
+            onMistakes={() => setMistakesOpen(true)}
+            onExit={exitRecite}
+          />
+        )}
+        {!reading && !reciting && (
           <footer
             className={`dock${chromeShown ? ' dock--open' : ''}`}
             aria-hidden={!chromeShown}
@@ -727,6 +774,7 @@ export default function App() {
         onPage={showSettingsPage}
         onClose={closeSettings}
         onStartReading={startReading}
+        onStartRecite={startRecite}
       />
       {choosing && <RiwayahChooser />}
       {quran && (
@@ -802,6 +850,9 @@ export default function App() {
           onPick={pickVerse}
           onClose={() => setPicking(null)}
         />
+      )}
+      {quran && reciting && mistakesOpen && (
+        <MistakesPicker quran={quran} pages={shownPages} state={recite} onClose={() => setMistakesOpen(false)} onToast={showToast} />
       )}
       {toast && (
         <div key={toast.n} className="toast" role="status">

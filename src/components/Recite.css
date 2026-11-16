@@ -1,0 +1,226 @@
+/* التسميع بالكشف (Recite.jsx). الشريط السفلي في مساحة محجوزة له تحت المصحف (.app--recite في App.css)،
+   فلا يغطي آخر سطر من الصفحة */
+.recitebar {
+  position: absolute;
+  inset-inline: 8px;
+  bottom: calc(8px + var(--safe-bottom));
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 560px;
+  height: var(--recite-bar);
+  margin-inline: auto;
+  padding: 5px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.14), 0 1px 3px rgb(0 0 0 / 0.08);
+  color: #000;
+}
+
+:root[data-theme='dark'] .recitebar {
+  color: #fff;
+}
+
+/* زرّا الكشف: الأكبر، بلون التطبيق */
+.recitebar__main {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  padding-inline: 6px;
+  border-radius: calc(var(--r-md) - 4px);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.recitebar__main:active {
+  filter: brightness(0.92);
+}
+
+.recitebar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: none;
+  height: 100%;
+  border-radius: calc(var(--r-md) - 4px);
+  color: inherit;
+}
+
+.recitebar__btn:active {
+  background: var(--surface-2);
+}
+
+.recitebar__btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.recitebar__mistakes {
+  padding-inline: 8px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.recitebar__exit {
+  width: 40px;
+}
+
+@media (max-width: 340px) {
+  .recitebar__mistakes span {
+    display: none;
+  }
+}
+
+/* ===== قائمة «أخطائي» ===== */
+.mistakes {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+}
+
+.mistakes__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.18);
+}
+
+.mistakes__box {
+  position: absolute;
+  inset-inline: 0;
+  bottom: calc(8px + var(--safe-bottom));
+  margin-inline: auto;
+  width: min(460px, calc(100% - 16px));
+  max-height: min(70vh, calc(100% - 24px));
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-lg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-float);
+  animation: mistakes-in 180ms cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+@keyframes mistakes-in {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+}
+
+.mistakes__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mistakes__head h2 {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.mistakes__head span {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.mistakes__close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.mistakes__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.mistakes__list {
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.mistakes__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  text-align: start;
+  color: var(--ink);
+}
+
+.mistakes__row:active,
+.mistakes__row:hover {
+  background: var(--surface);
+}
+
+/* رقم الآية في دائرة بلون التطبيق */
+.mistakes__num {
+  display: grid;
+  place-items: center;
+  flex: none;
+  min-width: 32px;
+  height: 32px;
+  padding-inline: 4px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.mistakes__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.mistakes__text {
+  font-family: var(--font-quran);
+  font-size: var(--text-lg);
+  line-height: 1.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mistakes__body small {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.mistakes__check {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--accent-text, var(--accent));
+}
+
+.mistakes__empty {
+  margin: 0;
+  padding: 18px 16px 20px;
+  font-size: var(--text-sm);
+  line-height: 1.9;
+  color: var(--ink-muted);
+}

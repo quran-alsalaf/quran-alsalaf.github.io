@@ -4,6 +4,7 @@ import { readRubAlert, readWeeksTint, setRubAlert, setWeeksTint } from '../lib/s
 import AboutContent from './AboutPage.jsx';
 import BackupRows from './BackupRows.jsx';
 import ReadingInfo from './ReadingInfo.jsx';
+import { ReciteInfo } from './Recite.jsx';
 import './SettingsSheet.css';
 import { useLayer } from '../lib/layers.js';
 import { RIWAYAT, setRiwayah, useRiwayah } from '../lib/riwayah.js';
@@ -29,7 +30,7 @@ const DRAG_START = 8;
 const CLOSE_RATIO = 0.3;
 const FLING_SPEED = 0.5; // px/ms
 
-export default function SettingsSheet({ open, panel, page = 'main', onPage, onClose, onStartReading }) {
+export default function SettingsSheet({ open, panel, page = 'main', onPage, onClose, onStartReading, onStartRecite }) {
   const [look, setLook] = useState(readAppearance);
   const [weeks, setWeeks] = useState(readWeeksTint);
   const [rubAlert, setRubAlertOn] = useState(readRubAlert);
@@ -99,6 +100,7 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
 
             <Section title="القراءة">
               <LinkRow label="وضع القراءة" onClick={() => onPage('reading')} />
+              <LinkRow label="وضع التسميع" onClick={() => onPage('recite')} />
               <SwitchRow label="تمييز مقررات الأسابيع" checked={weeks} onChange={toggleWeeks} />
               <SwitchRow label="التنبيه ببداية الربع" checked={rubAlert} onChange={toggleRubAlert} />
             </Section>
@@ -112,6 +114,9 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
 
         <SubPage title="وضع القراءة" shown={page === 'reading'} onBack={() => onPage('main')} onClose={onClose}>
           <ReadingInfo onStart={onStartReading} />
+        </SubPage>
+        <SubPage title="وضع التسميع" shown={page === 'recite'} onBack={() => onPage('main')} onClose={onClose}>
+          <ReciteInfo onStart={onStartRecite} />
         </SubPage>
         <SubPage title="النسخة الاحتياطية" shown={page === 'backup'} onBack={() => onPage('main')} onClose={onClose}>
           <BackupRows />

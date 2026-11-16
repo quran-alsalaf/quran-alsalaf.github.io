@@ -36,6 +36,19 @@ for (const [theme, bg] of THEMES) {
       await expect(page).toHaveScreenshot(`study-${theme}.png`);
     });
 
+    // التسميع بالكشف (٢٠٢٦-١١-١٦): كلمات الآيات مخفية إلا ما كُشف، ورؤوس الآيات ظاهرة، وشريط التسميع أسفلها
+    test('التسميع', async ({ page }) => {
+      await clickTopbar(page, 'الإعدادات');
+      await page.locator('.settings').getByRole('button', { name: 'وضع التسميع', exact: true }).click();
+      await page.locator('.settings').getByRole('button', { name: 'ابدأ وضع التسميع' }).click();
+      const bar = page.getByRole('toolbar', { name: 'التحكم في وضع التسميع' });
+      await bar.getByRole('button', { name: 'كشف الآية' }).click();
+      await bar.getByRole('button', { name: 'كشف كلمتين' }).click();
+      await expect(page.locator('.sheet--current .w[data-wi]:not(.w--hidden)').first()).toBeVisible();
+      await settle(page);
+      await expect(page).toHaveScreenshot(`recite-${theme}.png`);
+    });
+
     test('الإعدادات', async ({ page }) => {
       await clickTopbar(page, 'الإعدادات');
       await expect.poll(async () => Math.round((await page.locator('.settings__card').boundingBox()).x)).toBe(0);
