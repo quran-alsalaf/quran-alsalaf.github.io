@@ -8,7 +8,7 @@ import KhatmaTab from './KhatmaTab.jsx';
 import { ShareIcon } from './StudySheet.jsx';
 import './SideMenu.css';
 import { useLayer } from '../lib/layers.js';
-import { juzStarts, rubName, rubOpening } from '../lib/rubs.js';
+import { divisionName, divisions, juzStarts, perHizb, rubOpening } from '../lib/rubs.js';
 import { isWarsh } from '../lib/riwayah.js';
 import { hafsOf, shownBookmarks, shownOf } from '../lib/verseMap.js';
 
@@ -17,15 +17,17 @@ import { hafsOf, shownBookmarks, shownOf } from '../lib/verseMap.js';
   بأربعة تبويبات في شريط أسفلها (٢٠٢٦-١١-١٢، كان أعلاها): الختمة، السور (فهرس)، العلامات المرجعية،
   الملاحظات (بترتيب ورودها في المصحف). وتُفتح على آخر تبويب استعمله المستخدم.
   الضغط على سورة أو علامة ينقل مباشرة إلى موضعها ويُغلق القائمة.
-  وفي أعلى تبويب السور (٢٠٢٦-١١-١٣) شريط «السور · الأجزاء · الأرباع»، يُفتح دائمًا على السور.
+  وفي أعلى تبويب السور (٢٠٢٦-١١-١٣) شريط «السور · الأجزاء · الأرباع»، يُفتح دائمًا على السور. وفي ورش
+  (٢٠٢٦-١١-١٦) «الأثمان» بدل «الأرباع»: مطبوعه مقسوم أثمانًا (src/lib/rubs.js).
 */
-const INDEXES = [
+const indexesOf = (warsh) => [
   { id: 'suras', name: 'السور' },
   { id: 'juz', name: 'الأجزاء' },
-  { id: 'rubs', name: 'الأرباع' },
+  { id: 'rubs', name: warsh ? 'الأثمان' : 'الأرباع' },
 ];
-// رمز الربع في دائرته: رقم الحزب لأوله، ثم ¼ ½ ¾
+// رمز القسم في دائرته: رقم الحزب لأوله، ثم ¼ ½ ¾ للأرباع، أو ⅛ ¼ ⅜ … للأثمان
 const RUB_SIGNS = ['', '¼', '½', '¾'];
+const THUMN_SIGNS = ['', '⅛', '¼', '⅜', '½', '⅝', '¾', '⅞'];
 const TAB_KEY = 'hq.sideTab';
 const TABS = [
   { id: 'khatma', name: 'الختمة', icon: 'M12 6.5C10 5 7 4.5 4 5v13c3-.5 6 0 8 1.5M12 6.5c2-1.5 5-2 8-1.5v13c-3-.5-6 0-8 1.5M12 6.5v13' },
@@ -84,8 +86,10 @@ export default function SideMenu({ quran, hafs, open, onGoto, onClose, onReadWir
     if (!open) setOpenMark(null);
   }, [open]);
 
-  // مصحف ورش: الأرباع موقوفة فيه (٢٠٢٦-١١-١٥): مطبوعه مقسوم أثمانًا، ولا مصدر موثوق بعدُ لمواضعها التي تبدأ بأول سورة
+  // مصحف ورش: فهرسه الأثمان (٢٠٢٦-١١-١٦)، ١٦ في كل جزء
   const warsh = isWarsh(quran);
+  const per = perHizb(quran);
+  const signs = per === 8 ? THUMN_SIGNS : RUB_SIGNS;
 
   const goto = (v) => {
     onGoto(quran.verses[v].p);
@@ -111,7 +115,7 @@ export default function SideMenu({ quran, hafs, open, onGoto, onClose, onReadWir
           {tab === 'suras' && (
             <>
               <div className="sidemenu__index" role="radiogroup" aria-label="الفهرس">
-                {INDEXES.map((x) => (
+                {indexesOf(warsh).map((x) => (
                   <button key={x.id} type="button" role="radio" aria-checked={index === x.id} onClick={() => pickIndex(x.id)}>
                     {x.name}
                   </button>
@@ -149,23 +153,21 @@ export default function SideMenu({ quran, hafs, open, onGoto, onClose, onReadWir
                 </ul>
               )}
 
-              {index === 'rubs' && warsh && <p className="sidemenu__empty">الأرباع تُتاح برواية ورش قريبًا.</p>}
               {index === 'rubs' &&
-                !warsh &&
                 juzs.map((_, j) => (
                   <section key={j} className="sidemenu__rubGroup" aria-label={juzName(j + 1)}>
                     <h3 className="sidemenu__rubJuz">{juzName(j + 1)}</h3>
                     <ul className="sidemenu__suras sidemenu__rubs">
-                      {quran.rubs.slice(j * 8, j * 8 + 8).map((v, k) => {
-                        const i = j * 8 + k;
+                      {divisions(quran).slice(j * per * 2, (j + 1) * per * 2).map((v, k) => {
+                        const i = j * per * 2 + k;
                         return (
                           <li key={i}>
                             <button type="button" onClick={() => goto(v)}>
-                              <span className={`sidemenu__suraNum${i % 4 ? ' sidemenu__rubSign' : ''}`}>
-                                {i % 4 ? RUB_SIGNS[i % 4] : toArabicDigits(i / 4 + 1)}
+                              <span className={`sidemenu__suraNum${i % per ? ' sidemenu__rubSign' : ''}`}>
+                                {i % per ? signs[i % per] : toArabicDigits(i / per + 1)}
                               </span>
                               <span className="sidemenu__suraName">
-                                {rubName(i)}
+                                {divisionName(quran, i)}
                                 <small>{rubOpening(quran, i)}</small>
                               </span>
                               <span className="sidemenu__suraMeta">صفحة {toArabicDigits(quran.verses[v].p)}</span>
