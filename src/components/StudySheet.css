@@ -210,6 +210,14 @@
   margin-top: 0.7em;
 }
 
+/* فقرات التفسير بينها خط فاصل (٢٠٢٦-١١-١٦، كتطبيق «آية») */
+.study__box--explain p + p,
+.vcard__tafsir p + p {
+  margin-top: 0.7em;
+  padding-top: 0.7em;
+  border-top: 1px solid var(--border);
+}
+
 /* آية السعدي التي لا كلام خاصًّا بها */
 .study__shared {
   color: var(--ink-muted);
@@ -280,7 +288,7 @@
   color: var(--accent-text);
 }
 
-/* الآية المقتبسة في نص التفسير (السعدي والبغوي وابن كثير): بلون التطبيق وخط النص نفسه */
+/* الآية المقتبسة في نص التفسير: بلون التطبيق وخط النص نفسه */
 .study__ayah {
   color: var(--accent-text);
 }

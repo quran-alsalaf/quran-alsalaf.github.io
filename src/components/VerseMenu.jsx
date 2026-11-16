@@ -382,7 +382,7 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
     let content;
     if (failed) content = <p className="study__note">تعذّر تحميل التفسير. يُحمَّل مرة واحدة، ويحتاج لذلك اتصالًا بالإنترنت.</p>;
     else if (!t) content = <p className="study__note">جارٍ تحميل التفسير…</p>;
-    // نص عادي بلا تمييز (بطلب صاحب المشروع)
+    // فقرات بخط فاصل والآيات المقتبسة بلون التطبيق كصفحات المحتوى (٢٠٢٦-١١-١٦، بطلب صاحب المشروع)
     else content = <TafsirBody text={text} source={source} />;
     body = (
       <>

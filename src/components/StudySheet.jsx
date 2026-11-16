@@ -19,7 +19,6 @@ import { copyText } from '../lib/userdata.js';
 import { useLayer } from '../lib/layers.js';
 import RangeBar from './RangeBar.jsx';
 import TafsirPicker from './TafsirPicker.jsx';
-import { isDownloadable } from '../data/tafsirs.js';
 import './StudySheet.css';
 
 /*
@@ -262,12 +261,10 @@ function TafsirTab({ quran, verses, pages, onToast }) {
 
 // نص تفسير آية مقسّمًا فقرات للقراءة (paragraphs)، أو تنبيه الآية التي لم يُفرد لها المفسّر (السعدي أو
 // البغوي أو ابن كثير) كلامًا خاصًّا
-// والآيات المقتبسة ﴿…﴾ في التفاسير التي تُحمَّل بزرّ (السعدي والبغوي وابن كثير) بلون التطبيق (٢٠٢٦-١١-١٦)
+// والآيات المقتبسة ﴿…﴾ بلون التطبيق، وبين الفقرات خط فاصل (٢٠٢٦-١١-١٦، كتطبيق «آية»)
 export function TafsirBody({ text, source }) {
   if (!text) return <p className="study__shared">{sharedNote(source)}</p>;
-  const ps = paragraphs(text);
-  if (!isDownloadable(source)) return ps.map((p, i) => <p key={i}>{p}</p>);
-  return ps.map((p, i) => (
+  return paragraphs(text).map((p, i) => (
     <p key={i}>
       <QuotedText text={p} open="﴿" close="﴾" keepMarks className="study__ayah" />
     </p>
