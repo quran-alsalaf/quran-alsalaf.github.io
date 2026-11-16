@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toArabicDigits } from '../data/quran.js';
-import { covers, reciterById, reciterTitle } from '../lib/reciters.js';
-import { FOREVER, REPEATS, cancelDownload, downloadRange, isDownloaded, setSettings, usePlayer } from '../lib/player.js';
+import { countNoun, countText, MINUTES } from '../lib/count.js';
+import { covers, reciterTitle } from '../lib/reciters.js';
+import { FOREVER, REPEATS, TIMER_OPTIONS, cancelDownload, chosenReciter, downloadRange, isDownloaded, parseMinutes, reciterKey, setSettings, setTimer, timerShort, usePlayer, useTimerTick } from '../lib/player.js';
 import ReciterPicker from './ReciterPicker.jsx';
 import RangeBar from './RangeBar.jsx';
 import './ListenSheet.css';
@@ -17,21 +18,36 @@ import { useLayer } from '../lib/layers.js';
   label: وصف المقدار المسموع (مقدار الاستماع المحدد، وإلا «من الصفحة … متتابعًا»)، suras: سوره.
   وفي أعلاها شريط «تحديد مقدار الآيات» خاص بالاستماع (٢٠٢٦-١١-١٠): range وonPickStart/onPickEnd/onClearRange،
   مستقل عن مقدار صفحات المحتوى، ولا يُخفت شيئًا في المصحف. وتعديله أثناء التشغيل يُطبَّق عند الإغلاق («تم»).
+  والقارئ قارئ رواية المصحف المعروض (٢٠٢٦-١١-١٥): في ورش قرّاء ورش وحدهم، ولكل رواية قارئها المختار.
+  و«مؤقّت التلاوة» (٢٠٢٦-١١-١٦) تحت «تكرار المقدار»: بلا مؤقت أو دقائق من القائمة أو «وقت آخر…» (١–٣٦٠
+  دقيقة). قبل التشغيل يُضبط فورًا (ويبدأ عدّه مع «تشغيل»)، وأثناءه يُطبَّق عند إغلاق النافذة كالمقدار.
 */
 export default function ListenSheet({ quran, verses, continuous, label, suras, range, onPickStart, onPickEnd, onClearRange, onPlay, onClose, onToast }) {
   const player = usePlayer();
   const { settings, download } = player;
   const active = player.status !== 'idle';
   const [pickerOpen, setPickerOpen] = useState(false);
-  useLayer(onClose);
+  // اختيار المؤقّت أثناء التشغيل ينتظر الإغلاق: { minutes } (null = بلا مؤقت)
+  const pendingTimer = useRef(null);
+  const close = () => {
+    if (pendingTimer.current) setTimer(pendingTimer.current.minutes);
+    pendingTimer.current = null;
+    onClose();
+  };
+  const chooseTimer = (minutes) => {
+    if (active) pendingTimer.current = { minutes };
+    else setTimer(minutes);
+  };
+  useLayer(close);
   const [downloaded, setDownloaded] = useState(false);
-  useEffect(() => setDownloaded(isDownloaded(quran, verses)), [quran, verses, settings.reciter, download?.done]);
+  const key = reciterKey(quran);
+  useEffect(() => setDownloaded(isDownloaded(quran, verses)), [quran, verses, settings[key], download?.done]);
 
-  const chosen = reciterById(settings.reciter);
+  const chosen = chosenReciter(quran, settings);
   const missing = !covers(chosen, suras);
 
   const chooseReciter = (id) => {
-    if (!setSettings({ reciter: id })) onToast('تسجيل هذا القارئ لا يشمل هذا الموضع؛ اختر قارئًا آخر.');
+    if (!setSettings({ [key]: id })) onToast('تسجيل هذا القارئ لا يشمل هذا الموضع؛ اختر قارئًا آخر.');
   };
 
   const startDownload = async () => {
@@ -42,14 +58,14 @@ export default function ListenSheet({ quran, verses, continuous, label, suras, r
 
   return (
     <div className="listen">
-      <div className="listen__backdrop" onClick={onClose} />
+      <div className="listen__backdrop" onClick={close} />
       <section className="listen__card" role="dialog" aria-label="الاستماع للآيات">
         <header className="listen__head">
           <div>
             <h2>الاستماع للآيات</h2>
             <span>{label}</span>
           </div>
-          <button type="button" className="listen__close" onClick={onClose} aria-label="إغلاق">
+          <button type="button" className="listen__close" onClick={close} aria-label="إغلاق">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
@@ -92,8 +108,10 @@ export default function ListenSheet({ quran, verses, continuous, label, suras, r
           </select>
         </label>
 
+        <TimerRow timer={player.timer} active={active} onChoose={chooseTimer} />
+
         {active ? (
-          <button type="button" className="listen__play" onClick={onClose}>
+          <button type="button" className="listen__play" onClick={close}>
             تم
           </button>
         ) : (
@@ -127,7 +145,8 @@ export default function ListenSheet({ quran, verses, continuous, label, suras, r
 
       {pickerOpen && (
         <ReciterPicker
-          chosen={settings.reciter}
+          chosen={chosen.id}
+          riwayah={quran.riwayah === 'warsh' ? 'warsh' : 'hafs'}
           suras={suras}
           onPick={chooseReciter}
           onClose={() => setPickerOpen(false)}
@@ -135,6 +154,82 @@ export default function ListenSheet({ quran, verses, continuous, label, suras, r
         />
       )}
     </div>
+  );
+}
+
+// سطر «مؤقّت التلاوة»: القائمة، وخانة الدقائق لـ«وقت آخر…»، وما بقي من المؤقّت ما دام يعدّ
+function TimerRow({ timer, active, onChoose }) {
+  const left = useTimerTick();
+  const fromTimer = () => (!timer ? '' : TIMER_OPTIONS.includes(timer.minutes) ? String(timer.minutes) : 'custom');
+  const [choice, setChoice] = useState(fromTimer);
+  const [custom, setCustom] = useState(() => (timer && !TIMER_OPTIONS.includes(timer.minutes) ? toArabicDigits(timer.minutes) : ''));
+  const [edited, setEdited] = useState(false);
+  // انتهى المؤقّت أو أُلغي والنافذة مفتوحة (ولم يُغيَّر الاختيار فيها): يرجع السطر إلى «بلا مؤقت»
+  useEffect(() => {
+    if (!timer && !edited) setChoice('');
+  }, [timer, edited]);
+
+  const pick = (value) => {
+    setChoice(value);
+    setEdited(true);
+    if (value === 'custom') {
+      const n = parseMinutes(custom);
+      if (n) onChoose(n);
+      return;
+    }
+    onChoose(value ? Number(value) : null);
+  };
+  const type = (text) => {
+    setCustom(text);
+    setEdited(true);
+    const n = parseMinutes(text);
+    if (n) onChoose(n);
+  };
+  const invalid = choice === 'custom' && custom.trim() !== '' && !parseMinutes(custom);
+
+  return (
+    <>
+      <label className="listen__row">
+        <span className="listen__label">
+          مؤقّت التلاوة
+          {active && timer && left != null && !edited && (
+            <small className="listen__left" aria-label={left > 0 ? `يتبقى ${countText(Math.ceil(left / 60000), MINUTES, toArabicDigits, true)}` : 'تقف التلاوة بعد الآية الجارية'}>
+              {left > 0 ? `يتبقى ${timerShort(left)}` : 'تقف بعد الآية'}
+            </small>
+          )}
+        </span>
+        <select value={choice} onChange={(e) => pick(e.target.value)}>
+          <option value="">بلا مؤقت</option>
+          {TIMER_OPTIONS.map((n) => (
+            <option key={n} value={n}>
+              {toArabicDigits(n)} {countNoun(n, MINUTES)}
+            </option>
+          ))}
+          <option value="custom">وقت آخر…</option>
+        </select>
+      </label>
+      {choice === 'custom' && (
+        <label className="listen__row listen__row--custom">
+          <span>عدد الدقائق</span>
+          <span className="listen__minutes">
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={3}
+              placeholder="١–٣٦٠"
+              aria-invalid={invalid || undefined}
+              value={custom}
+              onChange={(e) => type(e.target.value)}
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus={edited}
+            />
+            دقيقة
+          </span>
+        </label>
+      )}
+      {invalid && <p className="listen__warn">اكتب عددًا من ١ إلى ٣٦٠ دقيقة.</p>}
+    </>
   );
 }
 

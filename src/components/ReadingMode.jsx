@@ -95,7 +95,7 @@ export default function ReadingMode({ quran, startPage, marks, cardOpen, onLongP
     const b = clamp(Math.ceil((el.scrollTop + el.clientHeight * 2) / h), FIRST_PAGE, LAST_PAGE);
     setWin((w) => (w.a === a && w.b === b ? w : { a, b }));
   }, []);
-  useEffect(() => prefetchPageFonts([win.b + 1, win.b + 2, win.b + 3]), [win.b]);
+  useEffect(() => prefetchPageFonts([win.b + 1, win.b + 2, win.b + 3], quran.riwayah), [win.b, quran.riwayah]);
 
   // أول موضع: بداية الصفحة التي كان فيها. وإن تغيّر الارتفاع (تدوير الجهاز) بقي الموضع نفسه نسبيًّا
   useLayoutEffect(() => {
@@ -287,7 +287,7 @@ export default function ReadingMode({ quran, startPage, marks, cardOpen, onLongP
 // صفحة في التدفق: فاصل رفيع (الجزء · رقم الصفحة · السورة) ثم الصفحة بتخطيطها الأصلي
 const FlowPage = memo(function FlowPage({ quran, page, top, layout, marks }) {
   const { suras, juz } = pageInfo(quran, page);
-  const font = usePageFont(page);
+  const font = usePageFont(page, quran.riwayah);
   return (
     <section
       className="flow__page"

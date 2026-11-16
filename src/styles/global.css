@@ -21,6 +21,26 @@
   font-display: block;
 }
 
+/* نص آيات ورش خارج صفحات المصحف (صفحات المحتوى والملاحظات ونتائج البحث ومنتقي الآيات) — خط المجمع العام لرواية
+   ورش (الإصدار ٢١) بحروف نص ورش وحدها (scripts/data/13-warsh-map.mjs). لنص آيات ورش وحده متى كان المصحف المعروض
+   ورش (فلا يُنزَّل لمن يقرأ بحفص)؛ وما في التفاسير والعمل من اقتباس برسم حفص يبقى بخط حفص */
+@font-face {
+  font-family: 'UthmanicWarsh';
+  src: url('/fonts/warsh-text.woff2') format('woff2');
+  font-display: block;
+}
+
+:root[data-riwayah='warsh'] :is(.study__box--verse, .study__words th, .searchov__verseText, .vnote__verse p, .rpick__text) {
+  font-family: 'UthmanicWarsh', 'UthmanicHafs', 'Traditional Arabic', serif;
+}
+
+/* بسملة مصحف ورش — خط المجمع العام لرواية ورش (الإصدار ٢١)، بحروف البسملة وحدها */
+@font-face {
+  font-family: 'WarshBasmala';
+  src: url('/fonts/warsh-basmala.woff2') format('woff2');
+  font-display: block;
+}
+
 *,
 *::before,
 *::after {

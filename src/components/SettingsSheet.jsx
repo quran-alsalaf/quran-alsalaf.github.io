@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { ACCENTS, BACKGROUNDS, readAppearance, setAccent, setBackground } from '../lib/appearance.js';
 import { readRubAlert, readWeeksTint, setRubAlert, setWeeksTint } from '../lib/settings.js';
 import AboutContent from './AboutPage.jsx';
+import BackupRows from './BackupRows.jsx';
 import ReadingInfo from './ReadingInfo.jsx';
 import './SettingsSheet.css';
 import { useLayer } from '../lib/layers.js';
+import { RIWAYAT, setRiwayah, useRiwayah } from '../lib/riwayah.js';
 
 /*
   الإعدادات (٢٠٢٦-١١-١١): لوحة جانبية تنزلق من الحافة اليسرى فوق المصحف، مقابل القائمة الجانبية
@@ -31,6 +33,8 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
   const [weeks, setWeeks] = useState(readWeeksTint);
   const [rubAlert, setRubAlertOn] = useState(readRubAlert);
   const sub = page !== 'main';
+  // الرواية (٢٠٢٦-١١-١٥): يتبدّل المصحف كله فورًا على الصفحة نفسها (App.jsx)
+  const riwayah = useRiwayah() ?? 'hafs';
 
   // Esc في الصفحة الفرعية يرجع إلى الإعدادات، وفي الإعدادات يغلق اللوحة
   useLayer(() => (sub ? onPage('main') : onClose()), open);
@@ -68,6 +72,10 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
           </header>
 
           <div className="settings__body">
+            <Section title="المصحف">
+              <SegmentRow label="الرواية" value={riwayah} options={RIWAYAT.map((r) => ({ value: r.id, label: r.name }))} onChange={setRiwayah} />
+            </Section>
+
             <Section title="المظهر">
               <SwatchRow
                 label="خلفية القراءة"
@@ -92,6 +100,10 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
               <LinkRow label="وضع القراءة" onClick={() => onPage('reading')} />
               <SwitchRow label="تمييز مقررات الأسابيع" checked={weeks} onChange={toggleWeeks} />
               <SwitchRow label="التنبيه ببداية الربع" checked={rubAlert} onChange={toggleRubAlert} />
+            </Section>
+
+            <Section title="النسخة الاحتياطية">
+              <BackupRows />
             </Section>
 
             <Section>

@@ -7,11 +7,16 @@
 //     أي ملف محمَّل سلفًا بدل بثّه من الشبكة
 //   • كل قارئ ملف مستقل لكل آية (src/lib/reciters.js)
 //   • قبل الآية الأولى من كل سورة (عدا الفاتحة والتوبة) تُقرأ البسملة: وهي آية الفاتحة الأولى
-//     بصوت القارئ نفسه
+//     بصوت القارئ نفسه (ولقرّاء ورش ملف بسملة لكل سورة: basmalaFile في src/lib/reciters.js)
+//   • قرّاء ورش (٢٠٢٦-١١-١٥، «الروايات» الجلسة ٣): في مصحف ورش لا يُقرأ إلا بقرّاء ورش، ولكل رواية قارئها
+//     المختار (settings.reciter لحفص، settings.warshReciter لورش). والمقدار يُقرأ «مقاطع»: آيات الملف الواحد
+//     معًا (verseFiles): آيتان في ملف واحد تُقرآن مرة وتُظلَّلان معًا (state.vs)، وآية في ملفين يُقرآن متتاليين
 //   • التشغيل في الخلفية وأزرار شاشة القفل عبر Media Session
 //   • القارئ المحمَّل على الجهاز (src/lib/offline.js): تُقرأ كل آية من ملفه المحفوظ إن وُجد، وإلا بُثّت
-import { useSyncExternalStore } from 'react';
-import { ayahUrl, covers, reciterById, reciterTitle } from './reciters.js';
+//   • مؤقّت التلاوة (٢٠٢٦-١١-١٦): تقف التلاوة بعد مدة بالدقائق، عند نهاية الآية الجارية — setTimer()
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { basmalaFile, covers, DEFAULT_RECITER, reciterById, reciterFor, reciterTitle, riwayahOf, verseFiles } from './reciters.js';
+import { isWarsh } from './riwayah.js';
 import { hasOfflineFiles, isOfflineComplete, localAudioUrl } from './offline.js';
 import { toArabicDigits } from '../data/quran.js';
 
@@ -20,7 +25,12 @@ const KEY = 'hq.listen';
 export const REPEATS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50];
 export const FOREVER = 0; // تكرار النطاق بلا نهاية (∞)
 
-const DEFAULTS = { reciter: 'shuraym', verseRepeat: 1, rangeRepeat: 1 };
+const DEFAULTS = { reciter: DEFAULT_RECITER.hafs, warshReciter: DEFAULT_RECITER.warsh, verseRepeat: 1, rangeRepeat: 1 };
+// مفتاح القارئ المختار لرواية المصحف quran في الإعدادات
+export const reciterKey = (q) => (isWarsh(q) ? 'warshReciter' : 'reciter');
+// القارئ المختار لرواية المصحف quran
+export const chosenReciter = (q, settings = state.settings) =>
+  reciterFor(settings[reciterKey(q)], isWarsh(q) ? 'warsh' : 'hafs');
 
 function readSettings() {
   try {
@@ -31,13 +41,16 @@ function readSettings() {
 }
 
 // ---------- الحالة المعلنة لواجهة التطبيق ----------
-// status: 'idle' | 'loading' | 'playing' | 'paused' — v: الآية الجاري تلاوتها
+// status: 'idle' | 'loading' | 'playing' | 'paused' — v: الآية الجاري تلاوتها (أول آيات المقطع)، vs: آيات المقطع كلها
 // n: يُزاد عند بدء كل مقطع (آية أو بسملة أو إعادتها)، فيُعرف به بدء الآية التالية ولو كانت هي نفسها
 // download: null أو { active, done, fileIndex, fileCount, pct } — تقدّم التنزيل المنفصل
-let state = { status: 'idle', v: null, n: 0, settings: readSettings(), error: null, download: null, preview: null };
+// timer: null أو { minutes, left: ما بقي (ملي ثانية) عند آخر تجميد، endsAt: موعد انتهائه ما دام يعدّ (وإلا null) } — مؤقّت التلاوة
+// notice: { text, n } رسالة إعلامية للواجهة (انتهاء المؤقّت)
+let state = { status: 'idle', v: null, vs: null, n: 0, settings: readSettings(), error: null, download: null, preview: null, timer: null, notice: null };
 const listeners = new Set();
 function set(patch) {
   state = { ...state, ...patch };
+  if ('status' in patch) syncTimer();
   listeners.forEach((l) => l());
 }
 const subscribe = (l) => {
@@ -51,12 +64,13 @@ export const playerState = () => state;
 // ---------- المحرّك ----------
 let audio = null;
 let quran = null;
-let queue = []; // آيات النطاق (أرقامها في المصحف)
-let pos = 0; // موضع الآية الجارية في النطاق
+let list = []; // آيات النطاق (أرقامها في المصحف)
+let queue = []; // مقاطع النطاق: [{ vs: آيات المقطع، files: روابط ملفاته بالترتيب }]
+let pos = 0; // موضع المقطع الجاري في النطاق
 let verseRep = 0; // كم مرة قُرئت الآية الجارية
 let rangeRep = 0; // كم مرة قُرئ النطاق
 let continuous = false; // استماع بلا مقدار: من الصفحة الظاهرة متتابعًا إلى آخر المصحف، بلا تكرار للمقدار
-let seg = null; // المقطع الجاري: { v, s, a, basmala }
+let seg = null; // الملف الجاري: { unit, part } (الملف part من المقطع) أو { unit, basmala: رابطها }
 let gen = 0; // يُزاد عند كل تشغيل أو إيقاف جديد، فيُهمل ما تأخر من طلبات تشغيل سابقة
 let dlToken = 0; // يُزاد عند كل تنزيل أو إلغاء، مستقل عن gen، فلا يقطع أحدهما الآخر
 
@@ -73,6 +87,34 @@ function cacheBlob(url, blob) {
   blobUrls.set(url, URL.createObjectURL(blob));
 }
 const resolveUrl = (remote) => blobUrls.get(remote) || remote;
+
+const reciter = () => chosenReciter(quran);
+// مقاطع الآيات verses بالقارئ r: آيات متتالية يبدأ ملف ثانيتها بآخر ملف الأولى تُضمّ في مقطع واحد.
+// vs آيات المقطع من verses، وshown ما يُظلَّل: هي ومعها ما جاورها خارج verses وصوته كله في ملفات المقطع
+// (تشغيل الملك ٩ وحدها يُسمع معها ١٠ لأنهما في ملف واحد، فتُظلَّلان معًا)
+export function unitsOf(q, r, verses) {
+  const units = [];
+  for (const v of verses) {
+    const files = verseFiles(r, q, v);
+    const last = units.at(-1);
+    if (last && last.vs.at(-1) === v - 1 && files[0] === last.files.at(-1)) {
+      last.vs.push(v);
+      last.files.push(...files.slice(1));
+    } else units.push({ vs: [v], files: [...files] });
+  }
+  const inside = new Set(verses);
+  const only = (v, f) => q.verses[v] && !inside.has(v) && (() => {
+    const fs = verseFiles(r, q, v);
+    return fs.length === 1 && fs[0] === f;
+  })();
+  for (const u of units) {
+    const shown = [...u.vs];
+    while (only(shown[0] - 1, u.files[0]) && q.verses[shown[0] - 1].s === q.verses[shown[0]].s) shown.unshift(shown[0] - 1);
+    while (only(shown.at(-1) + 1, u.files.at(-1)) && q.verses[shown.at(-1) + 1].s === q.verses[shown.at(-1)].s) shown.push(shown.at(-1) + 1);
+    u.shown = shown;
+  }
+  return units;
+}
 
 function ensureAudio() {
   if (audio) return audio;
@@ -93,13 +135,12 @@ function ensureAudio() {
 // ---------- التنزيل المنفصل (اختياري، للاستماع بلا إنترنت) ----------
 // روابط ملفات الآيات المطلوبة (ملف مستقل لكل آية، ومثله للبسملة إن لزمت)
 function resourcesFor(verses) {
-  const r = reciterById(state.settings.reciter);
-  const files = new Set(verses.map((v) => ayahUrl(r, quran.verses[v].s, quran.verses[v].a)));
-  const needsBasmala = verses.some((v) => {
-    const { s, a } = quran.verses[v];
-    return a === 1 && s !== 1 && s !== 9;
-  });
-  if (needsBasmala) files.add(ayahUrl(r, 1, 1));
+  const r = reciter();
+  const files = new Set(verses.flatMap((v) => verseFiles(r, quran, v)));
+  for (const v of verses) {
+    const b = basmalaFile(r, quran, v);
+    if (b) files.add(b);
+  }
   return [...files];
 }
 
@@ -131,7 +172,7 @@ async function fetchBlob(url, onProgress) {
 // 'unsupported' (القارئ لا يشمل هذا الموضع) · 'failed' (تعذّر التنزيل) · 'cancelled' · 'ok'
 export async function downloadRange(q, verses) {
   quran = q;
-  const r = reciterById(state.settings.reciter);
+  const r = reciter();
   if (!covers(r, suraList(verses))) return 'unsupported';
   const myToken = ++dlToken;
   const files = resourcesFor(verses);
@@ -165,7 +206,7 @@ export function cancelDownload() {
 // هل مقدار verses منزَّل كاملًا بالقارئ الحالي؟ (لعرض «تم التنزيل» بدل زرّه)
 export function isDownloaded(q, verses) {
   quran = q;
-  const r = reciterById(state.settings.reciter);
+  const r = reciter();
   if (!covers(r, suraList(verses))) return false;
   // القارئ محمَّل كاملًا على الجهاز: كل مقدار يعمل بلا إنترنت
   if (isOfflineComplete(r.id)) return true;
@@ -177,10 +218,11 @@ export function isDownloaded(q, verses) {
 // cont: استماع متتابع بلا مقدار (verses من أول الصفحة الظاهرة إلى آخر المصحف): لا يُكرَّر، ويقف في آخره
 export function play(q, verses, cont = false) {
   quran = q;
-  const r = reciterById(state.settings.reciter);
+  const r = reciter();
   if (!covers(r, suraList(verses))) return 'unsupported';
   ++gen;
-  queue = verses;
+  list = verses;
+  queue = unitsOf(q, r, verses);
   continuous = cont;
   pos = 0;
   verseRep = 0;
@@ -195,36 +237,101 @@ export function play(q, verses, cont = false) {
 // أول آية فيه بعدّاد تكرار جديد. النتيجة كـplay()، أو 'continued' إن أكمل من حيث هو
 export function retarget(q, verses, cont = false) {
   if (state.status === 'idle') return 'idle';
-  const at = verses.indexOf(queue[pos]);
-  if (at < 0) return play(q, verses, cont);
+  if (!verses.includes(queue[pos].vs[0])) return play(q, verses, cont);
   quran = q;
-  if (!covers(reciterById(state.settings.reciter), suraList(verses))) {
+  const r = reciter();
+  if (!covers(r, suraList(verses))) {
     stop();
     return 'unsupported';
   }
-  queue = verses;
+  const units = unitsOf(q, r, verses);
+  const at = units.findIndex((u) => u.vs.includes(queue[pos].vs[0]));
+  list = verses;
+  queue = units;
   continuous = cont;
   pos = at;
   return 'continued';
 }
 
+// ---------- مؤقّت التلاوة (٢٠٢٦-١١-١٦) ----------
+// يُختار من نافذة الاستماع بالدقائق. يعدّ ما دامت التلاوة تعمل (أو تتحمّل)، ويتجمّد في الإيقاف المؤقت،
+// ولا يبدأ قبل التشغيل. وإذا انتهى الوقت أكملت الآية الجارية ثم وقفت التلاوة — يُفحص عند نهاية كل
+// آية، فيصح ولو قُفلت الشاشة (المؤقّتات العادية تتأخر في الخلفية، ونهاية الآية تصل دائمًا).
+// وبعد أن يوقفها يرجع إلى «بلا مؤقت»، وكذا الإيقاف التام وانتهاء التلاوة
+export const TIMER_OPTIONS = [15, 30, 45, 60, 90];
+export const TIMER_MAX = 360;
+const counting = () => state.status === 'playing' || state.status === 'loading';
+
+// يبدأ العدّ أو يجمّده بحسب حالة التشغيل (يُستدعى عند كل تغيّر في status)
+function syncTimer() {
+  const t = state.timer;
+  if (!t) return;
+  const now = Date.now();
+  if (counting() && t.endsAt == null) state = { ...state, timer: { ...t, endsAt: now + t.left } };
+  else if (!counting() && t.endsAt != null) state = { ...state, timer: { ...t, left: Math.max(0, t.endsAt - now), endsAt: null } };
+}
+
+// ما بقي من المؤقّت بالملي ثانية (null بلا مؤقّت)
+export function timerLeft(t = state.timer, now = Date.now()) {
+  if (!t) return null;
+  return Math.max(0, t.endsAt != null ? t.endsAt - now : t.left);
+}
+
+// يضبط المؤقّت بالدقائق (أو يلغيه بـnull). أثناء التشغيل يبدأ العدّ من الآن، وقبله ينتظر التشغيل
+export function setTimer(minutes) {
+  if (!minutes) {
+    set({ timer: null });
+    return;
+  }
+  const left = minutes * 60000;
+  set({ timer: { minutes, left, endsAt: counting() ? Date.now() + left : null } });
+}
+
+// يقرأ عدد الدقائق الذي كتبه المستخدم (بالأرقام العربية أو الغربية): عدد صحيح ١–٣٦٠، وإلا null
+export function parseMinutes(text) {
+  const s = String(text ?? '')
+    .trim()
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x660))
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x6f0));
+  if (!/^\d{1,3}$/.test(s)) return null;
+  const n = Number(s);
+  return n >= 1 && n <= TIMER_MAX ? n : null;
+}
+
+// يعيد رسم المكوّن كل ثانية ما دام المؤقّت يعدّ (لعرض ما بقي منه)
+export function useTimerTick() {
+  const { timer } = usePlayer();
+  const [, tick] = useState(0);
+  const running = timer?.endsAt != null;
+  useEffect(() => {
+    if (!running) return undefined;
+    const id = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [running]);
+  return timer ? timerLeft(timer) : null;
+}
+
+// ما بقي من المؤقّت مختصرًا للعرض («٢٨ د»)، وبعد انتهاء الوقت تكمل الآية الجارية: «بعد الآية»
+export const timerShort = (ms) => (ms > 0 ? `${toArabicDigits(Math.ceil(ms / 60000))} د` : 'بعد الآية');
+
+const timerExpired = () => state.timer != null && timerLeft() <= 0;
+
 const suraList = (verses) => [...new Set(verses.map((v) => quran.verses[v].s))];
 
-// يقرأ الآية الجارية (مسبوقة بالبسملة إن كانت أول سورتها وهذه أول قراءة لها)
+// يقرأ المقطع الجاري (مسبوقًا بالبسملة إن كان أول سورته وهذه أول قراءة له)
 function startVerse(withBasmala) {
-  const v = queue[pos];
-  const { s, a } = quran.verses[v];
-  const basmala = withBasmala && verseRep === 0 && a === 1 && s !== 1 && s !== 9;
-  playSegment(basmala ? { v, s: 1, a: 1, basmala: true } : { v, s, a });
+  const unit = queue[pos];
+  const basmala = withBasmala && verseRep === 0 && basmalaFile(reciter(), quran, unit.vs[0]);
+  playSegment(basmala ? { unit, basmala } : { unit, part: 0 });
 }
 
 function playSegment(next) {
   const el = ensureAudio();
-  const r = reciterById(state.settings.reciter);
+  const r = reciter();
   seg = next;
-  set({ status: el.paused ? 'loading' : 'playing', v: next.v, n: state.n + 1 });
+  set({ status: el.paused ? 'loading' : 'playing', v: next.unit.vs[0], vs: next.unit.shown, n: state.n + 1 });
   updateMetadata();
-  const remote = ayahUrl(r, next.s, next.a);
+  const remote = next.basmala || next.unit.files[next.part];
   const local = resolveUrl(remote);
   // القارئ محمَّل على الجهاز (كله أو بعضه): يُقرأ ملف الآية المحفوظ إن وُجد، وإلا بُثّ
   if (local === remote && hasOfflineFiles(r.id)) {
@@ -257,6 +364,14 @@ function segmentDone() {
   seg = null; // لا يُحتسب المقطع منتهيًا مرتين
   // بعد البسملة: الآية نفسها
   if (done.basmala) return startVerse(false);
+  // ملف المقطع التالي إن بقي له ملف (آية ورش في ملفين من ملفات حفص)
+  if (done.part + 1 < done.unit.files.length) return playSegment({ unit: done.unit, part: done.part + 1 });
+  // انتهى مؤقّت التلاوة: تقف بعد الآية الجارية (ولو بقي من تكرارها)
+  if (timerExpired()) {
+    stop();
+    set({ notice: { text: 'انتهى مؤقّت التلاوة', n: Date.now() } });
+    return;
+  }
   const { verseRepeat, rangeRepeat } = state.settings;
   // تكرار الآية: يُقفز إلى أولها من جديد
   if (++verseRep < verseRepeat) return startVerse(false);
@@ -283,12 +398,14 @@ export function resume() {
 export function stop() {
   gen++;
   seg = null;
+  // الإيقاف التام وانتهاء التلاوة يلغيان المؤقّت (لا قبل التشغيل: المؤقّت المختار حينها ينتظر «تشغيل»)
+  if (state.status !== 'idle') state = { ...state, timer: null };
   if (audio) {
     audio.pause();
     audio.removeAttribute('src');
     audio.load();
   }
-  set({ status: 'idle', v: null });
+  set({ status: 'idle', v: null, vs: null });
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
 }
 
@@ -310,14 +427,17 @@ export function setSettings(patch) {
     // التخزين غير متاح: تسري الإعدادات في هذه الجلسة وحدها
   }
   set({ settings });
-  if (patch.reciter && state.status !== 'idle') {
-    const r = reciterById(patch.reciter);
-    if (!covers(r, suraList(queue))) {
+  if (quran && patch[reciterKey(quran)] && state.status !== 'idle') {
+    const r = reciter();
+    if (!covers(r, suraList(list))) {
       stop();
       return false;
     }
-    // نفس الموضع بصوت القارئ الجديد: البسملة إن كانت هي الجارية، وإلا الآية نفسها
+    // نفس الموضع بصوت القارئ الجديد: البسملة إن كانت هي الجارية، وإلا أول الآية الجارية
     const inBasmala = !!seg?.basmala;
+    const v = queue[pos].vs[0];
+    queue = unitsOf(quran, r, list);
+    pos = Math.max(0, queue.findIndex((u) => u.vs.includes(v)));
     seg = null;
     startVerse(inBasmala);
   }
@@ -344,8 +464,8 @@ function setupMediaSession() {
 
 function updateMetadata() {
   if (!('mediaSession' in navigator) || !quran || !seg) return;
-  const verse = quran.verses[seg.v];
-  const r = reciterById(state.settings.reciter);
+  const verse = quran.verses[seg.unit.vs[0]];
+  const r = reciter();
   try {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: `سورة ${quran.suras[verse.s - 1].name} — الآية ${toArabicDigits(verse.a)}`,
@@ -367,7 +487,11 @@ function updateMetadata() {
 export const PREVIEW_AYAH = { s: 1, a: 2 };
 // مقطع المعاينة مبني مع التطبيق (public/audio/preview، scripts/data/09-previews.mjs) ويخزّنه عامل الخدمة
 // مسبقًا، فتعمل المعاينة بلا إنترنت (٢٠٢٦-١١-١٤)؛ لا يُطلب من موقع الصوت
-export const previewUrl = (r) => `${import.meta.env.BASE_URL}audio/preview/${r.folder}/001002.mp3`;
+// ولقرّاء ورش: public/audio/preview/warsh/<id>.mp3 (الفاتحة ١ في ورش، scripts/data/14-warsh-reciters.mjs)
+export const previewUrl = (r) =>
+  riwayahOf(r) === 'warsh'
+    ? `${import.meta.env.BASE_URL}audio/preview/warsh/${r.id}.mp3`
+    : `${import.meta.env.BASE_URL}audio/preview/${r.folder}/001002.mp3`;
 let previewEl = null;
 let previewToken = 0;
 let resumeAfterPreview = false;

@@ -5,6 +5,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { tafsirInfo } from '../data/tafsirs.js';
 import { isTafsirReady, readDownloadedTafsir, subscribeTafsirDownloads, tafsirDownloads } from './tafsirDownload.js';
+import { hafsOf } from './verseMap.js';
 
 // (import.meta.env غائب خارج Vite، كاختبارات المتصفح التي تستورد paragraphs)
 const BASE = import.meta.env?.BASE_URL ?? '/';
@@ -118,6 +119,14 @@ export function paragraphs(text, target = 260) {
 export function tafsirText(id, t, v) {
   const raw = t.verses[v] ?? '';
   return id === 'muyassar' ? muyassarPlain(raw, t.quote) : raw;
+}
+
+// تفسير آية المصحف المعروض v (٢٠٢٦-١١-١٥): التفاسير بترقيم حفص، فآية ورش تأخذ تفسير ما يقابلها من حفص —
+// وإن قابلت آيتين فتفسيرهما متتابعين (بلا تكرار، فالمختصر يجمع أحيانًا آيتين بتفسير واحد)، وإن كانت جزءًا من
+// آية فتفسير الآية كاملًا. وفي حفص هو tafsirText نفسه
+export function shownTafsirText(id, t, quran, v) {
+  const texts = hafsOf(quran, v).map((h) => tafsirText(id, t, h)).filter(Boolean);
+  return [...new Set(texts)].join('\n');
 }
 
 const tafsirs = new Map();
@@ -238,9 +247,11 @@ export function copyVerse(quran, v) {
 // مشاركة الملاحظة (٢٠٢٦-١١-١٥، «تطوير الملاحظات»): الآية إن أُدرجت فيها، ثم التعليق، ثم اسم التطبيق
 // ورابطه (بطلب صاحب المشروع، ويحذفهما المستخدم من نص المشاركة إن شاء). note: { text, verse }
 export const APP_SIGNATURE = 'تطبيق قرآن السلف\nhttps://quran-alsalaf.github.io/';
+// v: الآية، أو قائمة آيات (آية حفص التي تنقسم في ورش آيتين)
 export function noteShareText(quran, v, note) {
   const parts = [];
-  if (note.verse) parts.push(copyVerse(quran, v));
+  const list = Array.isArray(v) ? v : [v];
+  if (note.verse) parts.push(list.length > 1 ? copyVerses(quran, list) : copyVerse(quran, list[0]));
   if (note.text.trim()) parts.push(note.text.trim());
   parts.push(APP_SIGNATURE);
   return parts.join('\n\n');

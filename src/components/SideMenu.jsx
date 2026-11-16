@@ -9,6 +9,8 @@ import { ShareIcon } from './StudySheet.jsx';
 import './SideMenu.css';
 import { useLayer } from '../lib/layers.js';
 import { juzStarts, rubName, rubOpening } from '../lib/rubs.js';
+import { isWarsh } from '../lib/riwayah.js';
+import { hafsOf, shownBookmarks, shownOf } from '../lib/verseMap.js';
 
 /*
   القائمة الجانبية (الفصل ٧): صفحة كاملة تنزلق من اليمين (أيقونتها في الشريط العلوي هناك)،
@@ -63,22 +65,27 @@ export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onE
   };
   const juzs = useMemo(() => (quran ? juzStarts(quran) : []), [quran]);
   const user = useUserData();
-  // الملاحظات مرتبة بترتيب الآيات في المصحف لا بوقت إضافتها
+  // الملاحظات مرتبة بترتيب الآيات في المصحف لا بوقت إضافتها. وهي محفوظة بترقيم حفص (key)، وتُعرض بآيات
+  // المصحف المعروض المقابلة لها (vs؛ في ورش قد تقابل آيةُ حفص آيتين)
   const noteEntries = useMemo(
     () =>
       Object.keys(user.notes ?? {})
-        .map((v) => ({ v: Number(v), note: noteOf(user.notes, v) }))
-        .filter((x) => x.note)
-        .sort((a, b) => a.v - b.v),
-    [user.notes]
+        .map((h) => ({ key: Number(h), vs: shownOf(quran, Number(h)), note: noteOf(user.notes, h) }))
+        .filter((x) => x.note && x.vs.length)
+        .map((x) => ({ ...x, v: x.vs[0] }))
+        .sort((a, b) => a.v - b.v || a.key - b.key),
+    [user.notes, quran]
   );
-  // العلامات بترتيب إنشائها؛ والضغط على إحداها يدخل فيها: آياتها وإعداداتها (٢٠٢٦-١١-١٤)
-  const bookmarks = user.bookmarks ?? [];
+  // العلامات بترتيب إنشائها؛ والضغط على إحداها يدخل فيها: آياتها وإعداداتها (٢٠٢٦-١١-١٤). وآياتها بترقيم المصحف المعروض
+  const bookmarks = useMemo(() => shownBookmarks(quran, user.bookmarks ?? []), [quran, user.bookmarks]);
   const [openMark, setOpenMark] = useState(null);
   const opened = bookmarks.find((b) => b.id === openMark);
   useEffect(() => {
     if (!open) setOpenMark(null);
   }, [open]);
+
+  // مصحف ورش: الأرباع موقوفة فيه (٢٠٢٦-١١-١٥): مطبوعه مقسوم أثمانًا، ولا مصدر موثوق بعدُ لمواضعها التي تبدأ بأول سورة
+  const warsh = isWarsh(quran);
 
   const goto = (v) => {
     onGoto(quran.verses[v].p);
@@ -142,7 +149,9 @@ export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onE
                 </ul>
               )}
 
+              {index === 'rubs' && warsh && <p className="sidemenu__empty">الأرباع تُتاح برواية ورش قريبًا.</p>}
               {index === 'rubs' &&
+                !warsh &&
                 juzs.map((_, j) => (
                   <section key={j} className="sidemenu__rubGroup" aria-label={juzName(j + 1)}>
                     <h3 className="sidemenu__rubJuz">{juzName(j + 1)}</h3>
@@ -173,16 +182,17 @@ export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onE
           {tab === 'notes' &&
             (noteEntries.length ? (
               <ul className="sidemenu__list">
-                {noteEntries.map(({ v, note }) => (
+                {noteEntries.map(({ key, vs, v, note }) => (
                   <NoteRow
-                    key={v}
+                    key={key}
                     quran={quran}
-                    v={v}
+                    vs={vs}
+                    noteKey={key}
                     note={note}
                     onGoto={() => goto(v)}
                     onEdit={() => {
                       onClose();
-                      onEditNote(v);
+                      onEditNote(v, key);
                     }}
                     onToast={onToast}
                   />
@@ -231,9 +241,10 @@ export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onE
 // صفّ ملاحظة: يُنقل بالضغط على نصّها، وتُعدَّل بزرّ القلم وتُحذف بزرّ السلة
 // سطر الملاحظة (٢٠٢٦-١١-١٥، «تطوير الملاحظات»): اسم الآية وبداية التعليق، وعلامة «الآية مُدرجة» إن
 // أُدرجت، ثم مشاركة وتعديل وحذف. والتعديل يفتح بطاقة الملاحظة نفسها (بدل خانة داخل القائمة)
-function NoteRow({ quran, v, note, onGoto, onEdit, onToast }) {
+// vs: آيات المصحف المعروض المقابلة لآية الملاحظة (واحدة، أو اثنتان في ورش حيث تنقسم آية حفص)، noteKey: آية حفص
+function NoteRow({ quran, vs, noteKey, note, onGoto, onEdit, onToast }) {
   const share = async () => {
-    const result = await shareText(noteShareText(quran, v, note));
+    const result = await shareText(noteShareText(quran, vs, note));
     if (result === 'copied') onToast('نُسخت الملاحظة');
     else if (result === 'failed') onToast('تعذّرت المشاركة');
   };
@@ -241,7 +252,7 @@ function NoteRow({ quran, v, note, onGoto, onEdit, onToast }) {
     <li className="sidemenu__row">
       <button type="button" className="sidemenu__rowMain" onClick={onGoto}>
         <span className="sidemenu__rowLabel">
-          {verseLabel(quran, [v])}
+          {verseLabel(quran, vs)}
           {note.verse && <span className="sidemenu__withVerse">الآية مُدرجة</span>}
         </span>
         {note.text.trim() && <span className="sidemenu__rowText">{note.text}</span>}
@@ -253,7 +264,7 @@ function NoteRow({ quran, v, note, onGoto, onEdit, onToast }) {
         <button type="button" aria-label="تعديل الملاحظة" onClick={onEdit}>
           <PencilIcon />
         </button>
-        <button type="button" aria-label="حذف الملاحظة" onClick={() => setNote(v, '')}>
+        <button type="button" aria-label="حذف الملاحظة" onClick={() => setNote(noteKey, '')}>
           <TrashIcon />
         </button>
       </div>
@@ -367,7 +378,11 @@ function BookmarkDetail({ quran, b, onBack, onGoto }) {
                   <button
                     type="button"
                     className="bmdetail__link bmdetail__link--danger"
-                    onClick={() => (unplaceBookmark(b.id, v), setUnplacing(null))}
+                    onClick={() => {
+                      // العلامة محفوظة بترقيم حفص: تُزال عن كل ما يقابل الآية
+                      for (const h of hafsOf(quran, v)) unplaceBookmark(b.id, h);
+                      setUnplacing(null);
+                    }}
                   >
                     نعم، أزلها
                   </button>

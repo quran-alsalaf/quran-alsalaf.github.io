@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import SplashScreen from './components/SplashScreen.jsx';
 import Reader from './components/Reader.jsx';
 import ReadingMode from './components/ReadingMode.jsx';
-import { loadQuran } from './data/quran.js';
+import { loadQuran, loadWarsh } from './data/quran.js';
 import { loadPageFont } from './lib/qcfFonts.js';
 import { readLastPage, saveLastPage } from './lib/position.js';
 import SettingsSheet from './components/SettingsSheet.jsx';
@@ -14,7 +14,8 @@ import SideMenu from './components/SideMenu.jsx';
 import SearchOverlay from './components/SearchOverlay.jsx';
 import KhatmaPage from './components/KhatmaPage.jsx';
 import { completeWird, useKhatma, wirdState } from './lib/khatma.js';
-import { FOREVER, pause, play, resume, retarget, setSettings as setListenSettings, stop, usePlayer } from './lib/player.js';
+import { FOREVER, pause, play, resume, retarget, setSettings as setListenSettings, stop, timerShort, usePlayer, useTimerTick } from './lib/player.js';
+import { countText, MINUTES } from './lib/count.js';
 import { toArabicDigits } from './data/quran.js';
 import { pageVerses, verseLabel } from './lib/study.js';
 import { saveContentRange, saveRange, useUserData } from './lib/userdata.js';
@@ -23,6 +24,9 @@ import { hasOpenLayer } from './lib/layers.js';
 import { useRubAlert } from './lib/rubs.js';
 import { onOfflineNotice, verifyDownloads } from './lib/offline.js';
 import { verifyTafsirDownloads } from './lib/tafsirDownload.js';
+import { readRiwayah, setRiwayah, useRiwayah } from './lib/riwayah.js';
+import RiwayahChooser from './components/RiwayahChooser.jsx';
+import { hafsList, hafsRange, shownBookmarks, shownNotes, shownRange } from './lib/verseMap.js';
 import './App.css';
 
 // أقصر مدّة تبقى فيها شاشة الافتتاح ولو كانت البيانات جاهزة فورًا من ذاكرة
@@ -36,7 +40,14 @@ const MOUSE_IDLE_MS = 2500;
 const FLASH_FALLBACK_MS = 12000;
 
 export default function App() {
-  const [quran, setQuran] = useState(null);
+  // مصحف حفص (يُحمَّل دائمًا)، ومصحف ورش (يُحمَّل متى اختيرت ورش). والمعروض quran: ورش إن اختيرت وحُمِّلت،
+  // وإلا حفص. وبيانات المستخدم والمحتوى بترقيم حفص، فتُنقل في ورش إلى ترقيمه وتُحفظ بترقيم حفص
+  // (src/lib/verseMap.js، «الروايات» الجلسة ٢). والاستماع وحده موقوف في ورش حتى قرّائه (الجلسة ٣)
+  const [hafs, setHafs] = useState(null);
+  const [warshData, setWarshData] = useState(null);
+  const riwayah = useRiwayah();
+  const warsh = riwayah === 'warsh' && !!warshData;
+  const quran = warsh ? warshData : hafs;
   const [failed, setFailed] = useState(false);
   const [splashLeaving, setSplashLeaving] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
@@ -67,10 +78,14 @@ export default function App() {
   // المقداران المستقلان (٢٠٢٦-١١-١٠): مقدار الاستماع، ومقدار صفحات المحتوى (ويتبعه
   // إخفات ما خارجه في المصحف). وكلاهما إن لم يكتمل فالمعتمد آيات الصفحة الظاهرة، أو الصفحتين
   // الظاهرتين معًا من أول اليمنى إلى آخر اليسرى
-  const selection = user.range?.length === 2 ? user.range : null;
+  // والمقداران محفوظان بترقيم حفص، فيُنقلان إلى ترقيم المصحف المعروض (ورش) هنا، ويُحفظ اختيار المستخدم
+  // بترقيم حفص (pickVerse)
+  const listenRange = useMemo(() => (quran ? shownRange(quran, user.range) : null), [quran, user.range]);
+  const contentRange = useMemo(() => (quran ? shownRange(quran, user.contentRange) : null), [quran, user.contentRange]);
+  const selection = listenRange?.length === 2 ? listenRange : null;
   // مقدار استماع ببداية بلا نهاية (٢٠٢٦-١١-١٢): يبدأ من آيته متتابعًا إلى آخر المصحف
-  const listenStart = user.range?.length === 1 ? user.range[0] : null;
-  const contentSel = user.contentRange?.length === 2 ? user.contentRange : null;
+  const listenStart = listenRange?.length === 1 ? listenRange[0] : null;
+  const contentSel = contentRange?.length === 2 ? contentRange : null;
   const shownVerses = useMemo(
     () => (quran ? [...new Set(shownPages.flatMap((p) => pageVerses(quran, p)))] : []),
     [quran, shownPages]
@@ -81,9 +96,10 @@ export default function App() {
     () => (contentSel ? span(contentSel) : shownVerses),
     [shownVerses, contentSel?.[0], contentSel?.[1]]
   );
+  // صفحات المقدار في مصحف حفص («من فوائد الآيات» في المختصر لكل صفحة منه)
   const contentPages = useMemo(
-    () => (quran ? [...new Set(contentVerses.map((v) => quran.verses[v].p))] : []),
-    [quran, contentVerses]
+    () => (quran && hafs ? [...new Set(hafsList(quran, contentVerses).map((v) => hafs.verses[v].p))] : []),
+    [quran, hafs, contentVerses]
   );
 
   // الضغط المطوّل على آية، وقائمة اختيار آية النطاق، والتنبيه القصير
@@ -146,7 +162,7 @@ export default function App() {
     // الانتقال إلى بداية المقدار (٢٠٢٦-١١-١١): من أول ضغطة تشغيل، قبل أن يبدأ الصوت، ينتقل المصحف إلى
     // صفحة أول آية في مقدار الاستماع إن كان بعيدًا عن الظاهر — ومثله البداية وحدها. وبلا مقدار يبدأ من
     // الظاهر فلا انتقال
-    if (user.range?.length) showVerse(user.range[0]);
+    if (listenRange?.length) showVerse(listenRange[0]);
     // play() ترجع 'unsupported' أو 'playing' (src/lib/player.js)، ونافذة الاستماع تبقى مفتوحة كما كانت
     if (play(quran, playVerses(), !selection) === 'unsupported') showToast('تسجيل هذا القارئ لا يشمل هذا الموضع؛ اختر قارئًا آخر.');
     // أخطاء التشغيل نفسه تظهر من التأثير أدناه (player.error)
@@ -185,6 +201,10 @@ export default function App() {
   useEffect(() => {
     if (player.error) showToast(player.error.text);
   }, [player.error, showToast]);
+  // انتهاء مؤقّت التلاوة (src/lib/player.js)
+  useEffect(() => {
+    if (player.notice) showToast(player.notice.text);
+  }, [player.notice, showToast]);
   // التقليب التلقائي: عند بدء كل آية (ومنها إعادة المقدار وتكرار الآية) إن لم تكن صفحتها ظاهرة انتقل
   // المصحف إليها — صفحةً في عرض الصفحة الواحدة، وزوجًا في عرض الصفحتين (فالانتقال إلى صفحة من الزوج
   // الظاهر لا يغيّره). ويُقارَن بالصفحات الظاهرة فعلًا لا بآخر صفحة طُلبت، فإن قلّب المستخدم بيده أعاده
@@ -193,7 +213,7 @@ export default function App() {
   const shownRef = useRef(shownPages);
   shownRef.current = shownPages;
   useEffect(() => {
-    if (!quran || player.v == null) return;
+    if (!quran || player.v == null || !quran.verses[player.v]) return;
     const p = quran.verses[player.v].p;
     if (!shownRef.current.includes(p)) setGotoPage({ page: p, n: Date.now() });
   }, [quran, player.v, player.n]);
@@ -209,9 +229,19 @@ export default function App() {
     enabled: !!quran && splashDone && !reading && !studyOpen && !khatmaOpen,
     onToast: showToast,
   });
+  // الملاحظات والعلامات بترقيم المصحف المعروض (في ورش: كل آية حفص ⇐ ما يقابلها). والآيات الجارية تلاوتها:
+  // آيات المقطع الجاري كلها (آيتان في ملف واحد تُظلَّلان معًا، src/lib/player.js)
   const marks = useMemo(
-    () => ({ notes: user.notes, bookmarks: user.bookmarks, range: contentSel, selected: pressed?.v ?? null, playing: player.v, flash: flash?.v ?? null, rubFlash }),
-    [user.notes, user.bookmarks, contentSel?.[0], contentSel?.[1], pressed?.v, player.v, flash?.v, rubFlash]
+    () => ({
+      notes: quran ? shownNotes(quran, user.notes) : null,
+      bookmarks: quran ? shownBookmarks(quran, user.bookmarks) : null,
+      range: contentSel,
+      selected: pressed?.v ?? null,
+      playing: player.vs,
+      flash: flash?.v ?? null,
+      rubFlash,
+    }),
+    [quran, user.notes, user.bookmarks, contentSel?.[0], contentSel?.[1], pressed?.v, player.vs, flash?.v, rubFlash]
   );
 
   // دخول وضع القراءة من الإعدادات: يُوقَف الصوت بهدوء (الاستماع وتحديد المقدار لا يعملان فيه)،
@@ -232,11 +262,12 @@ export default function App() {
   // صفحة الورد تنبّه ببداية الربع وحدها (KhatmaPage)
   const khatmaMarks = useMemo(() => ({ ...marks, range: null, playing: null, flash: null, rubFlash: null }), [marks]);
 
-  // تعديل الملاحظة من القائمة اليمنى (٢٠٢٦-١١-١٥): ينقل المصحف إلى صفحة الآية ويفتح بطاقة ملاحظتها نفسها
-  const editNote = (v) => {
+  // تعديل الملاحظة من القائمة اليمنى (٢٠٢٦-١١-١٥): ينقل المصحف إلى صفحة الآية ويفتح بطاقة ملاحظتها نفسها.
+  // key: آية حفص التي حُفظت بها (في ورش قد تقابل آيةُ ورش آيتين من حفص، فتُفتح ملاحظة التي اختيرت)
+  const editNote = (v, key) => {
     gotoPageNumber(quran.verses[v].p);
     setChromeOpen(false);
-    setPressed({ v, view: 'note' });
+    setPressed({ v, view: 'note', key });
   };
 
   const onLongPress = useCallback((v, rect) => {
@@ -248,12 +279,13 @@ export default function App() {
   // ومقدار الاستماع لا يحرّكه عند التحديد أصلًا (ينتقل عند التشغيل، startListening). أما مقدار صفحات
   // المحتوى (٢٠٢٦-١١-١١، بدل إبقاء المصحف مكانه): عند اكتماله ينتقل المصحف خلف صفحات المحتوى إلى صفحة
   // أول آية فيه (وزوجها في عرض الصفحتين)، فإذا أغلقها وجد المقدار أمامه وما خارجه مُخفَت
+  // (والمقدار يُحفظ بترقيم حفص: في ورش من أول ما يقابل البداية إلى آخر ما يقابل النهاية)
   const pickVerse = (v) => {
     const content = picking.target === 'content';
-    const save = content ? saveContentRange : saveRange;
+    const save = (r) => (content ? saveContentRange : saveRange)(hafsRange(quran, r));
     if (picking.mode === 'start') save([v]);
     else {
-      const s = (content ? user.contentRange : user.range)[0];
+      const s = (content ? contentRange : listenRange)[0];
       save(v < s ? [v, s] : [s, v]);
       if (content) showVerse(Math.min(v, s));
     }
@@ -465,15 +497,21 @@ export default function App() {
     // كاملة من أول إطار. وإن تعذّر خط الصفحة (لا اتصال في أول فتح لها) لا يُعطَّل الافتتاح.
     // ومعه خط الصفحة المقابلة لها، فإن فُتح المصحف صفحتين ظهرتا معًا
     const last = readLastPage();
+    // ومن اختار ورش يُفتح على مصحف ورش: بياناته وخطّا صفحتيه وخط بسملته. فإن تعذّر (لا اتصال ولم يُحمَّل من
+    // قبل) فُتح على حفص، ويُنبَّه بعد الافتتاح (أدناه)
+    const r = readRiwayah() === 'warsh' ? 'warsh' : undefined;
     const fonts = Promise.all([
-      loadPageFont(last),
-      loadPageFont(last % 2 ? last + 1 : last - 1),
+      loadPageFont(last, r),
+      loadPageFont(last % 2 ? last + 1 : last - 1, r),
       document.fonts.load('32px "SurahHeader"'),
-      document.fonts.load('32px "QCF4Basmala"'),
+      document.fonts.load(r ? '32px "WarshBasmala"' : '32px "QCF4Basmala"'),
     ]).catch(() => {});
-    Promise.all([loadQuran(), fonts, minDelay])
-      .then(([data]) => {
-        if (alive) setQuran(data);
+    const warshLoad = r ? loadWarsh().catch(() => null) : Promise.resolve(null);
+    Promise.all([loadQuran(), warshLoad, fonts, minDelay])
+      .then(([data, w]) => {
+        if (!alive) return;
+        setHafs(data);
+        if (w) setWarshData(w);
       })
       .catch(() => {
         if (alive) setFailed(true);
@@ -487,6 +525,42 @@ export default function App() {
       alive = false;
     };
   }, []);
+
+  // اختيار ورش (من الإعدادات أو شاشة الاختيار): يُحمَّل مصحفه أول مرة، ويبقى حفص معروضًا حتى يكتمل. وإن تعذّر
+  // رجعت الرواية إلى حفص برسالة. وعند التبديل يُوقف الصوت، وتُغلق ما كان مفتوحًا على آية بترقيم الرواية الأخرى
+  useEffect(() => {
+    if (riwayah !== 'warsh' || warshData || !hafs) return undefined;
+    let alive = true;
+    loadWarsh().then(
+      (w) => alive && setWarshData(w),
+      () => {
+        if (!alive) return;
+        setRiwayah('hafs');
+        showToast('تعذّر تحميل مصحف ورش؛ تحقّق من الاتصال ثم أعد المحاولة');
+      }
+    );
+    return () => {
+      alive = false;
+    };
+  }, [riwayah, warshData, hafs, showToast]);
+  // خط نص الآيات خارج صفحات المصحف بحسب المصحف المعروض (global.css: نص ورش بخط ورش العام)
+  useEffect(() => {
+    document.documentElement.dataset.riwayah = warsh ? 'warsh' : 'hafs';
+  }, [warsh]);
+  const shownRiwayah = useRef(null);
+  useEffect(() => {
+    if (!quran) return;
+    const now = warsh ? 'warsh' : 'hafs';
+    if (shownRiwayah.current && shownRiwayah.current !== now) {
+      if (player.status !== 'idle') stop();
+      setPressed(null);
+      setFlash(null);
+      setPicking(null);
+      setListenOpen(false);
+      if (studyOpen) closeStudy();
+    }
+    shownRiwayah.current = now;
+  }, [quran, warsh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // الانتقال إلى صفحة من القائمة الجانبية أو البحث؛ ومن نتيجة آية في البحث تُميَّز الآية تمييزًا مؤقتًا
   const gotoPageNumber = useCallback((p, verse) => {
@@ -509,8 +583,10 @@ export default function App() {
   }, [flash]);
 
   // ما دامت فوق المصحف صفحة أو قائمة أو بطاقة، فهو خارج التركيز ولوحة المفاتيح (inert)
+  // شاشة اختيار الرواية عند أول فتح (بعد الافتتاح، وما لم تُختر رواية)
+  const choosing = splashDone && !!hafs && riwayah === null;
   const covered =
-    studyOpen || settingsOpen || sideMenuOpen || searchOpen || !!pressed || !!picking || listenOpen || khatmaOpen;
+    studyOpen || settingsOpen || sideMenuOpen || searchOpen || !!pressed || !!picking || listenOpen || khatmaOpen || choosing;
   const chromeShown = chromeOpen && !covered;
 
   return (
@@ -554,6 +630,7 @@ export default function App() {
         <main className="app__main">
           {quran && reading && (
             <ReadingMode
+              key={warsh ? 'warsh' : 'hafs'}
               quran={quran}
               startPage={page}
               marks={readingMarks}
@@ -564,6 +641,7 @@ export default function App() {
           )}
           {quran && !reading && (
             <Reader
+              key={warsh ? 'warsh' : 'hafs'}
               quran={quran}
               onTap={onReaderTap}
               onColumn={setColumn}
@@ -613,9 +691,7 @@ export default function App() {
                 >
                   {player.status === 'paused' ? <PlayIcon /> : player.status === 'loading' ? <span className="dock__spin" /> : <PauseIcon />}
                 </button>
-                <button type="button" className="dock__ctl" onClick={() => setListenOpen(true)} aria-label="إعدادات الاستماع">
-                  <SettingsIcon />
-                </button>
+                <ListenSettingsButton onClick={() => setListenOpen(true)} />
                 <button type="button" className="dock__ctl" onClick={stop} aria-label="إيقاف">
                   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -652,6 +728,7 @@ export default function App() {
         onClose={closeSettings}
         onStartReading={startReading}
       />
+      {choosing && <RiwayahChooser />}
       {quran && (
         <SideMenu
           quran={quran}
@@ -692,7 +769,7 @@ export default function App() {
           quran={quran}
           verses={contentVerses}
           pages={contentPages}
-          range={user.contentRange}
+          range={contentRange}
           onPickStart={() => setPicking({ target: 'content', mode: 'start' })}
           onPickEnd={() => setPicking({ target: 'content', mode: 'end' })}
           onClearRange={() => saveContentRange(null)}
@@ -706,7 +783,7 @@ export default function App() {
           continuous={!selection}
           label={listenLabel}
           suras={listenSuras}
-          range={user.range}
+          range={listenRange}
           onPickStart={() => setPicking({ target: 'listen', mode: 'start' })}
           onPickEnd={() => setPicking({ target: 'listen', mode: 'end' })}
           onClearRange={() => saveRange(null)}
@@ -720,7 +797,7 @@ export default function App() {
         <RangePicker
           quran={quran}
           mode={picking.mode}
-          start={(picking.target === 'content' ? user.contentRange : user.range)?.[0]}
+          start={(picking.target === 'content' ? contentRange : listenRange)?.[0]}
           near={shownVerses[0]}
           onPick={pickVerse}
           onClose={() => setPicking(null)}
@@ -755,6 +832,30 @@ function PlayIcon() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M8 5.5v13l10.5-6.5Z" fill="currentColor" />
     </svg>
+  );
+}
+
+// زرّ إعدادات الاستماع أثناء التشغيل، وما دام مؤقّت التلاوة مضبوطًا يصير الزرّ نفسه ما بقي منه
+// («٢٨ د» بأيقونة ساعة)، فيفتح النافذة كما هو لتغييره أو إلغائه (٢٠٢٦-١١-١٦). مكوّن مستقل يُعاد رسمه
+// كل ثانية وحده لا التطبيق كله
+function ListenSettingsButton({ onClick }) {
+  const left = useTimerTick();
+  if (left == null) {
+    return (
+      <button type="button" className="dock__ctl" onClick={onClick} aria-label="إعدادات الاستماع">
+        <SettingsIcon />
+      </button>
+    );
+  }
+  const spoken = left > 0 ? `يتبقى ${countText(Math.ceil(left / 60000), MINUTES, toArabicDigits, true)}` : 'تقف التلاوة بعد الآية الجارية';
+  return (
+    <button type="button" className="dock__ctl dock__ctl--timer" onClick={onClick} aria-label={`إعدادات الاستماع، مؤقّت التلاوة: ${spoken}`}>
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="13" r="7.5" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M12 9.5V13l2.3 1.6M10 3h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span>{timerShort(left)}</span>
+    </button>
   );
 }
 

@@ -1,11 +1,11 @@
 // نظافة نصوص البيانات (scripts/data/07-tidy.mjs): التفسيران و«العمل بالآيات»، وتفسير السعدي (10-saadi.mjs)
-// وتفسير البغوي (11-baghawy.mjs) وتفسير ابن كثير (12-katheer.mjs)
+// وتفسير البغوي (11-baghawy.mjs) وتفسير ابن كثير (15-katheer.mjs)
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { tidyAction, tidyMukhtasar, tidyMukhtasarVerse, tidyMuyassar } from '../../scripts/data/07-tidy.mjs';
 import { cleanSaadi } from '../../scripts/data/10-saadi.mjs';
 import { applyFixes, cleanBaghawy } from '../../scripts/data/11-baghawy.mjs';
-import * as K from '../../scripts/data/12-katheer.mjs';
+import * as K from '../../scripts/data/15-katheer.mjs';
 
 const load = (f) => JSON.parse(readFileSync(`public/data/${f}.json`, 'utf8'));
 const MY = load('tafsir-muyassar');

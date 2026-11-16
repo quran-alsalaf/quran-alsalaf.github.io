@@ -21,7 +21,7 @@ const OPENING_HEADER_ROW = OPENING_TEXT_ROW - 1;
 */
 // marks: ما يُرسم فوق الآيات من بيانات المستخدم —
 //   notes { آية: نص }، bookmarks قائمة العلامات (تُظلَّل الآية بلون آخرها وضعًا)، range [أول، آخر] (يُخفت ما خارجه)،
-//   selected الآية المضغوط عليها ضغطًا مطوّلًا، playing الآية الجاري تلاوتها،
+//   selected الآية المضغوط عليها ضغطًا مطوّلًا، playing الآيات الجاري تلاوتها (مصفوفة)،
 //   flash الآية المنتقَل إليها من البحث (تمييز مؤقت يتلاشى)،
 //   rubFlash { verses: [أول آية في كل ربع], n } الأرباع التي يومض موضع بدايتها (src/lib/rubs.js)
 function MushafPage({ quran, page, fontSize, width, height, shortLines, marks }) {
@@ -46,7 +46,7 @@ function MushafPage({ quran, page, fontSize, width, height, shortLines, marks })
   return (
     <div
       ref={ref}
-      className={`mushaf-page no-select${opening ? ' mushaf-page--opening' : ''}`}
+      className={`mushaf-page no-select${opening ? ' mushaf-page--opening' : ''}${quran.riwayah === 'warsh' ? ' mushaf-page--warsh' : ''}`}
       style={{ '--fs': `${fontSize}px`, width: `${width}px`, ...(height ? { height: `${height}px` } : {}) }}
       lang="ar"
     >
@@ -102,6 +102,15 @@ function Line({ quran, page, line, glyphs, width, opening, centered, gridRow, ma
     );
   }
 
+  // بسملة ورش (٢٠٢٦-١١-١٥): ليست في خطوط صفحاته، فتُكتب نصًّا بخط المجمع العام لورش
+  if (line.b && quran.qcf.basmalaText) {
+    return (
+      <div className="line line--basmala line--basmala-warsh" style={place} aria-label="بسم الله الرحمن الرحيم">
+        {quran.qcf.basmalaText}
+      </div>
+    );
+  }
+
   // البسملة بخط المجمع: سين «بسم» ونون «الرحمن» ممدودتان
   if (line.b) {
     return (
@@ -126,7 +135,7 @@ function Line({ quran, page, line, glyphs, width, opening, centered, gridRow, ma
   const startsHere = new Set(line.g.filter(([, from]) => from === 0).map(([v]) => v));
   return (
     <div
-      className={`line ${pageFontClass(page)}${centered ? ' line--centered' : ''}`}
+      className={`line ${pageFontClass(page, quran.riwayah)}${centered ? ' line--centered' : ''}`}
       style={place}
       aria-label={text}
     >
@@ -136,12 +145,14 @@ function Line({ quran, page, line, glyphs, width, opening, centered, gridRow, ma
         // الآية المعلّمة (٢٠٢٦-١١-١٤): كلماتها كلها مظلَّلة بلون آخر علامة وُضعت عليها
         const bookmark = bookmarkOf.get(v);
         let cls = 'w';
+        // رقم الآية في مصحف ورش: خطه بلون واحد، فيُلوَّن الرقم وإطاره بلون التطبيق (MushafPage.css)
+        if (isEnd && quran.riwayah === 'warsh') cls += ' w--aya';
         if (weeks.shaded(v)) cls += ' w--week';
         if (bookmark) cls += ' w--mark';
         if (outside(v)) cls += ' w--out';
         if (marks?.selected === v) cls += ' w--selected';
         else if (marks?.flash === v) cls += ' w--flash';
-        else if (marks?.playing === v) cls += ' w--playing';
+        else if (marks?.playing?.includes(v)) cls += ' w--playing';
         // الآية ذات الملاحظة (بطلب صاحب المشروع): علامة الآية ورقمها كما هما، ودفتر ملاحظات صغير أعلى
         // الدائرة يمينًا. (وأُلغيت شريطة العلامة المرجعية ٢٠٢٦-١١-١٤؛ العلامة تظليل الآية بلونها)
         const marked = note;
