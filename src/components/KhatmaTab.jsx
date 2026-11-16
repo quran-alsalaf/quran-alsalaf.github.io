@@ -20,10 +20,12 @@ import {
 } from '../lib/khatma.js';
 import { FIRST_PAGE, LAST_PAGE } from '../lib/position.js';
 import { countNoun, countText, KHATMAS, PAGES } from '../lib/count.js';
+import { HifzCard, HifzFinished, HifzForm } from './HifzTab.jsx';
 import './Khatma.css';
 
 /*
-  تبويب «الختمة» في القائمة اليمنى (٢٠٢٦-١١-١٢): ختمة الورد اليومي (src/lib/khatma.js).
+  تبويب «الختمة» في القائمة اليمنى (٢٠٢٦-١١-١٢): ختمة الورد اليومي (src/lib/khatma.js)، وختمة الحفظ
+  (٢٠٢٦-١١-١٦، HifzTab.jsx). تجتمع الختمتان، ومن كل نوع واحدة؛ وبلا ختمة يُختار النوع أعلى النموذج.
   • بلا ختمة: نموذج الإنشاء — بالأيام أو بالصفحات يوميا، ويظهر المقابل ويوم الختم قبل التأكيد.
   • أثناء الختمة: التقدم، وورد اليوم بزري «اقرأ الورد» (يفتح صفحة الختمة) و«أتممت الورد»،
     ويوم الختم المتوقع بالميلادي والهجري، وتعديل الخطة وحذف الختمة.
@@ -31,12 +33,16 @@ import './Khatma.css';
 */
 const n = toArabicDigits;
 
-export default function KhatmaTab({ quran, onRead, onToast }) {
-  const { wird, doneCount } = useKhatma();
+export default function KhatmaTab({ quran, hafs, onRead, onHifz, onToast }) {
+  const { wird, hifz, doneCount, hifzDoneCount } = useKhatma();
   const [editing, setEditing] = useState(false);
+  const [hifzEditing, setHifzEditing] = useState(false);
+  // نوع الختمة الجديدة: في الإنشاء بلا ختمة يُختار بأعلى النموذج، ومع ختمة قائمة بزرّ النوع الآخر تحتها
+  const [newType, setNewType] = useState('wird');
+  const [adding, setAdding] = useState(false);
   const today = dayKey();
 
-  if (!wird || editing) {
+  const wirdForm = (cancel) => {
     const state = wird && wirdState(wird, today);
     return (
       <PlanForm
@@ -51,14 +57,83 @@ export default function KhatmaTab({ quran, onRead, onToast }) {
             onToast('تم تعديل الخطة');
           } else startWird(mode, value, today);
           setEditing(false);
+          setAdding(false);
         }}
-        onCancel={wird ? () => setEditing(false) : null}
+        onCancel={cancel}
       />
+    );
+  };
+  const hifzForm = (cancel) => (
+    <HifzForm
+      quran={quran}
+      hafs={hafs}
+      k={hifz && !hifz.finished ? hifz : null}
+      onDone={(msg) => {
+        if (msg) onToast(msg);
+        setHifzEditing(false);
+        setAdding(false);
+      }}
+      onCancel={cancel}
+    />
+  );
+
+  // بلا ختمة: اختيار النوع ثم نموذجه
+  if (!wird && !hifz) {
+    return (
+      <>
+        <TypeSwitch type={newType} onType={setNewType} />
+        {newType === 'wird' ? wirdForm(null) : hifzForm(null)}
+      </>
     );
   }
 
-  if (wird.finished) return <Finished date={wird.finished} doneCount={doneCount} />;
-  return <Active quran={quran} wird={wird} today={today} doneCount={doneCount} onRead={onRead} onEdit={() => setEditing(true)} onToast={onToast} />;
+  const missing = !wird ? 'wird' : !hifz ? 'hifz' : null;
+  return (
+    <>
+      {wird &&
+        (editing ? (
+          wirdForm(() => setEditing(false))
+        ) : wird.finished ? (
+          <Finished date={wird.finished} doneCount={doneCount} />
+        ) : (
+          <Active quran={quran} wird={wird} today={today} doneCount={doneCount} onRead={onRead} onEdit={() => setEditing(true)} onToast={onToast} />
+        ))}
+      {hifz &&
+        (hifzEditing ? (
+          hifzForm(() => setHifzEditing(false))
+        ) : hifz.finished ? (
+          <HifzFinished date={hifz.finished} doneCount={hifzDoneCount} />
+        ) : (
+          <HifzCard quran={quran} hafs={hafs} k={hifz} doneCount={hifzDoneCount} onOpen={onHifz} onEdit={() => setHifzEditing(true)} onToast={onToast} />
+        ))}
+      {missing &&
+        (adding ? (
+          missing === 'wird' ? wirdForm(() => setAdding(false)) : hifzForm(() => setAdding(false))
+        ) : (
+          <div className="khatma-extra khatma-extra--add">
+            <button type="button" className="khatma__btn khatma__add" onClick={() => setAdding(true)}>
+              {missing === 'wird' ? 'ختمة ورد جديدة' : 'ختمة حفظ جديدة'}
+            </button>
+          </div>
+        ))}
+    </>
+  );
+}
+
+// نوع الختمة الجديدة (٢٠٢٦-١١-١٦): الورد أو الحفظ. وتجتمع الختمتان، ومن كل نوع واحدة
+function TypeSwitch({ type, onType }) {
+  return (
+    <div className="khatma-extra">
+      <div className="khatma__segment" role="radiogroup" aria-label="نوع الختمة">
+        <button type="button" role="radio" aria-checked={type === 'wird'} onClick={() => onType('wird')}>
+          ختمة الورد
+        </button>
+        <button type="button" role="radio" aria-checked={type === 'hifz'} onClick={() => onType('hifz')}>
+          ختمة الحفظ
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ---------- نموذج الإنشاء وتعديل الخطة ----------

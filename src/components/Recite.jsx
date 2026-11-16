@@ -43,9 +43,10 @@ export function ReciteInfo({ onStart }) {
   );
 }
 
-export function ReciteBar({ onWords, onVerse, onMistakes, onExit }) {
+// inline: داخل صفحة (ختمة الحفظ) لا عائمًا فوق المصحف، وبلا ✕ إن لم يُعطَ onExit
+export function ReciteBar({ onWords, onVerse, onMistakes, onExit, inline }) {
   return (
-    <div className="recitebar" role="toolbar" aria-label="التحكم في وضع التسميع">
+    <div className={`recitebar${inline ? ' recitebar--inline' : ''}`} role="toolbar" aria-label="التحكم في وضع التسميع">
       <button type="button" className="recitebar__main" onClick={onWords}>
         كشف كلمتين
       </button>
@@ -59,11 +60,13 @@ export function ReciteBar({ onWords, onVerse, onMistakes, onExit }) {
         </svg>
         <span>أخطائي</span>
       </button>
-      <button type="button" className="recitebar__btn recitebar__exit" onClick={onExit} aria-label="الخروج من وضع التسميع">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-      </button>
+      {onExit && (
+        <button type="button" className="recitebar__btn recitebar__exit" onClick={onExit} aria-label="الخروج من وضع التسميع">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }
@@ -74,11 +77,11 @@ const verseStart = (quran, v) => {
   return words.slice(0, 4).join(' ') + (words.length > 4 ? ' …' : '');
 };
 
-export function MistakesPicker({ quran, pages, state, onClose, onToast }) {
+export function MistakesPicker({ quran, pages, state, scope, onClose, onToast }) {
   useLayer(onClose);
   // تتحدّث علامة ✓ إن تغيّرت العلامات
   const { bookmarks } = useUserData();
-  const verses = revealedVerses(quran, pages, state);
+  const verses = revealedVerses(quran, pages, state, scope);
   const pick = (v) => {
     const r = addMistake(quran, v);
     onClose();

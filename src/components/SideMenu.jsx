@@ -42,7 +42,7 @@ const readTab = () => {
   }
 };
 
-export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onEditNote, onToast }) {
+export default function SideMenu({ quran, hafs, open, onGoto, onClose, onReadWird, onHifz, onEditNote, onToast }) {
   const [tab, setTabState] = useState(readTab);
   const setTab = (t) => {
     setTabState(t);
@@ -106,7 +106,7 @@ export default function SideMenu({ quran, open, onGoto, onClose, onReadWird, onE
         </header>
 
         <div className="sidemenu__body" ref={bodyRef}>
-          {tab === 'khatma' && <KhatmaTab quran={quran} onRead={onReadWird} onToast={onToast} />}
+          {tab === 'khatma' && <KhatmaTab quran={quran} hafs={hafs ?? quran} onRead={onReadWird} onHifz={onHifz} onToast={onToast} />}
 
           {tab === 'suras' && (
             <>

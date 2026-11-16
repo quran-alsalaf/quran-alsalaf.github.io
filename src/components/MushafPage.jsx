@@ -27,6 +27,7 @@ const OPENING_HEADER_ROW = OPENING_TEXT_ROW - 1;
 //   rubFlash { verses: [أول آية في كل ربع], n } الأرباع التي يومض موضع بدايتها (src/lib/rubs.js)
 //   recite { صفحة: عدد كلماتها المكشوفة } في وضع التسميع (src/lib/recite.js): ما بعد المكشوف مخفي مكانه
 //          باقٍ، ورؤوس الآيات ظاهرة. ولكل كلمة ترتيبها في صفحتها (data-wi) ليُخفى ما بعدها بلمسها
+//   reciteScope مجموعة آيات: التسميع عليها وحدها (ختمة الحفظ)، وبقية الصفحة ظاهرة
 function MushafPage({ quran, page, fontSize, width, height, shortLines, marks }) {
   const lines = quran.pages[page - 1];
   const glyphs = quran.qcf.pages[page - 1];
@@ -34,12 +35,14 @@ function MushafPage({ quran, page, fontSize, width, height, shortLines, marks })
   let row = OPENING_TEXT_ROW;
   const bookmarkOf = bookmarkShades(marks?.bookmarks);
   // وضع التسميع: ترتيب أول كلمة في كل سطر من كلمات الصفحة، وعدد المكشوف منها
-  const recite = marks?.recite ? { shown: marks.recite[page] ?? 0, starts: [] } : null;
+  // ومع reciteScope (ختمة الحفظ) لا يُخفى ولا يُعدّ إلا كلمات آياته، فلكل كلمة منها ترتيبها بينها وحدها
+  const scope = marks?.reciteScope ?? null;
+  const recite = marks?.recite ? { shown: marks.recite[page] ?? 0, orders: [] } : null;
   if (recite) {
     let n = 0;
     lines.forEach((line, i) => {
-      recite.starts[i] = n;
-      if (line.g) n += lineGlyphs(quran, line, glyphs[i]).filter(([, , wi]) => wi != null).length;
+      if (!line.g) return;
+      recite.orders[i] = lineGlyphs(quran, line, glyphs[i]).map(([v, , wi]) => (wi == null || (scope && !scope.has(v)) ? null : n++));
     });
   }
 
@@ -76,7 +79,7 @@ function MushafPage({ quran, page, fontSize, width, height, shortLines, marks })
           gridRow={opening ? (line.h ? OPENING_HEADER_ROW : row++) : undefined}
           marks={marks}
           bookmarkOf={bookmarkOf}
-          recite={recite && { shown: recite.shown, start: recite.starts[i] }}
+          recite={recite && { shown: recite.shown, order: recite.orders[i] }}
         />
       ))}
     </div>
@@ -148,7 +151,7 @@ function Line({ quran, page, line, glyphs, width, opening, centered, gridRow, ma
   // الآيات التي تبدأ في هذا السطر (أول كلمة فيها عليه): عند أولها تُرسم علامة الربع
   const startsHere = new Set(line.g.filter(([, from]) => from === 0).map(([v]) => v));
   // وضع التسميع: ترتيب كل كلمة في صفحتها (null لرأس الآية، فلا يُخفى)
-  const order = recite ? lineGlyphs(quran, line, glyphs, recite.start).map(([, , wi]) => wi) : null;
+  const order = recite?.order ?? null;
   return (
     <div
       className={`line ${pageFontClass(page, quran.riwayah)}${centered ? ' line--centered' : ''}`}

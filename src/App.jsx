@@ -13,6 +13,9 @@ import ListenSheet from './components/ListenSheet.jsx';
 import SideMenu from './components/SideMenu.jsx';
 import SearchOverlay from './components/SearchOverlay.jsx';
 import KhatmaPage from './components/KhatmaPage.jsx';
+import HifzPage from './components/HifzPage.jsx';
+import { finishHifz, finishReview } from './components/HifzTab.jsx';
+import { hifzState } from './lib/hifz.js';
 import { completeWird, useKhatma, wirdState } from './lib/khatma.js';
 import { FOREVER, pause, play, resume, retarget, setSettings as setListenSettings, stop, timerShort, usePlayer, useTimerTick } from './lib/player.js';
 import { countText, MINUTES } from './lib/count.js';
@@ -63,6 +66,9 @@ export default function App() {
   const [khatmaOpen, setKhatmaOpen] = useState(false);
   const khatma = useKhatma();
   const wird = khatma.wird && !khatma.wird.finished ? wirdState(khatma.wird) : null;
+  // صفحة ختمة الحفظ (٢٠٢٦-١١-١٦): 'learn' | 'near' | 'far'، أو null. والخطة بترقيم حفص ومصحفه
+  const [hifzOpen, setHifzOpen] = useState(null);
+  const hifz = useMemo(() => (hafs && khatma.hifz && !khatma.hifz.finished ? hifzState(hafs, khatma.hifz) : null), [hafs, khatma.hifz]);
   // الآية المميَّزة تمييزًا مؤقتًا بعد الانتقال إليها من البحث: { v: موضعها، n }
   const [flash, setFlash] = useState(null);
   // صفحة لوحة الإعدادات الظاهرة: الإعدادات نفسها، أو صفحة فرعية فيها («عن التطبيق»)
@@ -219,8 +225,11 @@ export default function App() {
   // بيده لم يعُد المصحف إلى القارئ ما دامت الآيات في تلك الصفحة.)
   const shownRef = useRef(shownPages);
   shownRef.current = shownPages;
+  const hifzOpenRef = useRef(null);
+  hifzOpenRef.current = hifzOpen;
   useEffect(() => {
-    if (!quran || player.v == null || !quran.verses[player.v]) return;
+    // صفحة ختمة الحفظ تقلّب مصحفها هي مع القارئ (HifzPage)، فلا يتحرك المصحف خلفها
+    if (!quran || player.v == null || !quran.verses[player.v] || hifzOpenRef.current) return;
     const p = quran.verses[player.v].p;
     if (!shownRef.current.includes(p)) setGotoPage({ page: p, n: Date.now() });
   }, [quran, player.v, player.n]);
@@ -233,7 +242,7 @@ export default function App() {
   const rubFlash = useRubAlert({
     quran,
     pages: shownPages,
-    enabled: !!quran && splashDone && !reading && !reciting && !studyOpen && !khatmaOpen,
+    enabled: !!quran && splashDone && !reading && !reciting && !studyOpen && !khatmaOpen && !hifzOpen,
     onToast: showToast,
   });
   // الملاحظات والعلامات بترقيم المصحف المعروض (في ورش: كل آية حفص ⇐ ما يقابلها). والآيات الجارية تلاوتها:
@@ -431,6 +440,47 @@ export default function App() {
     closeKhatma();
   };
 
+  // صفحة ختمة الحفظ: كصفحة الورد، فتحها يغلق القائمة ويضيف خطوة إلى السجل، وإغلاقها يعيد القائمة.
+  // ويُوقَف الاستماع الجاري عند فتحها، فلا يختلط بتشغيل الورد فيها
+  const openHifz = useCallback(
+    (kind) => {
+      setSideMenuOpen(false);
+      setChromeOpen(false);
+      if (player.status !== 'idle') stop();
+      setHifzOpen(kind);
+      try {
+        window.history.pushState({ hqHifz: true }, '');
+      } catch {
+        // بلا سجل: تُغلق بزرّ الرجوع فيها
+      }
+    },
+    [player.status]
+  );
+  const afterHifz = useCallback(() => {
+    setHifzOpen(null);
+    setSideMenuOpen(true);
+  }, []);
+  // وقد تكون للصفحة خطوتان في السجل (الحفظ ثم التسميع، HifzPage)، فتُرجَع كلتاهما
+  const closeHifz = useCallback(() => {
+    const depth = window.history.state?.hqHifz;
+    if (depth) window.history.go(-depth);
+    else afterHifz();
+  }, [afterHifz]);
+  useEffect(() => {
+    if (window.history.state?.hqHifz) window.history.replaceState(null, '');
+    const onPop = () => {
+      if (!window.history.state?.hqHifz && hifzOpenRef.current) afterHifz();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [afterHifz]);
+  const completeHifzStep = () => {
+    if (hifzOpen === 'learn') finishHifz(hafs, showToast);
+    else finishReview(hafs, hifzOpen, showToast);
+    closeHifz();
+  };
+  const hifzSegments = !hifz || !hifzOpen ? null : hifzOpen === 'learn' ? [hifz.current] : hifzOpen === 'near' ? hifz.near : hifz.far?.ranges;
+
   const openSideMenu = useCallback(() => {
     if (window.history.state?.hqSettings) window.history.go(-window.history.state.hqSettings);
     setSettingsOpen(false);
@@ -624,7 +674,7 @@ export default function App() {
   // شاشة اختيار الرواية عند أول فتح (بعد الافتتاح، وما لم تُختر رواية)
   const choosing = splashDone && !!hafs && riwayah === null;
   const covered =
-    studyOpen || settingsOpen || sideMenuOpen || searchOpen || !!pressed || !!picking || listenOpen || khatmaOpen || choosing || mistakesOpen;
+    studyOpen || settingsOpen || sideMenuOpen || searchOpen || !!pressed || !!picking || listenOpen || khatmaOpen || !!hifzOpen || choosing || mistakesOpen;
   const chromeShown = chromeOpen && !covered;
 
   return (
@@ -780,6 +830,8 @@ export default function App() {
       {quran && (
         <SideMenu
           quran={quran}
+          hafs={hafs}
+          onHifz={openHifz}
           open={sideMenuOpen}
           onGoto={gotoPageNumber}
           onClose={() => setSideMenuOpen(false)}
@@ -797,6 +849,19 @@ export default function App() {
           onClose={closeKhatma}
           onComplete={finishWird}
           onLongPress={onLongPress}
+          onToast={showToast}
+          marks={khatmaMarks}
+        />
+      )}
+      {quran && hifzOpen && hifzSegments?.length > 0 && (
+        <HifzPage
+          key={hifzOpen}
+          quran={quran}
+          kind={hifzOpen}
+          segments={hifzSegments}
+          title={hifz.far?.name}
+          onClose={closeHifz}
+          onComplete={completeHifzStep}
           onToast={showToast}
           marks={khatmaMarks}
         />
