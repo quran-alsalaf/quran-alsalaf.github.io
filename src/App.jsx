@@ -460,8 +460,10 @@ export default function App() {
     setHifzOpen(null);
     setSideMenuOpen(true);
   }, []);
+  // وقد تكون للصفحة خطوتان في السجل (الحفظ ثم التسميع، HifzPage)، فتُرجَع كلتاهما
   const closeHifz = useCallback(() => {
-    if (window.history.state?.hqHifz) window.history.back();
+    const depth = window.history.state?.hqHifz;
+    if (depth) window.history.go(-depth);
     else afterHifz();
   }, [afterHifz]);
   useEffect(() => {

@@ -8,7 +8,7 @@
 //   الورد آخر سورة مع أول السورة التي قبلها (متباعدتان في المصحف)، أما السور الكاملة المتجاورة فتجتمع.
 // • التقسيم لا ذاكرة له: يُعاد من أول آية لم تُحفظ (next) فيعطي الأوراد نفسها، فيُحفظ موضع الحفظ وحده.
 // • ما قبل البداية في اتجاه الخطة يُعدّ محفوظًا (للمراجعة البعيدة وحساب النصف)، إلا أن يختار المستخدم
-//   «لا أحفظ ما قبل البداية».
+//   «لا أراجع ما قبل البداية».
 // • الورد يتبع الإنجاز لا التاريخ كختمة الورد (src/lib/khatma.js)، والمراجعة لا توقف الخطة.
 import { addDays, dayKey, daysBetween, readKhatmas, saveKhatma, bumpDoneCount } from './khatma.js';
 import { toArabicDigits } from '../data/quran.js';
@@ -182,7 +182,7 @@ export function mergeRanges(ranges) {
   return out;
 }
 
-// المحفوظ الآن: ما قبل البداية (إلا «لا أحفظ ما قبل البداية») وما حُفظ من الخطة إلى ما قبل next
+// المحفوظ الآن: ما قبل البداية (إلا «لا أراجع ما قبل البداية») وما حُفظ من الخطة إلى ما قبل next
 export function memorizedRanges(quran, k) {
   const out = k.known ? beforeRanges(quran, k.dir, k.start) : [];
   const blocks = planBlocks(quran, k.dir, k.start, k.end);

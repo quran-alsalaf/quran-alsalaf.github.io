@@ -27,7 +27,15 @@ const TITLES = { learn: 'حفظ الورد', recite: 'تسميع الورد', ne
 
 export default function HifzPage({ quran, kind, segments, title, onClose, onComplete, onToast, marks }) {
   const [mode, setMode] = useState(kind); // learn ثم recite
-  const layer = useLayer(onClose);
+  // من «تسميع الورد» يُرجَع إلى الحفظ (بطلب صاحب المشروع): بزرّ «العودة إلى الحفظ»، وبزرّ الرجوع وEsc وزرّ
+  // رجوع الجهاز (دخول التسميع خطوة ثانية في سجل المتصفح: hqHifz = 2)، فيستمع ويكرر ثم يسمّع من جديد
+  const fromLearn = kind === 'learn' && mode === 'recite';
+  const goBack = () => {
+    if (!fromLearn) return onClose();
+    if (window.history.state?.hqHifz === 2) window.history.back();
+    else backToLearn();
+  };
+  const layer = useLayer(goBack);
   const segs = useMemo(() => segments.map((r) => shownRange(quran, [r[0], r[1]])), [quran, segments]);
   const [seg, setSeg] = useState(0);
   const [a, b] = segs[Math.min(seg, segs.length - 1)];
@@ -63,6 +71,30 @@ export default function HifzPage({ quran, kind, segments, title, onClose, onComp
   const scope = useMemo(() => new Set(verses), [verses]);
   const [state, setState] = useState({});
   const [mistakes, setMistakes] = useState(false);
+  const enterRecite = () => {
+    setGoto(null);
+    setState({});
+    setMode('recite');
+    try {
+      window.history.pushState({ hqHifz: 2 }, '');
+    } catch {
+      // بلا سجل: «العودة إلى الحفظ» وحده
+    }
+  };
+  function backToLearn() {
+    setGoto(null);
+    setState({});
+    setMistakes(false);
+    setMode('learn');
+  }
+  useEffect(() => {
+    if (!fromLearn) return undefined;
+    const onPop = () => {
+      if (window.history.state?.hqHifz !== 2) backToLearn();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [fromLearn]);
   const segPages = useMemo(() => Array.from({ length: bounds[1] - bounds[0] + 1 }, (_, i) => bounds[0] + i), [bounds]);
   const last = seg === segs.length - 1;
   const complete = reciting && last && allRevealed(quran, segPages, state, scope);
@@ -105,7 +137,7 @@ export default function HifzPage({ quran, kind, segments, title, onClose, onComp
   return (
     <div className="kpage hpage" role="dialog" aria-modal="true" aria-label={heading}>
       <header className="kpage__head">
-        <button type="button" className="kpage__back" onClick={onClose} aria-label="رجوع">
+        <button type="button" className="kpage__back" onClick={goBack} aria-label="رجوع">
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -117,6 +149,11 @@ export default function HifzPage({ quran, kind, segments, title, onClose, onComp
             {hifzLabel(quran, [a, b])}
           </span>
         </div>
+        {fromLearn && (
+          <button type="button" className="hpage__relearn" onClick={goBack}>
+            العودة إلى الحفظ
+          </button>
+        )}
       </header>
 
       <div className="kpage__reader">
@@ -167,12 +204,9 @@ export default function HifzPage({ quran, kind, segments, title, onClose, onComp
               <button
                 type="button"
                 className="khatma__btn khatma__btn--primary"
-                onClick={() => {
-                  setGoto(null);
-                  setMode('recite');
-                }}
+                onClick={enterRecite}
               >
-                سمع الورد
+                تسميع الورد
               </button>
             </div>
           </div>

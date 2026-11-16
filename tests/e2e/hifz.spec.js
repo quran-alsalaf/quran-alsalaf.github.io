@@ -75,7 +75,7 @@ test('اختيار النوع، وإنشاء ختمة حفظ بالقيم الا
   await expect(radio(page, 'آخر ٣ أوراد')).toHaveAttribute('aria-checked', 'true');
   await expect(radio(page, 'حزب (مقترح)')).toHaveAttribute('aria-checked', 'true');
   // من أول المصحف: لا شيء قبل البداية
-  await expect(side(page).getByText('لا أحفظ ما قبل البداية')).toHaveCount(0);
+  await expect(side(page).getByText('لا أراجع ما قبل البداية')).toHaveCount(0);
   await expect(side(page).locator('.khatma__summary')).toContainText('نصف وجه يوميا');
 
   await radio(page, 'وجه').click();
@@ -94,7 +94,7 @@ test('اختيار النوع، وإنشاء ختمة حفظ بالقيم الا
   expect([k.type, k.dir, k.start, k.end, k.lines, k.near, k.far, k.known]).toEqual(['hifz', 'forward', 0, LAST, 15, 5, 'hizb', true]);
 });
 
-test('البداية والنهاية بالمنتقي، و«لا أحفظ ما قبل البداية»، والمقترح بحسب النصف، والاتجاه العكسي', async ({ page }) => {
+test('البداية والنهاية بالمنتقي، و«لا أراجع ما قبل البداية»، والمقترح بحسب النصف، والاتجاه العكسي', async ({ page }) => {
   await open(page);
   await openTab(page);
   await radio(page, 'ختمة الحفظ').click();
@@ -104,14 +104,17 @@ test('البداية والنهاية بالمنتقي، و«لا أحفظ ما 
   await pickVerse(page, at(19, 1));
   await expect(side(page).locator('.hifz__pick').nth(0)).toContainText('مريم ١');
   await expect(radio(page, 'جزء (مقترح)')).toHaveAttribute('aria-checked', 'true');
-  await side(page).getByText('لا أحفظ ما قبل البداية').click();
+  await expect(side(page).getByText('تحفظ الآن أكثر من نصف القرآن، فيقترح أن تراجع جزءا كل يوم.')).toBeVisible();
+  await side(page).getByText('لا أراجع ما قبل البداية').click();
   await expect(radio(page, 'حزب (مقترح)')).toHaveAttribute('aria-checked', 'true');
+  await expect(side(page).getByText('تحفظ الآن أقل من نصف القرآن، فيقترح أن تراجع حزبا كل يوم.')).toBeVisible();
 
   // العكسي: من الناس إلى الفاتحة
   await radio(page, 'من الناس إلى الفاتحة').click();
   await expect(side(page).locator('.hifz__pick').nth(0)).toContainText('الناس ١');
   await expect(side(page).locator('.hifz__pick').nth(1)).toContainText('الفاتحة ٧');
-  await expect(side(page).getByText('تُحفظ السور من الآخر، وكل سورة من أولها إلى آخرها.')).toBeVisible();
+  // بلا شرح للاتجاه العكسي (بطلب صاحب المشروع: بديهي)
+  await expect(side(page).getByText('تُحفظ السور من الآخر')).toHaveCount(0);
 
   // نهاية بعد البداية في العكسي: لا تصح
   await side(page).locator('.hifz__pick').nth(0).click();
@@ -156,7 +159,7 @@ test('صفحة الحفظ: الورد وحده، وتشغيله بالتكرار
   // مقدار الاستماع المحفوظ لا يتغيّر
   expect(await stored(page, 'hq.range')).toBeNull();
 
-  await hpage(page).getByRole('button', { name: 'سمع الورد' }).click();
+  await hpage(page).getByRole('button', { name: 'تسميع الورد' }).click();
   await expect(hpage(page).locator('.kpage__title h2')).toHaveText('تسميع الورد');
   await expect(hpage(page).getByRole('button', { name: 'تشغيل الورد' })).toHaveCount(0);
   const hidden = hpage(page).locator('.sheet--current .w--hidden');
@@ -198,6 +201,44 @@ test('صفحة الحفظ تُغلق بزرّ الرجوع فيها وبرجوع
   await page.goBack();
   await expect(hpage(page)).toHaveCount(0);
   await expect(side(page)).toHaveClass(/sidemenu--open/);
+});
+
+test('من تسميع الورد يُرجَع إلى الحفظ بزرّه وبالرجوع وبرجوع المتصفح، ثم يُسمَّع من جديد', async ({ page }) => {
+  await open(page, { 'hq.khatmas': [hifz({ dir: 'reverse', start: at(114, 1), end: at(1, 7), next: at(114, 1), lines: 7.5 })] });
+  await openTab(page);
+  await step(page, 'حفظ اليوم').getByRole('button', { name: 'احفظ' }).click();
+  await waitHpage(page);
+  const h2 = hpage(page).locator('.kpage__title h2');
+  const hidden = hpage(page).locator('.sheet--current .w--hidden');
+  // زرّ «العودة إلى الحفظ» في التسميع وحده
+  await expect(hpage(page).getByRole('button', { name: 'العودة إلى الحفظ' })).toHaveCount(0);
+  await hpage(page).getByRole('button', { name: 'تسميع الورد' }).click();
+  await expect(h2).toHaveText('تسميع الورد');
+  await hpage(page).getByRole('button', { name: 'كشف الآية' }).click();
+  await hpage(page).getByRole('button', { name: 'العودة إلى الحفظ' }).click();
+  await expect(h2).toHaveText('حفظ الورد');
+  await expect(hidden).toHaveCount(0);
+  await expect(hpage(page).getByRole('button', { name: 'تشغيل الورد' })).toBeVisible();
+
+  // التسميع من جديد يبدأ مخفيا كله، وزرّ الرجوع يعيد إلى الحفظ لا إلى القائمة
+  await hpage(page).getByRole('button', { name: 'تسميع الورد' }).click();
+  await expect.poll(() => hpage(page).locator('.sheet--current .w[data-wi]:not(.w--hidden)').count()).toBe(0);
+  await hpage(page).getByRole('button', { name: 'رجوع' }).click();
+  await expect(h2).toHaveText('حفظ الورد');
+  // ورجوع المتصفح كذلك
+  await hpage(page).getByRole('button', { name: 'تسميع الورد' }).click();
+  await expect(h2).toHaveText('تسميع الورد');
+  await page.goBack();
+  await expect(h2).toHaveText('حفظ الورد');
+  await expect(side(page)).not.toHaveClass(/sidemenu--open/);
+
+  // الإتمام من التسميع يغلق الصفحة كلها ويرجع إلى القائمة
+  await hpage(page).getByRole('button', { name: 'تسميع الورد' }).click();
+  await revealAll(page, 'أتممت حفظ الورد ✓');
+  await hpage(page).getByRole('button', { name: 'أتممت حفظ الورد ✓' }).click();
+  await expect(hpage(page)).toHaveCount(0);
+  await expect(side(page)).toHaveClass(/sidemenu--open/);
+  await expect(side(page).locator('.khatma__status')).toHaveText('أتممت حفظ اليوم ✓');
 });
 
 test('المراجعة البعيدة: تسميع المحفوظ من الوحدة وحده، ثم تعود إلى أول المحفوظ', async ({ page }) => {
@@ -301,7 +342,7 @@ test('ورش: الورد بترقيمه، والتسميع على الورد و�
   await expect(step(page, 'حفظ اليوم')).toContainText('الناس');
   await step(page, 'حفظ اليوم').getByRole('button', { name: 'احفظ' }).click();
   await waitHpage(page);
-  await hpage(page).getByRole('button', { name: 'سمع الورد' }).click();
+  await hpage(page).getByRole('button', { name: 'تسميع الورد' }).click();
   await expect.poll(() => hpage(page).locator('.sheet--current .w--hidden').count()).toBeGreaterThan(0);
   await revealAll(page, 'أتممت حفظ الورد ✓');
 });

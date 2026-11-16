@@ -606,3 +606,16 @@
 .hifz-picklayer > .rpick {
   z-index: 60;
 }
+
+/* «العودة إلى الحفظ» في رأس صفحة تسميع الورد */
+.hpage__relearn {
+  flex: none;
+  margin-inline-start: auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--accent-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
