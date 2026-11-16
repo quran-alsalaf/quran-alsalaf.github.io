@@ -220,3 +220,13 @@ test('نهاية المقدار قبل بدايته تُقلب، ولا تُفت
   await page.getByRole('dialog', { name: 'اختر آية النهاية' }).getByRole('button', { name: 'إغلاق' }).click();
   expect(await stored(page, 'hq.contentRange')).toEqual([4]);
 });
+
+test('خط المحتوى Scheherazade New (كخط تطبيق «آية»): في التفسير وفي بطاقة «تفسير»، ومحمَّل مع التطبيق', async ({ page }) => {
+  await open(page);
+  const box = study(page).locator('.study__box--explain').first();
+  await expect(box).toBeVisible();
+  expect(await box.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"?Scheherazade New"?,/);
+  // الخط نفسه مُنزَّل من ملفات التطبيق، لا بديل النظام
+  await expect.poll(() => page.evaluate(async () => (await document.fonts.load('16px "Scheherazade New"', 'بسم')).length)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.fonts.check('16px "Scheherazade New"', 'بسم'))).toBe(true);
+});

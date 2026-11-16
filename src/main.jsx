@@ -11,6 +11,11 @@ import '@fontsource/rubik/700.css';
 // وزن عادي لا غامق (بطلب صاحب المشروع ٢٠٢٦-٠٩-٢٥) لوضوح القراءة
 import '@fontsource/amiri/400.css';
 import '@fontsource/amiri/700.css';
+// خط محتوى التفسير والمعاني والعمل والفوائد (Scheherazade New، بطلب صاحب المشروع ٢٠٢٦-١١-١٦ بعد مقارنة
+// خمسة خطوط نسخ تشبه خط تطبيق «آية»؛ كان Rubik)
+import '@fontsource/scheherazade-new/400.css';
+import '@fontsource/scheherazade-new/600.css';
+import '@fontsource/scheherazade-new/700.css';
 
 import './styles/tokens.css';
 import './styles/global.css';
