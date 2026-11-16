@@ -60,11 +60,30 @@ export const SAADI_SHARED = sharedNote('saadi');
 // فيبدأ سطر جديد عند نهاية جملة («.» أو «؟» أو «!» ثم مسافة، لا داخل اقتباس ﴿…﴾ ولا في «...») متى بلغت
 // الفقرة نحو target حرفًا (وإن طالت بلا نهاية جملة فعند «؛» بعد ضعفيه، ثم «،» بعد ثلاثة أمثاله)، وعند كل بند مرقّم («1 - …» في المختصر)، وتبقى فقرات الأصل (السطر الجديد) كما هي.
 // والفقرة الأخيرة القصيرة جدًّا تُضمّ إلى ما قبلها. النص نفسه لا يتغير، فقط مواضع الأسطر.
+// ويبدأ سطر جديد أيضًا عند انتقال المفسّر إلى جزء آخر من الآية يشرحه، بعد نهاية جملة (٢٠٢٦-١١-١٦، كتطبيق «آية»):
+// «… للعمل. ثم قال: ﴿وبالآخرة هم يوقنون﴾ …»، «وقوله: ﴿…﴾»، «قوله تعالى: ﴿…﴾» (وعند البغوي «(…)»).
+const VERSE_LEAD = /^(?:ثم قال|وقوله|قوله)(?: تعالى| عز وجل| سبحانه| جل وعلا)?:? ?[﴿(]/;
+const VERSE_START = new RegExp(`(?<=[.؟!] )(?=${VERSE_LEAD.source.slice(1)})`);
+
+// البنود المرقّمة («1 - …» في المختصر)، لا رقمَي آيتين في عزو بين معقوفين («[الأعلى: 1 - 5]» عند ابن كثير)
+function splitItems(block) {
+  const out = [];
+  let from = 0;
+  for (const m of block.matchAll(/ (?=[\d٠-٩]{1,2} - )/g)) {
+    const before = block.slice(0, m.index);
+    if (before.split('[').length > before.split(']').length) continue;
+    out.push(block.slice(from, m.index));
+    from = m.index + 1;
+  }
+  out.push(block.slice(from));
+  return out;
+}
+
 export function paragraphs(text, target = 260) {
   const out = [];
   for (const block of text.split('\n')) {
     const start = out.length;
-    for (const part of block.split(/ (?=[\d٠-٩]{1,2} - )/)) {
+    for (const part of splitItems(block).flatMap((x) => x.split(VERSE_START))) {
       let cur = '';
       let depth = 0;
       for (let i = 0; i < part.length; i++) {
@@ -86,8 +105,8 @@ export function paragraphs(text, target = 260) {
       }
       if (cur.trim()) out.push(cur.trim());
     }
-    // ذيل قصير جدًّا من الكتلة نفسها يُضمّ إلى ما قبله
-    if (out.length - start > 1 && out.at(-1).length < 60 && !/^[\d٠-٩]{1,2} - /.test(out.at(-1))) {
+    // ذيل قصير جدًّا من الكتلة نفسها يُضمّ إلى ما قبله (إلا بندًا مرقّمًا أو فقرة تبدأ بجزء من الآية)
+    if (out.length - start > 1 && out.at(-1).length < 60 && !/^[\d٠-٩]{1,2} - /.test(out.at(-1)) && !VERSE_LEAD.test(out.at(-1))) {
       const tail = out.pop();
       out[out.length - 1] += ` ${tail}`;
     }

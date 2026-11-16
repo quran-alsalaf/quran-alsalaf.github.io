@@ -2,7 +2,7 @@
 // وتفسير البغوي (11-baghawy.mjs) وتفسير ابن كثير (12-katheer.mjs)
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { tidyAction, tidyMukhtasar, tidyMuyassar } from '../../scripts/data/07-tidy.mjs';
+import { tidyAction, tidyMukhtasar, tidyMukhtasarVerse, tidyMuyassar } from '../../scripts/data/07-tidy.mjs';
 import { cleanSaadi } from '../../scripts/data/10-saadi.mjs';
 import { applyFixes, cleanBaghawy } from '../../scripts/data/11-baghawy.mjs';
 import * as K from '../../scripts/data/12-katheer.mjs';
@@ -70,6 +70,15 @@ describe('البيانات نظيفة', () => {
 
   it('المختصر وفوائده ومقاصده: لا مسافة قبل علامة الترقيم ولا فاصلة ملتصقة بما بعدها', () => {
     expect(mkAll.filter((s) => / [،؛:]| \.(?!\.)|،[؀-ۿ]/.test(s))).toEqual([]);
+  });
+
+  it('المختصر: تفسير آيتين معًا بلا أرقامهما في أوله («3 - 4 - الذين…»)', () => {
+    expect(tidyMukhtasarVerse('3 - 4 - الذين يؤمنون بالغيب')).toBe('الذين يؤمنون بالغيب');
+    expect(tidyMukhtasarVerse('1 - من فوائد')).toBe('1 - من فوائد');
+    expect(where(MK.verses, /^[\d٠-٩]+ - [\d٠-٩]+ - /).map(ref)).toEqual([]);
+    const v3 = QURAN.verses.findIndex((x) => x.s === 2 && x.a === 3);
+    expect(MK.verses[v3]).toMatch(/^الذين يؤمنون بالغيب/);
+    expect(MK.verses[v3 + 1]).toBe(MK.verses[v3]);
   });
 
   it('العمل بالآيات: الأقواس متوازنة في كل نص، وأصلحت المواضع الأربعة', () => {

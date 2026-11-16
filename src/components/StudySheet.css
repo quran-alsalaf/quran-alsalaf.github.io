@@ -280,6 +280,11 @@
   color: var(--accent-text);
 }
 
+/* الآية المقتبسة في نص التفسير (السعدي والبغوي وابن كثير): بلون التطبيق وخط النص نفسه */
+.study__ayah {
+  color: var(--accent-text);
+}
+
 .study__ref {
   display: block;
   margin-top: 6px;

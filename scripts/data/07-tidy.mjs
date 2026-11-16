@@ -40,6 +40,10 @@ export function tidyMukhtasar(s) {
   );
 }
 
+// تفسير آية في المختصر: إذا جمع آيتين بتفسير واحد بدأ نصّه بأرقامهما («3 - 4 - الذين يؤمنون…»، ٤٤ موضعًا)،
+// فتُحذف الأرقام (٢٠٢٦-١١-١٦)، لأن «رقم -» في أول السطر علامة بند مرقّم يبدأ عنده سطر جديد (paragraphs)
+export const tidyMukhtasarVerse = (s) => tidyMukhtasar(s).replace(/^(?:[\d٠-٩]{1,3} - ){2,}/, '');
+
 // «العمل بالآيات»: أقواس لا تُغلق أو لا تُفتح، كلٌّ بنصّه. والنمط لا يطابق النص بعد تصحيحه،
 // فلا يتكرر التصحيح إن أُعيد التشغيل
 export const ACTION_FIXES = [
@@ -74,7 +78,7 @@ async function run() {
 
   const MK = 'public/data/tafsir-mukhtasar.json';
   const mk = JSON.parse(await readFile(MK, 'utf8'));
-  mk.verses = mk.verses.map((s) => (s ? apply('المختصر', tidyMukhtasar, s) : s));
+  mk.verses = mk.verses.map((s) => (s ? apply('المختصر', tidyMukhtasarVerse, s) : s));
   for (const key of ['fawaid', 'maqasid']) {
     for (const k of Object.keys(mk[key])) {
       const x = mk[key][k];

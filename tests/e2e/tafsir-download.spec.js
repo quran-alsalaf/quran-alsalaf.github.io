@@ -98,6 +98,14 @@ test('ابن كثير: آخر القائمة، يحتاج تحميلًا بتأ�
   await expect(study(page).locator('.study__box--explain').first()).toContainText(paragraphs(KATHEER.verses[0])[0].slice(0, 40));
   await expect(study(page).locator('.study__box--explain').first()).toContainText('﴿بسم الله الرحمن الرحيم﴾');
   await expect(study(page).locator('.study__credit')).toHaveText('تفسير القرآن العظيم (تفسير ابن كثير)');
+  // الآيات المقتبسة بلون التطبيق (كتطبيق «آية»)، وليست كذلك في الميسّر
+  const ayah = study(page).locator('.study__box--explain .study__ayah').first();
+  await expect(ayah).toHaveText('﴿بسم الله الرحمن الرحيم﴾');
+  const [quote, body] = await ayah.evaluate((el) => [getComputedStyle(el).color, getComputedStyle(el.parentElement).color]);
+  expect(quote).not.toBe(body);
+  await picker.click();
+  await option(list, 'الميسّر').click();
+  await expect(study(page).locator('.study__ayah')).toHaveCount(0);
 });
 
 test('أثناء التحميل: دائرة تقدّم ونسبة، والضغط إيقاف مؤقت ثم استئناف يكمل الناقص', async ({ page }) => {
