@@ -14,11 +14,14 @@
 //   • التشغيل في الخلفية وأزرار شاشة القفل عبر Media Session
 //   • القارئ المحمَّل على الجهاز (src/lib/offline.js): تُقرأ كل آية من ملفه المحفوظ إن وُجد، وإلا بُثّت
 //   • مؤقّت التلاوة (٢٠٢٦-١١-١٦): تقف التلاوة بعد مدة بالدقائق، عند نهاية الآية الجارية — setTimer()
+//   • داخل تطبيق أندرويد (٢٠٢٦-١١-١٨): يتلو مشغّل أندرويد نفسه لا عنصر الصوت (src/lib/nativeAudio.js)، والواجهة
+//     هنا كما هي: play وretarget وpause وresume وstop وsetSettings وsetTimer ترسل إليه، وحالته تصل إلى state
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { basmalaFile, covers, DEFAULT_RECITER, reciterById, reciterFor, reciterTitle, riwayahOf, verseFiles } from './reciters.js';
 import { isWarsh } from './riwayah.js';
 import { hasOfflineFiles, isOfflineComplete, localAudioUrl } from './offline.js';
 import { toArabicDigits } from '../data/quran.js';
+import { adoptCmd, latestCmd, listenNative, nativeItems, send, useNativeAudio, verseTitle } from './nativeAudio.js';
 
 const KEY = 'hq.listen';
 // ١ (بدون تكرار) يُعرض بعبارته لا رقمه؛ فالقائمة العددية تبدأ من ٢ (بطلب صاحب المشروع)
@@ -227,6 +230,11 @@ export function play(q, verses, cont = false) {
   pos = 0;
   verseRep = 0;
   rangeRep = 0;
+  if (useNativeAudio()) {
+    set({ error: null, status: 'loading', v: queue[0].vs[0], vs: queue[0].shown });
+    nativeLoad('start', 0, { withBasmala: true, timerLeft: state.timer ? timerLeft() : null });
+    return 'playing';
+  }
   set({ error: null });
   startVerse(true);
   return 'playing';
@@ -237,7 +245,9 @@ export function play(q, verses, cont = false) {
 // أول آية فيه بعدّاد تكرار جديد. النتيجة كـplay()، أو 'continued' إن أكمل من حيث هو
 export function retarget(q, verses, cont = false) {
   if (state.status === 'idle') return 'idle';
-  if (!verses.includes(queue[pos].vs[0])) return play(q, verses, cont);
+  // في التطبيق: الآية الجارية من حالة المشغّل الأصلي (فقد تُفتح الصفحة من جديد والتلاوة جارية)
+  const current = useNativeAudio() ? state.v : queue[pos].vs[0];
+  if (!verses.includes(current)) return play(q, verses, cont);
   quran = q;
   const r = reciter();
   if (!covers(r, suraList(verses))) {
@@ -245,11 +255,12 @@ export function retarget(q, verses, cont = false) {
     return 'unsupported';
   }
   const units = unitsOf(q, r, verses);
-  const at = units.findIndex((u) => u.vs.includes(queue[pos].vs[0]));
+  const at = units.findIndex((u) => u.vs.includes(current));
   list = verses;
   queue = units;
   continuous = cont;
   pos = at;
+  if (useNativeAudio()) nativeLoad('continue', at);
   return 'continued';
 }
 
@@ -281,10 +292,12 @@ export function timerLeft(t = state.timer, now = Date.now()) {
 export function setTimer(minutes) {
   if (!minutes) {
     set({ timer: null });
+    if (useNativeAudio() && state.status !== 'idle') send('setTimer', { left: null });
     return;
   }
   const left = minutes * 60000;
   set({ timer: { minutes, left, endsAt: counting() ? Date.now() + left : null } });
+  if (useNativeAudio() && state.status !== 'idle') send('setTimer', { left });
 }
 
 // يقرأ عدد الدقائق الذي كتبه المستخدم (بالأرقام العربية أو الغربية): عدد صحيح ١–٣٦٠، وإلا null
@@ -385,12 +398,22 @@ function segmentDone() {
 }
 
 export function pause() {
+  if (useNativeAudio()) {
+    if (state.status === 'idle') return;
+    set({ status: 'paused' });
+    send('pause');
+    return;
+  }
   if (!audio || state.status === 'idle') return;
   audio.pause();
   set({ status: 'paused' });
 }
 
 export function resume() {
+  if (useNativeAudio()) {
+    if (state.status === 'paused') send('resume');
+    return;
+  }
   if (!audio || state.status !== 'paused') return;
   audio.play().catch(onPlayError);
 }
@@ -400,6 +423,11 @@ export function stop() {
   seg = null;
   // الإيقاف التام وانتهاء التلاوة يلغيان المؤقّت (لا قبل التشغيل: المؤقّت المختار حينها ينتظر «تشغيل»)
   if (state.status !== 'idle') state = { ...state, timer: null };
+  if (useNativeAudio()) {
+    set({ status: 'idle', v: null, vs: null });
+    send('stop');
+    return;
+  }
   if (audio) {
     audio.pause();
     audio.removeAttribute('src');
@@ -410,8 +438,12 @@ export function stop() {
 }
 
 // الانتقال إلى الآية السابقة أو التالية في النطاق (من أزرار شاشة القفل)
-function skip(d) {
+export function skip(d) {
   if (state.status === 'idle') return;
+  if (useNativeAudio()) {
+    send('skip', { d });
+    return;
+  }
   pos = (pos + d + queue.length) % queue.length;
   verseRep = 0;
   seg = null;
@@ -427,22 +459,69 @@ export function setSettings(patch) {
     // التخزين غير متاح: تسري الإعدادات في هذه الجلسة وحدها
   }
   set({ settings });
-  if (quran && patch[reciterKey(quran)] && state.status !== 'idle') {
+  const native = useNativeAudio();
+  if (quran && list.length && patch[reciterKey(quran)] && state.status !== 'idle') {
     const r = reciter();
     if (!covers(r, suraList(list))) {
       stop();
       return false;
     }
     // نفس الموضع بصوت القارئ الجديد: البسملة إن كانت هي الجارية، وإلا أول الآية الجارية
-    const inBasmala = !!seg?.basmala;
-    const v = queue[pos].vs[0];
+    const inBasmala = native ? !!nativeSeg?.basmala : !!seg?.basmala;
+    const v = native ? state.v : queue[pos].vs[0];
     queue = unitsOf(quran, r, list);
     pos = Math.max(0, queue.findIndex((u) => u.vs.includes(v)));
     seg = null;
-    startVerse(inBasmala);
+    if (native) nativeLoad('restart', pos, { withBasmala: inBasmala });
+    else startVerse(inBasmala);
+  } else if (native && state.status !== 'idle' && ('verseRepeat' in patch || 'rangeRepeat' in patch)) {
+    // تكرار الآية أو المقدار أثناء التلاوة: يسري من نهاية الجاري، كما في الموقع
+    send('setOptions', { verseRepeat: settings.verseRepeat, rangeRepeat: settings.rangeRepeat });
   }
   return true;
 }
+
+// ---------- المشغّل الأصلي داخل التطبيق (src/lib/nativeAudio.js) ----------
+// يحمّل مقاطع المقدار الحالي (queue) في المشغّل الأصلي بإعدادات الاستماع، من المقطع at
+function nativeLoad(mode, at, extra = {}) {
+  const r = reciter();
+  const { verseRepeat, rangeRepeat } = state.settings;
+  send('loadRange', { mode, items: nativeItems(quran, r, queue), pos: at, verseRepeat, rangeRepeat, continuous, artist: reciterTitle(r), ...extra });
+}
+
+// آخر ملف بلّغ به المشغّل: { segment، basmala } (null والمشغّل متوقف)
+let nativeSeg = null;
+const PLAY_ERROR = 'تعذّر تشغيل الصوت. الاستماع يحتاج اتصالًا بالإنترنت (إلا ما نُزِّل مسبقًا).';
+
+// حالة المشغّل الأصلي ⇐ حالة الواجهة. وما سبق آخر أوامر الصفحة يُهمل (رقم cmd)
+export function applyNativeState(e) {
+  if (!e || !e.status) return;
+  if (e.cmd != null && e.cmd < latestCmd()) return;
+  if (e.cmd != null) adoptCmd(e.cmd);
+  if (e.status === 'idle') {
+    nativeSeg = null;
+    const patch = { status: 'idle', v: null, vs: null };
+    if (state.status !== 'idle') patch.timer = null;
+    if (e.reason === 'timer') patch.notice = { text: 'انتهى مؤقّت التلاوة', n: Date.now() };
+    if (e.reason === 'error') patch.error = { text: PLAY_ERROR, n: Date.now() };
+    if (state.status === 'idle' && !patch.notice && !patch.error) return;
+    set(patch);
+    return;
+  }
+  const patch = { status: e.status };
+  // ملف جديد (آية أو بسملة أو إعادتها): كبدء المقطع في الموقع، فيُظلَّل ويقلّب المصحف إليه
+  if (!nativeSeg || nativeSeg.segment !== e.segment) Object.assign(patch, { v: e.v, vs: e.shown, n: state.n + 1 });
+  nativeSeg = { segment: e.segment, basmala: !!e.basmala };
+  // مؤقّت التلاوة: ما بقي منه عند المشغّل هو المعتمد
+  if (e.timerLeft == null) patch.timer = null;
+  else {
+    const minutes = state.timer?.minutes ?? Math.max(1, Math.ceil(e.timerLeft / 60000));
+    patch.timer = { minutes, left: e.timerLeft, endsAt: e.counting ? Date.now() + e.timerLeft : null };
+  }
+  set(patch);
+}
+
+if (useNativeAudio()) listenNative(applyNativeState);
 
 // ---------- Media Session: التشغيل في الخلفية وأزرار شاشة القفل ----------
 function setupMediaSession() {
@@ -464,11 +543,10 @@ function setupMediaSession() {
 
 function updateMetadata() {
   if (!('mediaSession' in navigator) || !quran || !seg) return;
-  const verse = quran.verses[seg.unit.vs[0]];
   const r = reciter();
   try {
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: `سورة ${quran.suras[verse.s - 1].name} — الآية ${toArabicDigits(verse.a)}`,
+      title: verseTitle(quran, seg.unit.vs[0]),
       artist: reciterTitle(r),
       album: 'قرآن السلف',
       artwork: [{ src: `${import.meta.env.BASE_URL}icons/icon-512.png`, sizes: '512x512', type: 'image/png' }],
@@ -520,7 +598,7 @@ export function previewReciter(id, onFail) {
   const token = ++previewToken;
   previewFail = onFail;
   // التلاوة الجارية تتوقف مؤقتًا، وتُستأنف بعد المعاينة (لا إن كان المستخدم قد أوقفها بنفسه)
-  if (!state.preview && audio && (state.status === 'playing' || state.status === 'loading')) {
+  if (!state.preview && (audio || useNativeAudio()) && (state.status === 'playing' || state.status === 'loading')) {
     resumeAfterPreview = true;
     pause();
   }

@@ -38,6 +38,10 @@ jobs:
       - run: npm ci
       - name: البناء ونسخ الملفات إلى مشروع أندرويد
         run: npm run android
+      # ترتيب التلاوة في المشغّل الأصلي (SequencerTest) على الحالات نفسها التي يُختبر بها مشغّل الموقع
+      - name: اختبارات أندرويد
+        working-directory: android
+        run: ./gradlew testDebugUnitTest --no-daemon
       - name: بناء ملف APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon

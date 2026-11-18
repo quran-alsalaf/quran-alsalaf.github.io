@@ -51,7 +51,12 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // مشغّل التلاوة الأصلي (audio/): مكتبة الصوت الرسمية في أندرويد، وجلسة الوسائط (الإشعار وشاشة القفل)
+    implementation "androidx.media3:media3-exoplayer:$media3Version"
+    implementation "androidx.media3:media3-session:$media3Version"
     testImplementation "junit:junit:$junitVersion"
+    // اختبار ترتيب التلاوة (SequencerTest) يقرأ حالاته من tests/fixtures/sequence.json
+    testImplementation "org.json:json:$orgJsonVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
