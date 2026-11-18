@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- خلفية الأيقونة: كحلي التطبيق (#1A0165)، كأيقونات الموقع (scripts/generate-icons.mjs) -->
+    <color name="ic_launcher_background">#1A0165</color>
+</resources>

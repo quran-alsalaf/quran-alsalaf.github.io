@@ -14,9 +14,14 @@
     "previews": "node scripts/data/09-previews.mjs",
     "test": "npm run build && npm run test:unit && npm run test:e2e",
     "test:unit": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "android": "npm run build && node scripts/native-web.mjs && npx cap sync android"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/share": "^8.0.3",
     "@fontsource/amiri": "^5.3.0",
     "@fontsource/rubik": "^5.3.0",
     "@fontsource/scheherazade-new": "^5.3.0",
@@ -24,6 +29,8 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/cli": "^8.6.2",
     "@playwright/test": "^1.63.0",
     "@vitejs/plugin-react": "^4.3.4",
     "fontkit": "^2.0.4",

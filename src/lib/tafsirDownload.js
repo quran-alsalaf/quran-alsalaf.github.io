@@ -7,6 +7,7 @@
 // الحالة المحفوظة (localStorage «hq.tafsirDownloads»): { [id]: { status: 'paused' | 'done', count, total } }
 import { createDownloader, supported } from './downloader.js';
 import { isDownloadable, tafsirInfo } from '../data/tafsirs.js';
+import { isNative, SITE_URL } from './native.js';
 
 const SURAS = 114;
 // (import.meta.env غائب خارج Vite)
@@ -14,9 +15,10 @@ const BASE = import.meta.env?.BASE_URL ?? '/';
 
 export const tafsirCacheName = (id) => `tafsir-${id}`;
 
-// روابط ملفات التفسير المطلقة (مفاتيح الذاكرة)، بترتيب السور
+// روابط ملفات التفسير المطلقة (مفاتيح الذاكرة)، بترتيب السور. وداخل التطبيق الأصلي من الموقع المنشور،
+// فملفات التفاسير لا تُحزم معه (scripts/native-web.mjs)
 export function tafsirUrls(id) {
-  const root = typeof document !== 'undefined' ? document.baseURI : 'http://localhost/';
+  const root = isNative() ? SITE_URL : typeof document !== 'undefined' ? document.baseURI : 'http://localhost/';
   return Array.from({ length: SURAS }, (_, i) => new URL(`${BASE}data/tafsir/${id}/${i + 1}.json`, root).href);
 }
 

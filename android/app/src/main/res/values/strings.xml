@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">قرآن السلف</string>
+    <string name="title_activity_main">قرآن السلف</string>
+    <string name="package_name">com.quranalsalaf.app</string>
+    <string name="custom_url_scheme">com.quranalsalaf.app</string>
+</resources>

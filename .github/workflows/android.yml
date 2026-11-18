@@ -1,0 +1,62 @@
+# تطبيق أندرويد (Capacitor، ٢٠٢٦-١١-١٨): يبني ملف APK للتجربة على كل Pull Request وكل رفع إلى main.
+#   • الملف في صفحة الإصدار «android-test» (آخر بناء دائمًا)، فيُنزَّل على الجوال من رابط ثابت:
+#     https://github.com/quran-alsalaf/quran-alsalaf.github.io/releases/download/android-test/quran-alsalaf.apk
+#   • ونسخة منه في «Artifacts» صفحة الفحص نفسه.
+#   • موقَّع بمفتاح التجربة الثابت (android/app/test-signing.keystore)، فتُثبَّت كل نسخة فوق السابقة. ليس ملف
+#     النشر في جوجل بلاي: ذاك يُبنى في جلسة النشر بمفتاح لا يُرفع إلى المستودع.
+name: تطبيق أندرويد
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: بناء ملف APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - name: البناء ونسخ الملفات إلى مشروع أندرويد
+        run: npm run android
+      - name: بناء ملف APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: تسمية الملف
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk quran-alsalaf.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quran-alsalaf-apk
+          path: quran-alsalaf.apk
+          retention-days: 30
+      - name: رفعه إلى صفحة الإصدار «android-test»
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          FROM: ${{ github.head_ref || github.ref_name }}
+        run: |
+          NOTES="نسخة تجربة من «قرآن السلف» — آخر بناء: الفرع ${FROM}، الالتزام ${SHA:0:7}، $(date -u '+%Y-%m-%d %H:%M') UTC"
+          if ! gh release view android-test >/dev/null 2>&1; then
+            gh release create android-test --prerelease --title "نسخة التجربة (أندرويد)" --notes "$NOTES" --target main
+          else
+            gh release edit android-test --notes "$NOTES"
+          fi
+          gh release upload android-test quran-alsalaf.apk --clobber

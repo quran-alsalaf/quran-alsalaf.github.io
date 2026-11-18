@@ -1,7 +1,9 @@
 // تسليم ملف النسخة الاحتياطية للجهاز (٢٠٢٦-١١-١٦) — الجزء الوحيد من النسخة الاحتياطية الخاص بالمتصفح.
-// في التطبيق الأصلي (Capacitor) يُستبدل هذا الملف وحده بإضافتي حفظ الملفات والمشاركة هناك،
-// ويبقى تجهيز المحتوى (src/lib/backup.js) كما هو. أما اختيار الملف عند الاستعادة فبحقل ملف عادي
+// وفي التطبيق الأصلي (Capacitor، ٢٠٢٦-١١-١٨) يُكتب الملف في ذاكرة التطبيق ثم يُشارك بقائمة أندرويد
+// (src/lib/native.js ← shareFile)، فالـ WebView لا يتيح navigator.share ولا تنزيل الملفات؛ ويبقى تجهيز
+// المحتوى (src/lib/backup.js) كما هو. أما اختيار الملف عند الاستعادة فبحقل ملف عادي
 // في الواجهة (SettingsSheet)، ويعمل في الاثنين.
+import { isNative, shareFile } from './native.js';
 
 // أجهزة اللمس (الجوال واللوحي): المشاركة بقائمة الجهاز (واتساب، الملفات…). وفي اللابتوب تنزيل مباشر،
 // ولو أتاح المتصفح المشاركة
@@ -14,6 +16,7 @@ const touchDevice = () => typeof window !== 'undefined' && window.matchMedia?.('
     'downloaded' — نُزِّل الملف
 */
 export async function deliverBackup(text, name) {
+  if (isNative()) return shareFile(text, name);
   const type = 'application/json';
   if (touchDevice() && typeof File !== 'undefined' && navigator.canShare) {
     const file = new File([text], name, { type });

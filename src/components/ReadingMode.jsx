@@ -5,6 +5,7 @@ import { SURA_NAMES_VOWELED } from '../data/suraNamesVoweled.js';
 import { pageLayout } from '../lib/layout.js';
 import { prefetchPageFonts, usePageFont } from '../lib/qcfFonts.js';
 import { FIRST_PAGE, LAST_PAGE } from '../lib/position.js';
+import { pushBackMode } from '../lib/native.js';
 import {
   READ_SPEED_MAX,
   READ_SPEED_MIN,
@@ -224,6 +225,11 @@ export default function ReadingMode({ quran, startPage, marks, cardOpen, onLongP
     const mid = pageH ? Math.floor((el.scrollTop + el.clientHeight / 2) / pageH) + FIRST_PAGE : startPage;
     onExit(clamp(mid, FIRST_PAGE, LAST_PAGE));
   };
+
+  // زرّ الرجوع في التطبيق الأصلي يخرج من وضع القراءة (src/lib/native.js)
+  const exitRef = useRef(exit);
+  exitRef.current = exit;
+  useEffect(() => pushBackMode(() => exitRef.current()), []);
 
   const changeSpeed = (n) => {
     setSpeed(n);

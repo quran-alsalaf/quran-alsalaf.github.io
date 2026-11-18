@@ -30,7 +30,8 @@ import { readRiwayah, setRiwayah, useRiwayah } from './lib/riwayah.js';
 import RiwayahChooser from './components/RiwayahChooser.jsx';
 import { MistakesPicker, ReciteBar } from './components/Recite.jsx';
 import { hideFrom, reveal } from './lib/recite.js';
-import { hasMouse, hasOpenLayer } from './lib/layers.js';
+import { closeTopLayer, hasMouse, hasOpenLayer } from './lib/layers.js';
+import { createBackHandler, exitApp, followSystemBars, leaveBackMode, listenBackButton } from './lib/native.js';
 import { hafsList, hafsRange, shownBookmarks, shownNotes, shownRange } from './lib/verseMap.js';
 import './App.css';
 
@@ -567,6 +568,29 @@ export default function App() {
     },
     [scheduleHide]
   );
+  // التطبيق الأصلي (أندرويد، ٢٠٢٦-١١-١٨): زرّ الرجوع يغلق المفتوح أولًا (src/lib/native.js)، ولون أيقونات
+  // شريطي النظام يتبع خلفية القراءة. وفي الموقع لا يعمل منهما شيء
+  const chromeOpenRef = useRef(false);
+  chromeOpenRef.current = chromeOpen;
+  useEffect(() => {
+    const onBack = createBackHandler({
+      closeLayer: closeTopLayer,
+      leaveMode: leaveBackMode,
+      hideChrome: () => {
+        if (!chromeOpenRef.current) return false;
+        setChromeOpen(false);
+        return true;
+      },
+      hint: () => showToast('اضغط مرة أخرى للخروج'),
+      exit: () => exitApp().catch(() => {}),
+    });
+    const unlisten = listenBackButton(onBack);
+    const unbars = followSystemBars();
+    return () => {
+      unlisten();
+      unbars();
+    };
+  }, [showToast]);
   // Esc يخفي الأزرار العائمة إن لم تكن فوق المصحف طبقة مفتوحة
   useEffect(() => {
     const onKey = (e) => {
