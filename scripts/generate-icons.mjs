@@ -111,8 +111,8 @@ console.log(`\nالتصميم المعتمد: ${ACTIVE}`);
 //   • ic_launcher و ic_launcher_round: لأندرويد ٧ وما قبله (مربعة، ومستديرة مقصوصة دائرةً)
 //   • ic_launcher_foreground: الطبقة الأمامية للأيقونة المتكيّفة (أندرويد ٨ فأحدث)، شفافة وعليها الكتاب،
 //     وخلفيتها لون ic_launcher_background (android/app/src/main/res/values/ic_launcher_background.xml).
-//     يقصّ النظام منها دائرة أو مربعًا مستديرًا قطره ثلثا عرضها تقريبًا، فالكتاب فيها ٠٫٥٠ من عرضها
-//     ليبقى ركناه داخل دائرة الأمان (٦٦ من ١٠٨)
+//     يقصّ النظام منها دائرة أو مربعًا مستديرًا قطره ثلثا عرضها (٧٢ من ١٠٨). والكتاب فيها ٠٫٥٧ من عرضها،
+//     أي ٠٫٨٦ مما يظهر (الخيار «أ١ — أكبر»، بقرار صاحب المشروع ٢٠٢٦-١١-١٨؛ كان ٠٫٥٠)، وركناه داخل الدائرة
 const RES = 'android/app/src/main/res';
 const DENSITIES = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
 const hasAndroid = await access(RES).then(() => true, () => false);
@@ -122,16 +122,16 @@ if (hasAndroid) {
     const dir = `${RES}/mipmap-${d}`;
     await mkdir(dir, { recursive: true });
     const legacy = Math.round(48 * k);
-    await buildIcon(book, ACTIVE, legacy, 0.82, `${dir}/ic_launcher.png`);
+    await buildIcon(book, ACTIVE, legacy, 0.86, `${dir}/ic_launcher.png`);
     const round = new Jimp(legacy, legacy, Jimp.rgbaToInt(v.bg[0], v.bg[1], v.bg[2], 255));
-    const rw = Math.round(legacy * 0.7);
+    const rw = Math.round(legacy * 0.84);
     const rh = Math.round((rw * book.bitmap.height) / book.bitmap.width);
     round.composite(book.clone().resize(rw, rh, Jimp.RESIZE_BICUBIC), Math.round((legacy - rw) / 2), Math.round((legacy - rh) / 2));
     round.circle();
     await round.writeAsync(`${dir}/ic_launcher_round.png`);
     const fg = Math.round(108 * k);
     const front = new Jimp(fg, fg, 0x00000000);
-    const fw = Math.round(fg * 0.5);
+    const fw = Math.round(fg * 0.573);
     const fh = Math.round((fw * book.bitmap.height) / book.bitmap.width);
     front.composite(book.clone().resize(fw, fh, Jimp.RESIZE_BICUBIC), Math.round((fg - fw) / 2), Math.round((fg - fh) / 2));
     await front.writeAsync(`${dir}/ic_launcher_foreground.png`);
