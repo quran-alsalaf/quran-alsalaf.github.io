@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>معاينة الأيقونة</title>
+<!-- صفحة مؤقتة لاختيار أيقونة تطبيق أندرويد ومعاينة صفحة المصحف فيه — تُحذف قبل الدمج -->
+<style>
+  @font-face { font-family: 'Amiri'; src: url('amiri-700.woff2') format('woff2'); font-weight: 700; }
+  :root {
+    --navy: #1A0165; --orange: #FE7D1B; --beige: #F5EDDC; --ink: #2b2333; --muted: #6f6578;
+    --card: #fffaf0; --line: #e4d9c4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--beige); color: var(--ink);
+    font: 16px/1.7 system-ui, 'Segoe UI', Tahoma, sans-serif;
+  }
+  main { max-width: 980px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 24px; margin: 6px 0 4px; }
+  h2 { font-size: 20px; margin: 34px 0 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+  p.lead { color: var(--muted); margin: 0 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+  .opt {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 14px 10px 12px; text-align: center;
+  }
+  .opt.current { outline: 2px dashed var(--orange); }
+  .code { display: inline-block; font-weight: 700; color: #fff; background: var(--navy);
+    border-radius: 999px; padding: 0 12px; font-size: 15px; }
+  .name { font-weight: 600; margin: 6px 0 2px; }
+  .desc { color: var(--muted); font-size: 13px; line-height: 1.5; min-height: 2.6em; }
+  .shapes { display: flex; justify-content: center; gap: 12px; margin: 10px 0 6px; }
+
+  /* الأيقونة: المنطقة الظاهرة من أيقونة أندرويد المتكيّفة (٧٢ من ١٠٨)، بقناع دائري أو مربع مستدير */
+  .ico { width: 84px; height: 84px; position: relative; overflow: hidden; flex: none; }
+  .ico.circle { border-radius: 50%; }
+  .ico.squircle { border-radius: 26%; }
+  .ico.big { width: 132px; height: 132px; }
+  .ico svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .book {
+    position: absolute; left: 50%; top: calc(50% + var(--dy, 0) * 1%);
+    width: calc(var(--w, 0.75) * 100%); aspect-ratio: 420 / 159;
+    transform: translate(-50%, -50%);
+    background: var(--c, var(--orange));
+    -webkit-mask: url('book.png') center / contain no-repeat; mask: url('book.png') center / contain no-repeat;
+  }
+
+  /* شاشة رئيسية مصغّرة: الأيقونات بحجمها الحقيقي تقريبًا بين أيقونات أخرى */
+  .home {
+    margin-top: 12px; border-radius: 22px; padding: 18px 12px 14px;
+    background: linear-gradient(160deg, #2f4f6f, #1c2b3a 60%, #3a2d4a);
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px 6px;
+  }
+  .home.light { background: linear-gradient(160deg, #dfe9f3, #f6efe3 60%, #e8dff0); }
+  .app { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .app .ico { width: 54px; height: 54px; border-radius: 50%; }
+  .app .lbl { color: #fff; font-size: 11px; line-height: 1.2; text-align: center; text-shadow: 0 1px 2px #0008; }
+  .home.light .app .lbl { color: #222; text-shadow: none; }
+  .dummy { width: 54px; height: 54px; border-radius: 50%; }
+
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .shot { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; text-align: center; }
+  .shot img { width: 100%; max-width: 300px; border-radius: 18px; border: 6px solid #111; display: block; margin: 8px auto 0; }
+  .note { background: #fff3e4; border: 1px solid #f3d2ad; border-radius: 12px; padding: 10px 14px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>معاينة أيقونة التطبيق</h1>
+  <p class="lead">كل خيار معروض بالشكلين اللذين تقصّ بهما جوالات أندرويد الأيقونة: الدائرة، والمربع المستدير (سامسونج). وتحت ذلك شاشة رئيسية مصغّرة بالحجم الحقيقي تقريبًا. اكتب لي رمز الخيار الذي يعجبك (مثل «أ٢» أو «ب٣»)، أو اجمع بين خيارين.</p>
+
+  <h2>الحالية</h2>
+  <div class="grid" id="current"></div>
+
+  <h2>أ — الشعار نفسه بخمسة تنسيقات</h2>
+  <p class="lead">الكتاب المفتوح نفسه من شعار «حفظ القرآن بطريقة السلف»، بحجم أو موضع أو ألوان مختلفة.</p>
+  <div class="grid" id="same"></div>
+
+  <h2>ب — خمسة شعارات جديدة</h2>
+  <p class="lead">أفكار جديدة بلونَي التطبيق (الكحلي والبرتقالي).</p>
+  <div class="grid" id="new"></div>
+
+  <h2>على الشاشة الرئيسية</h2>
+  <div class="home" id="homeDark"></div>
+  <div class="home light" id="homeLight"></div>
+
+  <h2>صفحة المصحف في التطبيق (التعديل الأول)</h2>
+  <p class="lead">مقاس جوال شائع، وأسفله شريط أزرار أندرويد الثلاثة.</p>
+  <div class="shots">
+    <div class="shot"><b>قبل</b><br><span class="desc">آخر سطر تحت شريط الأزرار</span><img src="mushaf-before.png" alt="صفحة المصحف قبل التعديل"></div>
+    <div class="shot"><b>بعد</b><br><span class="desc">آخر سطر فوق شريط الأزرار، والأسطر أقرب قليلًا، والخط بحجمه</span><img src="mushaf-after.png" alt="صفحة المصحف بعد التعديل"></div>
+  </div>
+  <p class="note">الصورتان محاكاة في المتصفح. والحقيقة في التطبيق نفسه: ثبّت آخر نسخة من الرابط الثابت وانظر صفحة البقرة.</p>
+</main>
+
+<script>
+  const NAVY = '#1A0165', ORANGE = '#FE7D1B';
+  const book = (o = {}) =>
+    `<div class="book" style="--w:${o.w ?? 0.75};--dy:${o.dy ?? 0};--c:${o.c ?? ORANGE}"></div>`;
+  const svg = (inner) => `<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+  const bg = (fill) => `<rect width="72" height="72" fill="${fill}"/>`;
+
+  const CURRENT = [{ code: 'الحالية', name: 'الكتاب على الكحلي', desc: 'الكتاب ثلاثة أرباع العرض في الوسط', bg: NAVY, art: book({ w: 0.75 }) }];
+
+  const SAME = [
+    { code: 'أ١', name: 'أكبر', desc: 'الكتاب أعرض فيملأ الأيقونة أكثر', bg: NAVY, art: book({ w: 0.86 }) },
+    { code: 'أ٢', name: 'أكبر وأنزل قليلًا', desc: 'كأنه موضوع على حامل، ويبدو أثقل وأوضح', bg: NAVY, art: book({ w: 0.84, dy: 8 }) },
+    { code: 'أ٣', name: 'برتقالي وكتاب كحلي', desc: 'عكس الألوان: أبرز بين الأيقونات الداكنة', bg: ORANGE, art: book({ w: 0.82, dy: 4, c: NAVY }) },
+    { code: 'أ٤', name: 'أبيض وكتاب برتقالي', desc: 'كألوان الشعار الأصلي على الورق', bg: '#FFFFFF', art: book({ w: 0.82, dy: 4 }) },
+    { code: 'أ٥', name: 'كحلي متدرّج بإطار', desc: 'إضاءة خفيفة في الوسط وحلقة برتقالية رفيعة', bg: `radial-gradient(circle at 50% 42%, #3a1fa0, ${NAVY} 70%)`,
+      art: svg(`<circle cx="36" cy="36" r="29" fill="none" stroke="${ORANGE}" stroke-width="1.6" opacity=".9"/>`) + book({ w: 0.66, dy: 4 }) },
+  ];
+
+  const NEW = [
+    { code: 'ب١', name: 'المصحف على الرَّحل', desc: 'كتاب مفتوح على كرسي المصحف المتقاطع', bg: NAVY,
+      art: svg(`<path d="M22,40 L50,58 M50,40 L22,58" stroke="${ORANGE}" stroke-width="5" stroke-linecap="round"/>`) + book({ w: 0.72, dy: -9 }) },
+    { code: 'ب٢', name: 'حرف القاف', desc: '«ق» بخط النسخ، أول حرف من «القرآن»', bg: NAVY,
+      art: svg(`<text x="36" y="47" text-anchor="middle" font-family="Amiri" font-weight="700" font-size="44" fill="${ORANGE}">ق</text>`) },
+    { code: 'ب٣', name: 'علامة الحزب ۞', desc: 'النجمة الثمانية كعلامات المصحف، وفي وسطها الكتاب', bg: NAVY,
+      art: svg(`<g fill="none" stroke="${ORANGE}" stroke-width="2.6" stroke-linejoin="round"><rect x="17" y="17" width="38" height="38"/><rect x="17" y="17" width="38" height="38" transform="rotate(45 36 36)"/></g>`) + book({ w: 0.4, dy: 2 }) },
+    { code: 'ب٤', name: 'المحراب', desc: 'قوس محراب، وتحته المصحف مفتوحًا', bg: NAVY,
+      art: svg(`<path d="M19,57 L19,32 Q19,14 36,10 Q53,14 53,32 L53,57" fill="none" stroke="${ORANGE}" stroke-width="3" stroke-linejoin="round"/>`) + book({ w: 0.42, dy: 12 }) },
+    { code: 'ب٥', name: 'الكتاب والنور', desc: 'أشعة تخرج من الكتاب المفتوح: «نور وهدى»', bg: NAVY,
+      art: svg(`<g stroke="${ORANGE}" stroke-width="2.6" stroke-linecap="round"><path d="M36,30 L36,15"/><path d="M29,31 L22,18"/><path d="M43,31 L50,18"/><path d="M24,35 L13,27"/><path d="M48,35 L59,27"/></g>`) + book({ w: 0.7, dy: 12 }) },
+  ];
+
+  const icon = (o, cls) => `<div class="ico ${cls}" style="background:${o.bg}">${o.art}</div>`;
+  const card = (o, extra = '') => `
+    <div class="opt ${extra}">
+      <span class="code">${o.code}</span>
+      <div class="shapes">${icon(o, 'circle big')}</div>
+      <div class="shapes">${icon(o, 'circle')}${icon(o, 'squircle')}</div>
+      <div class="name">${o.name}</div>
+      <div class="desc">${o.desc}</div>
+    </div>`;
+  document.getElementById('current').innerHTML = CURRENT.map((o) => card(o, 'current')).join('');
+  document.getElementById('same').innerHTML = SAME.map((o) => card(o)).join('');
+  document.getElementById('new').innerHTML = NEW.map((o) => card(o)).join('');
+
+  const all = [...CURRENT, ...SAME, ...NEW];
+  const dummies = ['#4caf50', '#e53935', '#1e88e5', '#fbc02d'];
+  const home = (el) => {
+    let i = 0;
+    el.innerHTML = all.map((o) => `<div class="app">${icon(o, '')}<div class="lbl">${o.code}<br>قرآن السلف</div></div>`).join('') +
+      dummies.map((c) => `<div class="app"><div class="dummy" style="background:${c}"></div><div class="lbl">تطبيق ${++i}</div></div>`).join('');
+  };
+  home(document.getElementById('homeDark'));
+  home(document.getElementById('homeLight'));
+</script>
+</body>
+</html>

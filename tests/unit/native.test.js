@@ -130,12 +130,13 @@ describe('ملفات الويب للتطبيق (scripts/native-web.mjs)', () => 
     }
   });
 
-  it('صفحة التطبيق بلا تسجيل عامل الخدمة ولا رابط الـ manifest', () => {
+  it('صفحة التطبيق بلا تسجيل عامل الخدمة ولا رابط الـ manifest، وعلى <html> علامة التطبيق الأصلي', () => {
     const html =
-      '<head><link rel="manifest" href="./manifest.webmanifest"><title>x</title></head><body><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></body>';
+      '<!doctype html><html lang="ar" dir="rtl"><head><link rel="manifest" href="./manifest.webmanifest"><title>x</title></head><body><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></body>';
     const out = nativeIndexHtml(html);
     expect(out).not.toMatch(/manifest|registerSW/);
     expect(out).toContain('<title>x</title>');
+    expect(out).toContain('<html data-native="android" lang="ar" dir="rtl">');
   });
 });
 

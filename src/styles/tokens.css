@@ -83,6 +83,16 @@
   color-scheme: light;
 }
 
+/* التطبيق الأصلي (أندرويد، data-native على <html> — scripts/native-web.mjs): الصفحة تمتد تحت شريط الحالة
+   وشريط أزرار الجهاز (Capacitor)، فتُحسب حوافّهما من قيم المتصفح أو مما يحقنه Capacitor (‎--safe-area-inset-*‎)،
+   أيّهما أكبر */
+:root[data-native] {
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --safe-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+  --safe-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+}
+
 /* ===== الخلفيات الداكنة =====
    طبقة بيضاء شفافة فوق الخلفية بدل التغميق (ومقاديرها في appearance.json). */
 :root[data-theme='dark'] {

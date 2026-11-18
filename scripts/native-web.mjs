@@ -21,9 +21,11 @@ export function keepInNative(rel) {
   return true;
 }
 
-// صفحة التطبيق بلا تسجيل عامل الخدمة ولا رابط الـ manifest
+// صفحة التطبيق بلا تسجيل عامل الخدمة ولا رابط الـ manifest، وعلى <html> علامة data-native: بها تحجز
+// الأنماط مكان شريط الحالة وشريط أزرار الجهاز (src/styles/tokens.css، src/App.css) قبل أول رسم
 export function nativeIndexHtml(html) {
   return html
+    .replace(/<html\b/, '<html data-native="android"')
     .replace(/<script id="vite-plugin-pwa:register-sw"[^>]*><\/script>/, '')
     .replace(/<link rel="manifest"[^>]*>/, '');
 }
