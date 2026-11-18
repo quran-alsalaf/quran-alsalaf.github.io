@@ -1,0 +1,14 @@
+{
+  "appId": "com.quranalsalaf.app",
+  "appName": "قرآن السلف",
+  "webDir": "native-web",
+  "android": {
+    "backgroundColor": "#1A0165"
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "cover"
+    }
+  }
+}

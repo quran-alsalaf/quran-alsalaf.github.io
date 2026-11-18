@@ -1,6 +1,7 @@
 // بيانات المستخدم على جهازه وحده (الفصل ٧): الملاحظات، والعلامات المرجعية، والنطاق المحدد.
 // بلا حسابات ولا خادم. وكل تغيير يُعلَن بحدث واحد، فيتحدّث كل ما يعرضها (useUserData).
 import { useEffect, useState } from 'react';
+import { isNative, shareText as nativeShareText } from './native.js';
 
 const NOTES_KEY = 'hq.notes';
 const BOOKMARKS_KEY = 'hq.bookmarks';
@@ -239,8 +240,15 @@ export async function copyText(text) {
 
 // مشاركة نص بقائمة المشاركة في الجهاز (واتساب وغيره): 'shared' أو 'cancelled' (أغلقها المستخدم).
 // وحيث لا مشاركة في المتصفح (أكثر متصفحات الحاسوب) يُنسخ النص بدلها: 'copied' أو 'failed'
+// وداخل التطبيق الأصلي بقائمة مشاركة أندرويد (src/lib/native.js)، فالـ WebView لا يتيح navigator.share
 export async function shareText(text) {
-  if (typeof navigator !== 'undefined' && navigator.share) {
+  if (isNative()) {
+    try {
+      return await nativeShareText(text);
+    } catch {
+      // تعذّرت المشاركة: يُنسخ النص بدلها
+    }
+  } else if (typeof navigator !== 'undefined' && navigator.share) {
     try {
       await navigator.share({ text });
       return 'shared';

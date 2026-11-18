@@ -13,6 +13,13 @@ function onKey(e) {
 }
 
 export const hasOpenLayer = () => stack.length > 0;
+// يغلق آخر طبقة فُتحت (كمفتاح Esc) — لزرّ الرجوع في التطبيق الأصلي (src/lib/native.js).
+// يُرجع true إن كانت طبقة مفتوحة
+export function closeTopLayer() {
+  if (!stack.length) return false;
+  stack[stack.length - 1].current?.();
+  return true;
+}
 // أهي هذه الطبقة آخر ما فُتح (فلا شيء فوقها)؟ — لمصحفٍ داخل طبقة كصفحة الختمة: يستقبل مفاتيح
 // التقليب ما دامت طبقته في الأعلى
 export const isTopLayer = (entry) => stack.length > 0 && stack[stack.length - 1] === entry;

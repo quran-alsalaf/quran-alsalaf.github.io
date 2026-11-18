@@ -42,6 +42,9 @@ glyphs-test.html
 لقطة شاشة *.png
 .claude/
 
+# ملفات الويب المنسوخة لتطبيق أندرويد (scripts/native-web.mjs) — تُولَّد من البناء
+native-web/
+
 # مخرجات الاختبارات الآلية
 test-results/
 playwright-report/
