@@ -4,4 +4,7 @@
     <string name="title_activity_main">قرآن السلف</string>
     <string name="package_name">com.quranalsalaf.app</string>
     <string name="custom_url_scheme">com.quranalsalaf.app</string>
+    <!-- مشغّل التلاوة (audio/QuranAudioService.java): اسم قناة الإشعار في إعدادات الجهاز، وزرّ «إنهاء» -->
+    <string name="audio_channel">التلاوة</string>
+    <string name="audio_end">إنهاء</string>
 </resources>
