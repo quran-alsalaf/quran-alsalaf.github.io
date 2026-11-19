@@ -81,12 +81,12 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
             <Section title="المصحف">
               <SegmentRow label="الرواية" value={riwayah} options={RIWAYAT.map((r) => ({ value: r.id, label: r.name }))} onChange={setRiwayah} />
               <SegmentRow label="شكل الصفحة" value={pageStyle} options={PAGE_STYLES.map((s) => ({ value: s.id, label: s.name }))} onChange={setPageStyle} />
-              {/* مؤقت: ليجرّب صاحب المشروع النماذج الأربعة في المعاينة ويختار واحدًا، ثم يُحذف هذا السطر */}
+              {/* مؤقت: ليجرّب صاحب المشروع النموذجين في المعاينة ويختار واحدًا، ثم يُحذف هذا السطر */}
               {pageStyle === 'framed' && (
                 <SegmentRow
                   label="نموذج الزخرفة"
                   value={frameDesign}
-                  options={FRAME_DESIGN_IDS.map((d, i) => ({ value: d, label: ['١', '٢', '٣', '٤'][i] }))}
+                  options={FRAME_DESIGN_IDS.map((d, i) => ({ value: d, label: ['١', '٢'][i] }))}
                   onChange={setFrameDesign}
                 />
               )}

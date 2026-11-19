@@ -32,17 +32,17 @@ export function setPageStyle(s) {
   window.dispatchEvent(new CustomEvent(EVENT, { detail: s }));
 }
 
-// نموذج الزخرفة (مؤقت حتى يختار صاحب المشروع واحدًا من الأربعة، src/components/PageFrame.jsx)
+// نموذج الزخرفة (مؤقت حتى يختار صاحب المشروع أحد العرضين، src/components/PageFrame.jsx)
 const DESIGN_KEY = 'hq.frameDesign';
 const DESIGN_EVENT = 'hq-frame-design';
-export const FRAME_DESIGN_IDS = ['a', 'b', 'c', 'd'];
+export const FRAME_DESIGN_IDS = ['a', 'b'];
 
 export function readFrameDesign() {
   try {
     const d = localStorage.getItem(DESIGN_KEY);
-    return FRAME_DESIGN_IDS.includes(d) ? d : 'b';
+    return FRAME_DESIGN_IDS.includes(d) ? d : 'a';
   } catch {
-    return 'b';
+    return 'a';
   }
 }
 

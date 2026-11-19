@@ -37,14 +37,6 @@
   stroke: var(--frame);
 }
 
-.pf-line--out {
-  stroke-width: 1.2;
-}
-
-.pf-line--in {
-  stroke-width: 0.8;
-}
-
 .pf-back {
   fill: var(--bg);
 }
@@ -52,27 +44,21 @@
 .pf-tile {
   fill: var(--frame-tile);
   stroke: var(--frame);
-  stroke-width: 0.8;
-  vector-effect: non-scaling-stroke;
+  stroke-width: 0.45;
 }
 
-.pf-solid,
-.pf-leaf {
+.pf-edge {
+  stroke: var(--frame);
+  stroke-width: 0.6;
+}
+
+.pf-solid {
   fill: var(--frame);
-}
-
-.pf-deep {
-  fill: var(--frame-deep);
 }
 
 .pf-vine {
   fill: none;
   stroke: var(--frame);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-}
-
-.pf-ring {
-  stroke: var(--frame);
-  stroke-width: 0.8;
+  stroke-width: 0.9;
+  stroke-linecap: round;
 }

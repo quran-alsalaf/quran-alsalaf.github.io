@@ -74,11 +74,11 @@ test('لون الزخرفة لون التطبيق نفسه، ويتبدّل مع
   expect(await stroke()).toBe(await accent());
 });
 
-test('النماذج الأربعة تُجرَّب من الإعدادات (مؤقت حتى يُختار واحد)', async ({ page }) => {
+test('النموذجان (عرضا الإطار) يُجرَّبان من الإعدادات (مؤقت حتى يُختار واحد)', async ({ page }) => {
   await openApp(page, { 'hq.page': '3', 'hq.pageStyle': 'framed' });
   await clickTopbar(page, 'الإعدادات');
   const row = page.getByRole('radiogroup', { name: 'نموذج الزخرفة' });
-  for (const [name, id] of [['١', 'a'], ['٣', 'c'], ['٤', 'd'], ['٢', 'b']]) {
+  for (const [name, id] of [['٢', 'b'], ['١', 'a']]) {
     await row.getByRole('radio', { name }).click();
     await expect(page.locator(`.sheet--current .page-frame--${id}`).first()).toBeAttached();
   }
