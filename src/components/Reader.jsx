@@ -4,6 +4,8 @@ import MushafPage from './MushafPage.jsx';
 import { pageInfo, toArabicDigits } from '../data/quran.js';
 import { SURA_NAMES_VOWELED } from '../data/suraNamesVoweled.js';
 import { SPREAD_GUTTER, isScrollMode, isSpreadMode, pageLayout, spreadArea, spreadStart } from '../lib/layout.js';
+import { usePageStyle } from '../lib/pageStyle.js';
+import PageFrame, { FRAME_EDGE, frameInset } from './PageFrame.jsx';
 import { hasOpenLayer, isTopLayer } from '../lib/layers.js';
 import { prefetchPageFonts, usePageFont } from '../lib/qcfFonts.js';
 import { FIRST_PAGE, LAST_PAGE, readLastPage, saveLastPage } from '../lib/position.js';
@@ -72,8 +74,12 @@ export default function Reader({ quran, onTap, onWordTap, onColumn, onPage, onSp
   const [box, setBox] = useState(null);
   // الجوال الأفقي (٢٠٢٦-١٠-١٧): تملأ الصفحةُ العرضَ وتُمرَّر رأسيًّا داخل نفسها (src/lib/layout.js)
   const scroll = isScrollMode(box);
-  const area = box && { w: box.w - PAD_X * 2, h: box.h - META_H };
-  const spread = isSpreadMode(quran, box, area, META_H);
+  // شكل الصفحة «مزخرفة» (٢٠٢٦-١١-١٩): الإطار يأخذ fx من كل جانب، فتضيق مساحة الأسطر بقدره
+  // ويبدأ عند حافة الشاشة تقريبًا (FRAME_EDGE بدل الهامش الجانبي PAD_X)، فلا يصغر الخط إلا يسيرًا
+  const fx = usePageStyle() === 'framed' ? frameInset() : 0;
+  const padX = fx ? FRAME_EDGE : PAD_X;
+  const area = box && { w: box.w - padX * 2 - fx * 2, h: box.h - META_H - fx * 2 };
+  const spread = isSpreadMode(quran, box, area, META_H, fx);
   // وحدة التقليب: صفحة، أو زوج يبدأ بالصفحة الفردية
   const step = spread ? 2 : 1;
   const base = spread ? spreadStart(page) : page;
@@ -364,11 +370,11 @@ export default function Reader({ quran, onTap, onWordTap, onColumn, onPage, onSp
     onLongPress(+word.dataset.v, word.getBoundingClientRect());
   };
 
-  const half = spread ? spreadArea(box, META_H) : null;
+  const half = spread ? spreadArea(box, META_H, fx) : null;
   // عرض العمود واحد لكل الصفحات (حجم الخط واحد)، فيكفي أخذه من الصفحة الحالية.
   // وفي الزوج: عرض الصفحتين وما بينهما
   const single = area ? pageLayout(quran, page, spread ? half : area, scroll).width : 0;
-  const column = spread ? single * 2 + SPREAD_GUTTER : single;
+  const column = spread ? (single + fx * 2) * 2 + SPREAD_GUTTER : single + fx * 2;
   useEffect(() => {
     if (column) onColumn?.(column);
   }, [column, onColumn]);
@@ -381,7 +387,7 @@ export default function Reader({ quran, onTap, onWordTap, onColumn, onPage, onSp
     <div
       ref={viewRef}
       className={`reader${scroll ? ' reader--scroll' : ''}`}
-      style={{ '--meta-h': `${META_H}px`, '--pad-x': `${PAD_X}px` }}
+      style={{ '--meta-h': `${META_H}px`, '--pad-x': `${padX}px` }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -392,7 +398,7 @@ export default function Reader({ quran, onTap, onWordTap, onColumn, onPage, onSp
         <div ref={trackRef} className="reader__track" onTransitionEnd={onTransitionEnd}>
           {slots.map((p) =>
             spread ? (
-              <Spread key={`s${p}`} quran={quran} start={p} area={half} shift={(base - p) / 2} current={p === base} marks={marks} outside={outside} />
+              <Spread key={`s${p}`} quran={quran} start={p} area={half} shift={(base - p) / 2} current={p === base} marks={marks} outside={outside} fx={fx} boxH={box.h} />
             ) : (
               <Sheet
                 key={p}
@@ -403,6 +409,8 @@ export default function Reader({ quran, onTap, onWordTap, onColumn, onPage, onSp
                 shift={page - p}
                 current={p === page}
                 marks={marks}
+                fx={fx}
+                boxH={box.h}
               />
             )
           )}
@@ -444,15 +452,15 @@ function ArrowButton({ side, at, shown, disabled, onClick }) {
 
 // زوج متقابل كالمصحف المفتوح: الفردية يمينًا والزوجية يسارًا، وبينهما كعب خفيف.
 // يُنتظر خطّا الصفحتين معًا قبل رسم أيٍّ منهما، فلا تظهر صفحة قبل أختها.
-function Spread({ quran, start, area, shift, current, marks, outside }) {
+function Spread({ quran, start, area, shift, current, marks, outside, fx, boxH }) {
   const right = usePageFont(start, quran.riwayah);
   const left = usePageFont(start + 1, quran.riwayah);
   const font = right === 'ready' && left === 'ready' ? 'ready' : right === 'failed' || left === 'failed' ? 'failed' : 'loading';
   return (
     <div className="spread" style={{ transform: `translate3d(${shift * 100}%, 0, 0)` }} aria-hidden={!current}>
-      <Sheet quran={quran} page={start} layout={pageLayout(quran, start, area)} half font={font} current={current} marks={marks} outside={outside?.(start)} />
+      <Sheet quran={quran} page={start} layout={pageLayout(quran, start, area)} half font={font} current={current} marks={marks} outside={outside?.(start)} fx={fx} boxH={boxH} />
       <div className="spread__spine" aria-hidden="true" />
-      <Sheet quran={quran} page={start + 1} layout={pageLayout(quran, start + 1, area)} half font={font} current={current} marks={marks} outside={outside?.(start + 1)} />
+      <Sheet quran={quran} page={start + 1} layout={pageLayout(quran, start + 1, area)} half font={font} current={current} marks={marks} outside={outside?.(start + 1)} fx={fx} boxH={boxH} />
     </div>
   );
 }
@@ -461,17 +469,14 @@ function Spread({ quran, start, area, shift, current, marks, outside }) {
 // والترويسة جزء من الورقة، فتتحرك معها عند السحب.
 // half: صفحة من زوج (موضعها في الزوج لا في الشريط)، وfont حال خطّي الزوج معًا
 // outside: صفحة من الزوج خارج حدود المصحف المحدود (ورد الختمة) — تظهر باهتة
-function Sheet({ quran, page, layout, scroll, shift, current, marks, half, font: pairFont, outside }) {
+// fx: إطار الصفحة المزخرف (ما يأخذه من كل جانب، وصفر بلا إطار)، وboxH ارتفاع القارئ (ارتفاع الإطار)
+function Sheet({ quran, page, layout, scroll, shift, current, marks, half, font: pairFont, outside, fx = 0, boxH }) {
   const { suras, juz } = pageInfo(quran, page);
   const own = usePageFont(page, quran.riwayah);
   const font = pairFont ?? own;
-  return (
-    <section
-      className={`sheet${scroll ? ' sheet--scroll' : ''}${half ? ' sheet--half' : ''}${current ? ' sheet--current' : ''}${outside ? ' sheet--outside' : ''}`}
-      style={half ? { width: `${layout.width}px` } : { transform: `translate3d(${shift * 100}%, 0, 0)` }}
-      aria-hidden={half ? undefined : !current}
-      aria-label={`الصفحة ${toArabicDigits(page)}`}
-    >
+  const frameW = layout.width + fx * 2;
+  const body = (
+    <>
       {/* بعرض عمود الأسطر نفسه: الجزء عند حافة الآيات اليمنى، والسورة عند حافتها اليسرى */}
       <header className="sheet__meta" style={{ width: `${layout.width}px` }}>
         <span className="sheet__juz">{juzLabel(juz)}</span>
@@ -497,6 +502,25 @@ function Sheet({ quran, page, layout, scroll, shift, current, marks, half, font:
         <div className="mushaf-page mushaf-page--pending" style={{ width: `${layout.width}px` }}>
           {font === 'failed' && 'تُنزَّل هذه الصفحة عند أول فتح لها، وتحتاج لذلك اتصالًا بالإنترنت. وتعمل بعدها بلا اتصال.'}
         </div>
+      )}
+    </>
+  );
+  // الإطار حول الترويسة والأسطر معًا، بعرض العمود وما يأخذه الإطار. وفي وضع التمرير بطول الصفحة كلها
+  const frameH = scroll ? layout.pageHeight + META_H + fx * 2 : boxH;
+  return (
+    <section
+      className={`sheet${scroll ? ' sheet--scroll' : ''}${half ? ' sheet--half' : ''}${current ? ' sheet--current' : ''}${outside ? ' sheet--outside' : ''}${fx ? ' sheet--framed' : ''}`}
+      style={half ? { width: `${frameW}px` } : { transform: `translate3d(${shift * 100}%, 0, 0)` }}
+      aria-hidden={half ? undefined : !current}
+      aria-label={`الصفحة ${toArabicDigits(page)}`}
+    >
+      {fx ? (
+        <div className="sheet__frame" style={{ width: `${frameW}px`, height: `${frameH}px`, padding: `${fx}px` }}>
+          <PageFrame w={frameW} h={frameH} />
+          {body}
+        </div>
+      ) : (
+        body
       )}
     </section>
   );

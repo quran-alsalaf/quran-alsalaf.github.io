@@ -50,6 +50,33 @@
   margin-inline: auto;
 }
 
+/* شكل الصفحة «مزخرفة» (٢٠٢٦-١١-١٩): الترويسة والأسطر داخل إطار (PageFrame.jsx) بعرض العمود، وسط الورقة */
+.sheet--framed {
+  display: flex;
+  justify-content: center;
+}
+
+.sheet__frame {
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: var(--meta-h) minmax(0, 1fr);
+}
+
+.sheet__frame > :not(.page-frame) {
+  position: relative;
+}
+
+.sheet--scroll.sheet--framed {
+  display: block;
+}
+
+.sheet--scroll .sheet__frame {
+  display: block;
+  margin-inline: auto;
+}
+
 /* الترويسة: الجزء في أولها (يمينًا)، ورقم الصفحة في وسطها، والسورة في آخرها (يسارًا).
    وعرضها عرض عمود الأسطر (يُضبط في Reader)، فتحاذي حافتاها حافتي الآيات */
 .sheet__meta {
