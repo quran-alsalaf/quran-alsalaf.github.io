@@ -4,7 +4,7 @@ import MushafPage from './MushafPage.jsx';
 import { pageInfo, toArabicDigits } from '../data/quran.js';
 import { SURA_NAMES_VOWELED } from '../data/suraNamesVoweled.js';
 import { SPREAD_GUTTER, isScrollMode, isSpreadMode, pageLayout, spreadArea, spreadStart } from '../lib/layout.js';
-import { usePageStyle } from '../lib/pageStyle.js';
+import { useFrameDesign, usePageStyle } from '../lib/pageStyle.js';
 import PageFrame, { FRAME_EDGE, frameInset } from './PageFrame.jsx';
 import { hasOpenLayer, isTopLayer } from '../lib/layers.js';
 import { prefetchPageFonts, usePageFont } from '../lib/qcfFonts.js';
@@ -76,7 +76,8 @@ export default function Reader({ quran, onTap, onWordTap, onColumn, onPage, onSp
   const scroll = isScrollMode(box);
   // شكل الصفحة «مزخرفة» (٢٠٢٦-١١-١٩): الإطار يأخذ fx من كل جانب، فتضيق مساحة الأسطر بقدره
   // ويبدأ عند حافة الشاشة تقريبًا (FRAME_EDGE بدل الهامش الجانبي PAD_X)، فلا يصغر الخط إلا يسيرًا
-  const fx = usePageStyle() === 'framed' ? frameInset() : 0;
+  const design = useFrameDesign();
+  const fx = usePageStyle() === 'framed' ? frameInset(design) : 0;
   const padX = fx ? FRAME_EDGE : PAD_X;
   const area = box && { w: box.w - padX * 2 - fx * 2, h: box.h - META_H - fx * 2 };
   const spread = isSpreadMode(quran, box, area, META_H, fx);
@@ -398,7 +399,7 @@ export default function Reader({ quran, onTap, onWordTap, onColumn, onPage, onSp
         <div ref={trackRef} className="reader__track" onTransitionEnd={onTransitionEnd}>
           {slots.map((p) =>
             spread ? (
-              <Spread key={`s${p}`} quran={quran} start={p} area={half} shift={(base - p) / 2} current={p === base} marks={marks} outside={outside} fx={fx} boxH={box.h} />
+              <Spread key={`s${p}`} quran={quran} start={p} area={half} shift={(base - p) / 2} current={p === base} marks={marks} outside={outside} fx={fx} design={design} boxH={box.h} />
             ) : (
               <Sheet
                 key={p}
@@ -410,6 +411,7 @@ export default function Reader({ quran, onTap, onWordTap, onColumn, onPage, onSp
                 current={p === page}
                 marks={marks}
                 fx={fx}
+                design={design}
                 boxH={box.h}
               />
             )
@@ -452,15 +454,15 @@ function ArrowButton({ side, at, shown, disabled, onClick }) {
 
 // زوج متقابل كالمصحف المفتوح: الفردية يمينًا والزوجية يسارًا، وبينهما كعب خفيف.
 // يُنتظر خطّا الصفحتين معًا قبل رسم أيٍّ منهما، فلا تظهر صفحة قبل أختها.
-function Spread({ quran, start, area, shift, current, marks, outside, fx, boxH }) {
+function Spread({ quran, start, area, shift, current, marks, outside, fx, design, boxH }) {
   const right = usePageFont(start, quran.riwayah);
   const left = usePageFont(start + 1, quran.riwayah);
   const font = right === 'ready' && left === 'ready' ? 'ready' : right === 'failed' || left === 'failed' ? 'failed' : 'loading';
   return (
     <div className="spread" style={{ transform: `translate3d(${shift * 100}%, 0, 0)` }} aria-hidden={!current}>
-      <Sheet quran={quran} page={start} layout={pageLayout(quran, start, area)} half font={font} current={current} marks={marks} outside={outside?.(start)} fx={fx} boxH={boxH} />
+      <Sheet quran={quran} page={start} layout={pageLayout(quran, start, area)} half font={font} current={current} marks={marks} outside={outside?.(start)} fx={fx} design={design} boxH={boxH} />
       <div className="spread__spine" aria-hidden="true" />
-      <Sheet quran={quran} page={start + 1} layout={pageLayout(quran, start + 1, area)} half font={font} current={current} marks={marks} outside={outside?.(start + 1)} fx={fx} boxH={boxH} />
+      <Sheet quran={quran} page={start + 1} layout={pageLayout(quran, start + 1, area)} half font={font} current={current} marks={marks} outside={outside?.(start + 1)} fx={fx} design={design} boxH={boxH} />
     </div>
   );
 }
@@ -470,7 +472,7 @@ function Spread({ quran, start, area, shift, current, marks, outside, fx, boxH }
 // half: صفحة من زوج (موضعها في الزوج لا في الشريط)، وfont حال خطّي الزوج معًا
 // outside: صفحة من الزوج خارج حدود المصحف المحدود (ورد الختمة) — تظهر باهتة
 // fx: إطار الصفحة المزخرف (ما يأخذه من كل جانب، وصفر بلا إطار)، وboxH ارتفاع القارئ (ارتفاع الإطار)
-function Sheet({ quran, page, layout, scroll, shift, current, marks, half, font: pairFont, outside, fx = 0, boxH }) {
+function Sheet({ quran, page, layout, scroll, shift, current, marks, half, font: pairFont, outside, fx = 0, design, boxH }) {
   const { suras, juz } = pageInfo(quran, page);
   const own = usePageFont(page, quran.riwayah);
   const font = pairFont ?? own;
@@ -516,7 +518,7 @@ function Sheet({ quran, page, layout, scroll, shift, current, marks, half, font:
     >
       {fx ? (
         <div className="sheet__frame" style={{ width: `${frameW}px`, height: `${frameH}px`, padding: `${fx}px` }}>
-          <PageFrame w={frameW} h={frameH} />
+          <PageFrame w={frameW} h={frameH} design={design} />
           {body}
         </div>
       ) : (

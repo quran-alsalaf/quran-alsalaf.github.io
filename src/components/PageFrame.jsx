@@ -5,6 +5,7 @@
 // تتوزع الزخرفة المتكررة على طول كل حافة بعدد صحيح يملؤها تمامًا (تتمدد قليلًا أو تنكمش)، فلا تُقطع وحدة عند
 // الزاوية. والمقاسات بالبكسل من w وh (الإطار كله) لا بالنسبة، فلا تتشوّه الزخرفة في الشاشات المختلفة.
 import { useId } from 'react';
+import { readFrameDesign } from '../lib/pageStyle.js';
 import './PageFrame.css';
 
 // النماذج المعروضة على صاحب المشروع ليختار منها (يبقى واحد بعد الاختيار).
@@ -20,14 +21,7 @@ export const FRAME_GAP = 3;
 // هامش الورقة الجانبي مع الإطار: يبدأ الإطار عند حافة الشاشة تقريبًا (بدل هامش الصفحة البسيطة PAD_X في Reader.jsx)
 export const FRAME_EDGE = 1;
 
-export function frameDesign() {
-  try {
-    const d = localStorage.getItem('hq.frameDesign');
-    return FRAME_DESIGNS[d] ? d : 'b';
-  } catch {
-    return 'b';
-  }
-}
+export const frameDesign = readFrameDesign;
 
 // ما يأخذه الإطار من كل جانب (الشريط والمسافة بعده)
 export const frameInset = (design = frameDesign()) => FRAME_DESIGNS[design].T + FRAME_GAP;
