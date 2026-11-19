@@ -88,15 +88,14 @@ function fontFor(quran, area) {
 }
 
 // مساحة أسطر صفحة واحدة من الزوج، من مساحة القارئ كلها (box) وارتفاع الترويسة
-// fx: ما يأخذه إطار الصفحة المزخرف من كل جانب (٢٠٢٦-١١-١٩، src/components/PageFrame.jsx)، وصفر بلا إطار
-export function spreadArea(box, metaH, fx = 0) {
-  return { w: Math.floor((box.w - SPREAD_GUTTER - SPREAD_SIDE * 2) / 2) - fx * 2, h: box.h - metaH - fx * 2 };
+export function spreadArea(box, metaH) {
+  return { w: Math.floor((box.w - SPREAD_GUTTER - SPREAD_SIDE * 2) / 2), h: box.h - metaH };
 }
 
 // box: مساحة القارئ كلها. singleArea: مساحة أسطر الصفحة الواحدة فيها
-export function isSpreadMode(quran, box, singleArea, metaH, fx = 0) {
+export function isSpreadMode(quran, box, singleArea, metaH) {
   if (!box || !quran || isScrollMode(box)) return false;
-  const area = spreadArea(box, metaH, fx);
+  const area = spreadArea(box, metaH);
   if (area.w <= 0 || area.h <= 0) return false;
   const two = fontFor(quran, area);
   const one = fontFor(quran, singleArea);

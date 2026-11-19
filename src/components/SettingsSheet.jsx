@@ -8,7 +8,6 @@ import { ReciteInfo } from './Recite.jsx';
 import './SettingsSheet.css';
 import { useLayer } from '../lib/layers.js';
 import { RIWAYAT, setRiwayah, useRiwayah } from '../lib/riwayah.js';
-import { FRAME_DESIGN_IDS, PAGE_STYLES, setFrameDesign, setPageStyle, useFrameDesign, usePageStyle } from '../lib/pageStyle.js';
 
 /*
   الإعدادات (٢٠٢٦-١١-١١): لوحة جانبية تنزلق من الحافة اليسرى فوق المصحف، مقابل القائمة الجانبية
@@ -38,9 +37,6 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
   const sub = page !== 'main';
   // الرواية (٢٠٢٦-١١-١٥): يتبدّل المصحف كله فورًا على الصفحة نفسها (App.jsx)
   const riwayah = useRiwayah() ?? 'hafs';
-  // شكل الصفحة (٢٠٢٦-١١-١٩): بسيطة أو مزخرفة، يتبدّل المصحف فورًا (src/lib/pageStyle.js)
-  const pageStyle = usePageStyle();
-  const frameDesign = useFrameDesign();
 
   // Esc في الصفحة الفرعية يرجع إلى الإعدادات، وفي الإعدادات يغلق اللوحة
   useLayer(() => (sub ? onPage('main') : onClose()), open);
@@ -80,16 +76,6 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
           <div className="settings__body">
             <Section title="المصحف">
               <SegmentRow label="الرواية" value={riwayah} options={RIWAYAT.map((r) => ({ value: r.id, label: r.name }))} onChange={setRiwayah} />
-              <SegmentRow label="شكل الصفحة" value={pageStyle} options={PAGE_STYLES.map((s) => ({ value: s.id, label: s.name }))} onChange={setPageStyle} />
-              {/* مؤقت: ليجرّب صاحب المشروع النموذجين في المعاينة ويختار واحدًا، ثم يُحذف هذا السطر */}
-              {pageStyle === 'framed' && (
-                <SegmentRow
-                  label="نموذج الزخرفة"
-                  value={frameDesign}
-                  options={FRAME_DESIGN_IDS.map((d, i) => ({ value: d, label: ['١', '٢'][i] }))}
-                  onChange={setFrameDesign}
-                />
-              )}
             </Section>
 
             <Section title="المظهر">
