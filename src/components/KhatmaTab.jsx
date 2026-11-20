@@ -23,13 +23,17 @@ import { FIRST_PAGE, LAST_PAGE } from '../lib/position.js';
 import { countNoun, countText, KHATMAS, PAGES } from '../lib/count.js';
 import { HifzCard, HifzFinished, HifzForm } from './HifzTab.jsx';
 import ReminderField, { ReminderLine } from './ReminderField.jsx';
+import { StepCard, SummaryRows, TypeSwitch, useSteps } from './PlanSteps.jsx';
+import { planSteps } from '../lib/planSteps.js';
+import { isTime, remindersAvailable, timeText } from '../lib/reminders.js';
 import { CardHead, Details, DetailsFooter, Task, withUndo } from './KhatmaTasks.jsx';
 import './Khatma.css';
 
 /*
   تبويب «الختمة» في القائمة اليمنى (٢٠٢٦-١١-١٢): ختمة الورد اليومي (src/lib/khatma.js)، وختمة الحفظ
   (٢٠٢٦-١١-١٦، HifzTab.jsx). تجتمع الختمتان، ومن كل نوع واحدة؛ وبلا ختمة يُختار النوع أعلى النموذج.
-  • بلا ختمة: نموذج الإنشاء — بالأيام أو بالصفحات يوميا، ويظهر المقابل ويوم الختم قبل التأكيد.
+  • بلا ختمة: الإنشاء خطوات (الجزء ٢، PlanSteps.jsx) — بالأيام أو بالصفحات يوميا، ويظهر المقابل ويوم الختم
+    تحت العدد وفي الملخص قبل «ابدأ».
   • أثناء الختمة (تنسيق ٢٠٢٦-١١-٢٠): بطاقة مختصرة — التقدم والحالة، ثم مهمة اليوم سطرًا بدائرة تسجّله
     (ومعها «تراجع») وزرّ «اقرأ» يفتح صفحة الختمة، ثم «التفاصيل» المطوية: الختم المتوقع بالميلادي والهجري،
     والتذكير، وتعديل الخطة وحذف الختمة (KhatmaTasks.jsx).
@@ -41,12 +45,12 @@ export default function KhatmaTab({ quran, hafs, onRead, onHifz, onToast }) {
   const { wird, hifz, doneCount, hifzDoneCount } = useKhatma();
   const [editing, setEditing] = useState(false);
   const [hifzEditing, setHifzEditing] = useState(false);
-  // نوع الختمة الجديدة: في الإنشاء بلا ختمة يُختار بأعلى النموذج، ومع ختمة قائمة بزرّ النوع الآخر تحتها
+  // نوع الختمة الجديدة: في الإنشاء بلا ختمة يُختار في أول خطوة، ومع ختمة قائمة بزرّ النوع الآخر تحتها
   const [newType, setNewType] = useState('wird');
   const [adding, setAdding] = useState(false);
   const today = dayKey();
 
-  const wirdForm = (cancel) => {
+  const wirdForm = (cancel, typeStep = null) => {
     const state = wird && wirdState(wird, today);
     return (
       <PlanForm
@@ -67,10 +71,11 @@ export default function KhatmaTab({ quran, hafs, onRead, onHifz, onToast }) {
           setAdding(false);
         }}
         onCancel={cancel}
+        typeStep={typeStep}
       />
     );
   };
-  const hifzForm = (cancel) => (
+  const hifzForm = (cancel, typeStep = null) => (
     <HifzForm
       quran={quran}
       hafs={hafs}
@@ -81,17 +86,14 @@ export default function KhatmaTab({ quran, hafs, onRead, onHifz, onToast }) {
         setAdding(false);
       }}
       onCancel={cancel}
+      typeStep={typeStep}
     />
   );
 
-  // بلا ختمة: اختيار النوع ثم نموذجه
+  // بلا ختمة: خطوات الإنشاء أولها نوع الختمة
   if (!wird && !hifz) {
-    return (
-      <>
-        <TypeSwitch type={newType} onType={setNewType} />
-        {newType === 'wird' ? wirdForm(null) : hifzForm(null)}
-      </>
-    );
+    const typeStep = { type: newType, onType: setNewType };
+    return newType === 'wird' ? wirdForm(null, typeStep) : hifzForm(null, typeStep);
   }
 
   const missing = !wird ? 'wird' : !hifz ? 'hifz' : null;
@@ -127,30 +129,18 @@ export default function KhatmaTab({ quran, hafs, onRead, onHifz, onToast }) {
   );
 }
 
-// نوع الختمة الجديدة (٢٠٢٦-١١-١٦): الورد أو الحفظ. وتجتمع الختمتان، ومن كل نوع واحدة
-function TypeSwitch({ type, onType }) {
-  return (
-    <div className="khatma-extra">
-      <div className="khatma__segment" role="radiogroup" aria-label="نوع الختمة">
-        <button type="button" role="radio" aria-checked={type === 'wird'} onClick={() => onType('wird')}>
-          ختمة الورد
-        </button>
-        <button type="button" role="radio" aria-checked={type === 'hifz'} onClick={() => onType('hifz')}>
-          ختمة الحفظ
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ---------- نموذج الإنشاء وتعديل الخطة ----------
-function PlanForm({ editing, initial, from, start, doneCount, onSubmit, onCancel }) {
+// الإنشاء خطوات (الجزء ٢، ٢٠٢٦-١١-٢٠): نوع الختمة ← طريقة التحديد ← العدد ← التذكير ← الملخص و«ابدأ»؛
+// و«تعديل الخطة» شاشة واحدة كما كان (بقرار صاحب المشروع)
+function PlanForm({ editing, initial, from, start, doneCount, onSubmit, onCancel, typeStep }) {
   const [mode, setMode] = useState(initial.mode);
   const presets = mode === 'days' ? DAY_PRESETS : PAGE_PRESETS;
   const [value, setValue] = useState(initial.value);
   const [custom, setCustom] = useState(!presets.includes(initial.value));
   const [draft, setDraft] = useState(custom ? String(initial.value) : '');
   const [reminder, setReminderTime] = useState(initial.reminder ?? null);
+  const [modeChanged, setModeChanged] = useState(false);
+  const steps = useSteps(planSteps('wird', { withType: !!typeStep, withReminder: remindersAvailable() }), onCancel);
   const remaining = LAST_PAGE - from + 1;
 
   const switchMode = (m) => {
@@ -159,95 +149,163 @@ function PlanForm({ editing, initial, from, start, doneCount, onSubmit, onCancel
     setValue(m === 'days' ? DEFAULT_PLAN.value : 5);
     setCustom(false);
     setDraft('');
+    setModeChanged(true);
   };
   // العدد المكتوب باليد: من ١ إلى عدد الصفحات الباقية (فلا يقل ورد اليوم عن صفحة)
   const typed = parseInt(draft.replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)), 10);
   const chosen = custom ? (typed >= 1 ? Math.min(typed, remaining) : null) : value;
   const plan = chosen ? previewPlan(mode, chosen, from, start) : null;
   const dates = plan && formatDates(plan.end);
+  const submit = () => onSubmit(mode, chosen, reminder);
+
+  const modeField = (
+    <div className="khatma__segment" role="radiogroup" aria-label="طريقة التحديد">
+      <button type="button" role="radio" aria-checked={mode === 'days'} onClick={() => switchMode('days')}>
+        بالأيام
+      </button>
+      <button type="button" role="radio" aria-checked={mode === 'pages'} onClick={() => switchMode('pages')}>
+        بالصفحات يوميا
+      </button>
+    </div>
+  );
+  const countField = (
+    <>
+      <div className="khatma__chips" role="radiogroup" aria-label={mode === 'days' ? 'عدد الأيام' : 'عدد الصفحات يوميا'}>
+        {presets.map((p) => (
+          <button
+            key={p}
+            type="button"
+            role="radio"
+            aria-checked={!custom && value === p}
+            onClick={() => {
+              setCustom(false);
+              setValue(p);
+            }}
+          >
+            {mode === 'days' ? daysText(p, n, true) : pagesText(p, n, true)}
+          </button>
+        ))}
+        <button type="button" role="radio" aria-checked={custom} onClick={() => setCustom(true)}>
+          عدد آخر
+        </button>
+      </div>
+
+      {custom && (
+        <label className="khatma__custom">
+          <span>{mode === 'days' ? 'عدد الأيام' : 'عدد الصفحات يوميا'}</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.replace(/[^0-9٠-٩]/g, '').slice(0, 3))}
+            placeholder={`١–${n(remaining)}`}
+          />
+        </label>
+      )}
+    </>
+  );
+  // عدد الأيام وقدر الورد ويوم الختم بالتاريخين
+  const preview = plan ? (
+    <div className="khatma__summary" aria-live="polite">
+      <p className="khatma__summaryMain">
+        {daysText(plan.days, n, true)}، {mode === 'days' ? (plan.min === plan.max ? pagesText(plan.max, n, true) : `${n(plan.min)}–${n(plan.max)} ${countNoun(plan.max, PAGES)}`) : pagesText(chosen, n, true)} يوميا
+      </p>
+      <p className="khatma__date">
+        <span>تختم يوم</span>
+        <strong>{dates.gregorian}</strong>
+        <strong>{dates.hijri}</strong>
+      </p>
+    </div>
+  ) : (
+    <p className="khatma__summary khatma__summary--empty">اكتب عددا من ١ إلى {n(remaining)}</p>
+  );
+  const count = doneCount > 0 && <p className="khatma__count">أتممت {khatmasText(doneCount)} في هذا التطبيق</p>;
+
+  if (editing) {
+    return (
+      <div className="khatma">
+        <section className="khatma__card">
+          <h3 className="khatma__title">تعديل الخطة</h3>
+          {/* يبين ما يعاد تقسيمه */}
+          <p className="khatma__hint">{`يعاد تقسيم ما بقي (${pagesText(remaining, n, true)}، من الصفحة ${n(from)}) دون أن يضيع ما قرأته.`}</p>
+          {modeField}
+          {countField}
+          {preview}
+          <ReminderField value={reminder} onChange={setReminderTime} label="ورد اليوم" />
+          <div className="khatma__actions">
+            <button type="button" className="khatma__btn khatma__btn--primary" disabled={!plan} onClick={submit}>
+              حفظ الخطة
+            </button>
+            {onCancel && (
+              <button type="button" className="khatma__btn" onClick={onCancel}>
+                إلغاء
+              </button>
+            )}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  const next = { label: steps.nextLabel(), onClick: () => steps.next() };
+  const step = {
+    type: typeStep && {
+      question: 'أي ختمة تبدأ؟',
+      hint: 'ختمة الورد لقراءة القرآن كله بورد يومي، وختمة الحفظ لحفظه مع مراجعته.',
+      body: <TypeSwitch type={typeStep.type} onType={typeStep.onType} />,
+    },
+    mode: {
+      question: 'كيف تحدد ختمتك؟',
+      hint: 'بعدد الأيام التي تختم فيها، أو بعدد الصفحات التي تقرؤها كل يوم.',
+      body: modeField,
+      primary: { label: steps.nextLabel(modeChanged), onClick: () => (setModeChanged(false), steps.next(modeChanged)) },
+    },
+    count:
+      mode === 'days'
+        ? { question: 'في كم يوما تختم؟', hint: 'يقسم المصحف على الأيام بالتساوي، فيظهر لك ورد كل يوم ويوم الختم.' }
+        : { question: 'كم صفحة تقرأ كل يوم؟', hint: 'يظهر لك عدد الأيام ويوم الختم.' },
+    reminder: {
+      question: 'هل تريد تذكيرا يوميا؟',
+      hint: 'يصلك إشعار في الوقت الذي تختاره، إلا إذا أتممت ورد اليوم قبله.',
+      body: <ReminderField bare value={reminder} onChange={setReminderTime} label="ورد اليوم" />,
+    },
+    summary: {
+      question: 'ملخص الختمة',
+      hint: 'راجع ختمتك، واضغط على أي سطر لتغييره.',
+      body: (
+        <>
+          <SummaryRows
+            onOpen={(id) => {
+              setModeChanged(false);
+              steps.open(id);
+            }}
+            rows={[
+              { step: 'mode', label: 'طريقة التحديد', value: mode === 'days' ? 'بالأيام' : 'بالصفحات يوميا' },
+              { step: 'count', label: mode === 'days' ? 'عدد الأيام' : 'الصفحات يوميا', value: chosen ? (mode === 'days' ? daysText(chosen, n, true) : pagesText(chosen, n, true)) : '—' },
+              remindersAvailable() && { step: 'reminder', label: 'التذكير اليومي', value: isTime(reminder) ? timeText(reminder) : 'بلا تذكير' },
+            ].filter(Boolean)}
+          />
+          {preview}
+        </>
+      ),
+      primary: { label: 'ابدأ الختمة', disabled: !plan, onClick: submit },
+    },
+  }[steps.id];
+  if (steps.id === 'count') {
+    step.body = (
+      <>
+        {countField}
+        {preview}
+      </>
+    );
+    step.primary = { ...next, disabled: !plan };
+  }
 
   return (
-    <div className="khatma">
-      <section className="khatma__card">
-        <h3 className="khatma__title">{editing ? 'تعديل الخطة' : 'ختمة جديدة'}</h3>
-        {/* في الإنشاء بلا جملة شرح (بطلب صاحب المشروع)؛ وفي التعديل يبين ما يعاد تقسيمه */}
-        {editing && (
-          <p className="khatma__hint">{`يعاد تقسيم ما بقي (${pagesText(remaining, n, true)}، من الصفحة ${n(from)}) دون أن يضيع ما قرأته.`}</p>
-        )}
-
-        <div className="khatma__segment" role="radiogroup" aria-label="طريقة التحديد">
-          <button type="button" role="radio" aria-checked={mode === 'days'} onClick={() => switchMode('days')}>
-            بالأيام
-          </button>
-          <button type="button" role="radio" aria-checked={mode === 'pages'} onClick={() => switchMode('pages')}>
-            بالصفحات يوميا
-          </button>
-        </div>
-
-        <div className="khatma__chips" role="radiogroup" aria-label={mode === 'days' ? 'عدد الأيام' : 'عدد الصفحات يوميا'}>
-          {presets.map((p) => (
-            <button
-              key={p}
-              type="button"
-              role="radio"
-              aria-checked={!custom && value === p}
-              onClick={() => {
-                setCustom(false);
-                setValue(p);
-              }}
-            >
-              {mode === 'days' ? daysText(p, n, true) : pagesText(p, n, true)}
-            </button>
-          ))}
-          <button type="button" role="radio" aria-checked={custom} onClick={() => setCustom(true)}>
-            عدد آخر
-          </button>
-        </div>
-
-        {custom && (
-          <label className="khatma__custom">
-            <span>{mode === 'days' ? 'عدد الأيام' : 'عدد الصفحات يوميا'}</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              autoFocus
-              value={draft}
-              onChange={(e) => setDraft(e.target.value.replace(/[^0-9٠-٩]/g, '').slice(0, 3))}
-              placeholder={`١–${n(remaining)}`}
-            />
-          </label>
-        )}
-
-        {plan ? (
-          <div className="khatma__summary" aria-live="polite">
-            <p className="khatma__summaryMain">
-              {daysText(plan.days, n, true)}، {mode === 'days' ? (plan.min === plan.max ? pagesText(plan.max, n, true) : `${n(plan.min)}–${n(plan.max)} ${countNoun(plan.max, PAGES)}`) : pagesText(chosen, n, true)} يوميا
-            </p>
-            <p className="khatma__date">
-              <span>تختم يوم</span>
-              <strong>{dates.gregorian}</strong>
-              <strong>{dates.hijri}</strong>
-            </p>
-          </div>
-        ) : (
-          <p className="khatma__summary khatma__summary--empty">اكتب عددا من ١ إلى {n(remaining)}</p>
-        )}
-
-        <ReminderField value={reminder} onChange={setReminderTime} label="ورد اليوم" />
-
-        <div className="khatma__actions">
-          <button type="button" className="khatma__btn khatma__btn--primary" disabled={!plan} onClick={() => onSubmit(mode, chosen, reminder)}>
-            {editing ? 'حفظ الخطة' : 'ابدأ الختمة'}
-          </button>
-          {onCancel && (
-            <button type="button" className="khatma__btn" onClick={onCancel}>
-              إلغاء
-            </button>
-          )}
-        </div>
-      </section>
-      {!editing && doneCount > 0 && <p className="khatma__count">أتممت {khatmasText(doneCount)} في هذا التطبيق</p>}
-    </div>
+    <StepCard title={steps.id === 'type' ? 'ختمة جديدة' : 'ختمة ورد جديدة'} steps={steps} question={step.question} hint={step.hint} primary={step.primary ?? next} after={count}>
+      {step.body}
+    </StepCard>
   );
 }
 

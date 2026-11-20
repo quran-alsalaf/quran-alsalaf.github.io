@@ -54,6 +54,14 @@ const step = (page, name) => side(page).locator('.task').filter({ hasText: name 
 const check = (page, name) => step(page, name).getByRole('button', { name: /سجّل أنك أتممت/ });
 const details = (page) => side(page).locator('.hifz-card').getByRole('button', { name: 'التفاصيل' }).click();
 const radio = (page, name) => side(page).getByRole('radio', { name, exact: true });
+// نموذج الإنشاء خطوات (تنسيق تبويب الختمة، الجزء ٢): الخطوة الظاهرة، و«التالي»
+const stepOf = (page) => side(page).locator('.steps');
+const next = (page) => side(page).getByRole('button', { name: 'التالي' }).click();
+async function nextTo(page, id) {
+  for (let i = 0; i < 10 && (await stepOf(page).getAttribute('data-step')) !== id; i++) await next(page);
+  await expect(stepOf(page)).toHaveAttribute('data-step', id);
+}
+const row = (page, name) => side(page).locator('.steps__row').filter({ hasText: name });
 
 // يكشف بزرّ «كشف الآية» حتى يظهر زرّ الإتمام
 async function revealAll(page, done) {
@@ -62,27 +70,57 @@ async function revealAll(page, done) {
   await expect(btn).toBeVisible();
 }
 
-test('اختيار النوع، وإنشاء ختمة حفظ بالقيم الافتراضية', async ({ page }) => {
+test('اختيار النوع، وإنشاء ختمة حفظ خطوات بالقيم الافتراضية', async ({ page }) => {
   await open(page);
   await openTab(page);
-  // ختمة الورد أولًا كما كانت، والنوع فوق النموذج
+  // ختمة الورد أولًا كما كانت، والنوع أول خطوة
   await expect(radio(page, 'ختمة الورد')).toHaveAttribute('aria-checked', 'true');
-  await expect(side(page).getByRole('button', { name: 'ابدأ الختمة' })).toBeVisible();
   await radio(page, 'ختمة الحفظ').click();
+  await expect(side(page).locator('.khatma__title')).toHaveText('ختمة جديدة');
+  // في الموقع سبع خطوات (لا تذكير)
+  await expect(side(page).locator('.steps__count')).toHaveText('الخطوة ١ من ٧');
 
+  const question = side(page).locator('.steps__question');
+  await next(page);
   await expect(side(page).locator('.khatma__title')).toHaveText('ختمة حفظ جديدة');
+  await expect(question).toHaveText('بأي اتجاه تحفظ؟');
   await expect(radio(page, 'من الفاتحة إلى الناس')).toHaveAttribute('aria-checked', 'true');
+  await next(page);
+  await expect(question).toHaveText('من أين تبدأ؟ وأين تنتهي؟');
   await expect(side(page).locator('.hifz__pick').nth(0)).toContainText('الفاتحة ١');
   await expect(side(page).locator('.hifz__pick').nth(1)).toContainText('الناس ٦');
-  await expect(radio(page, 'نصف وجه')).toHaveAttribute('aria-checked', 'true');
-  await expect(radio(page, 'آخر ٣ أوراد')).toHaveAttribute('aria-checked', 'true');
-  await expect(radio(page, 'حزب (مقترح)')).toHaveAttribute('aria-checked', 'true');
   // من أول المصحف: لا شيء قبل البداية
   await expect(side(page).getByText('لا أراجع ما قبل البداية')).toHaveCount(0);
+  await next(page);
+  await expect(question).toHaveText('كم تحفظ كل يوم؟');
+  await expect(radio(page, 'نصف وجه')).toHaveAttribute('aria-checked', 'true');
+  // مدة الختمة تحت الحفظ اليومي
   await expect(side(page).locator('.khatma__summary')).toContainText('نصف وجه يوميا');
-
   await radio(page, 'وجه').click();
+  await expect(side(page).locator('.khatma__summary')).toContainText('وجه يوميا');
+  await next(page);
+  await expect(question).toHaveText('كم تراجع من آخر ما حفظت؟');
+  await expect(radio(page, 'آخر ٣ أوراد')).toHaveAttribute('aria-checked', 'true');
   await radio(page, 'آخر ٥ أوراد').click();
+  await next(page);
+  await expect(question).toHaveText('كم تراجع كل يوم من محفوظك القديم؟');
+  await expect(radio(page, 'حزب (مقترح)')).toHaveAttribute('aria-checked', 'true');
+  // بلا جملة «تحفظ الآن أقل من نصف القرآن…» (أزيلت بطلب صاحب المشروع): يكفي «(مقترح)»
+  await expect(side(page).getByText(/تحفظ الآن (أقل|أكثر) من نصف القرآن/)).toHaveCount(0);
+  await next(page);
+
+  // الملخص: سطر لكل خطوة، ومدة الختمة
+  await expect(side(page).locator('.steps__count')).toHaveText('الخطوة ٧ من ٧');
+  await expect(side(page).locator('.steps__row')).toHaveText([
+    /الاتجاه\s*من الفاتحة إلى الناس/,
+    /البداية والنهاية\s*من الفاتحة ١ إلى الناس ٦/,
+    /الحفظ اليومي\s*وجه يوميا/,
+    /المراجعة القريبة\s*آخر ٥ أوراد/,
+    /المراجعة البعيدة\s*حزب كل يوم \(مقترح\)/,
+  ]);
+  await expect(side(page).locator('.khatma__summary')).toContainText('وجه يوميا');
+  // نصوص الختمة بلا تشكيل (بطلب صاحب المشروع)
+  expect(await side(page).locator('.khatma').innerText()).not.toMatch(/[\u064B-\u0652]/);
   await side(page).getByRole('button', { name: 'ابدأ ختمة الحفظ' }).click();
 
   const card = side(page).locator('.hifz-card');
@@ -101,38 +139,53 @@ test('البداية والنهاية بالمنتقي، و«لا أراجع م�
   await open(page);
   await openTab(page);
   await radio(page, 'ختمة الحفظ').click();
+  await nextTo(page, 'range');
 
   // من مريم: ما قبلها أكثر من نصف القرآن ⇐ جزء مقترح
   await side(page).locator('.hifz__pick').nth(0).click();
   await pickVerse(page, at(19, 1));
   await expect(side(page).locator('.hifz__pick').nth(0)).toContainText('مريم ١');
+  await nextTo(page, 'far');
   await expect(radio(page, 'جزء (مقترح)')).toHaveAttribute('aria-checked', 'true');
-  await expect(side(page).getByText('تحفظ الآن أكثر من نصف القرآن، فيقترح أن تراجع جزءا كل يوم.')).toBeVisible();
+  // ومن الملخص: «لا أراجع ما قبل البداية» يغيّر المقترح إلى حزب
+  await next(page);
+  await expect(row(page, 'المراجعة البعيدة')).toContainText('جزء كل يوم (مقترح)');
+  await row(page, 'البداية والنهاية').click();
   await side(page).getByText('لا أراجع ما قبل البداية').click();
-  await expect(radio(page, 'حزب (مقترح)')).toHaveAttribute('aria-checked', 'true');
-  await expect(side(page).getByText('تحفظ الآن أقل من نصف القرآن، فيقترح أن تراجع حزبا كل يوم.')).toBeVisible();
+  await side(page).getByRole('button', { name: 'العودة إلى الملخص' }).click();
+  await expect(row(page, 'البداية والنهاية')).toContainText('لا تراجع ما قبل البداية');
+  await expect(row(page, 'المراجعة البعيدة')).toContainText('حزب كل يوم (مقترح)');
 
-  // العكسي: من الناس إلى الفاتحة
+  // العكسي من الملخص: تغيير الاتجاه يعيد البداية والنهاية، فيمرّ بخطوتهما قبل الرجوع إليه
+  await row(page, 'الاتجاه').click();
+  await expect(side(page).getByRole('button', { name: 'العودة إلى الملخص' })).toBeVisible();
   await radio(page, 'من الناس إلى الفاتحة').click();
+  await next(page);
+  await expect(stepOf(page)).toHaveAttribute('data-step', 'range');
   await expect(side(page).locator('.hifz__pick').nth(0)).toContainText('الناس ١');
   await expect(side(page).locator('.hifz__pick').nth(1)).toContainText('الفاتحة ٧');
   // بلا شرح للاتجاه العكسي (بطلب صاحب المشروع: بديهي)
   await expect(side(page).getByText('تُحفظ السور من الآخر')).toHaveCount(0);
 
-  // نهاية بعد البداية في العكسي: لا تصح
+  // نهاية بعد البداية في العكسي: لا تصح، فلا رجوع إلى الملخص
   await side(page).locator('.hifz__pick').nth(0).click();
   await pickVerse(page, at(2, 1));
   await side(page).locator('.hifz__pick').nth(1).click();
   await pickVerse(page, at(114, 1));
   await expect(side(page).getByRole('alert')).toHaveText('في هذا الاتجاه تكون سورة النهاية قبل سورة البداية.');
-  await expect(side(page).getByRole('button', { name: 'ابدأ ختمة الحفظ' })).toBeDisabled();
+  await expect(side(page).getByRole('button', { name: 'العودة إلى الملخص' })).toBeDisabled();
 
   // من الناس إلى البقرة
   await side(page).locator('.hifz__pick').nth(0).click();
   await pickVerse(page, at(114, 1));
   await side(page).locator('.hifz__pick').nth(1).click();
   await pickVerse(page, at(2, 286));
+  await side(page).getByRole('button', { name: 'العودة إلى الملخص' }).click();
+  await expect(row(page, 'الاتجاه')).toContainText('من الناس إلى الفاتحة');
+  await expect(row(page, 'البداية والنهاية')).toContainText('من الناس ١ إلى البقرة ٢٨٦');
+  await row(page, 'الحفظ اليومي').click();
   await radio(page, 'وجه').click();
+  await side(page).getByRole('button', { name: 'العودة إلى الملخص' }).click();
   await side(page).getByRole('button', { name: 'ابدأ ختمة الحفظ' }).click();
   // أول ورد: النصر إلى الناس (سور كاملة متجاورة)
   await expect(step(page, 'حفظ اليوم')).toContainText('النصر ١ – الناس ٦');
@@ -314,6 +367,11 @@ test('اقتراح زيادة المراجعة بعد النصف، وتعديل 
   await details(page);
   await side(page).getByRole('button', { name: 'تعديل الخطة' }).click();
   await expect(side(page).locator('.khatma__title')).toHaveText('تعديل خطة الحفظ');
+  // شاشة واحدة كما كانت (لا خطوات): الحفظ اليومي والمراجعتان معًا
+  await expect(side(page).locator('.steps')).toHaveCount(0);
+  await expect(side(page).getByRole('radiogroup', { name: 'الحفظ اليومي' })).toBeVisible();
+  await expect(side(page).getByRole('radiogroup', { name: 'المراجعة القريبة' })).toBeVisible();
+  await expect(side(page).getByRole('radiogroup', { name: 'المراجعة البعيدة' })).toBeVisible();
   await expect(radio(page, 'من الفاتحة إلى الناس')).toHaveCount(0);
   await expect(radio(page, 'جزء')).toHaveAttribute('aria-checked', 'true');
   await radio(page, 'وجهان').click();
@@ -335,6 +393,10 @@ test('ختمة الورد وختمة الحفظ معا: لكلٍّ بطاقته�
   await expect(side(page).getByRole('button', { name: 'اقرأ', exact: true })).toBeVisible();
   await side(page).getByRole('button', { name: 'ختمة حفظ جديدة' }).click();
   await expect(side(page).locator('.khatma__title').last()).toHaveText('ختمة حفظ جديدة');
+  // مع ختمة قائمة: لا خطوة للنوع، فأول خطوة الاتجاه
+  await expect(stepOf(page)).toHaveAttribute('data-step', 'dir');
+  await expect(side(page).locator('.steps__count')).toHaveText('الخطوة ١ من ٦');
+  await nextTo(page, 'summary');
   await side(page).getByRole('button', { name: 'ابدأ ختمة الحفظ' }).click();
   await expect(side(page).locator('.khatma__card')).toHaveCount(2);
   await expect(side(page).getByRole('button', { name: 'اقرأ', exact: true })).toBeVisible();

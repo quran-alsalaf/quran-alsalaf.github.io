@@ -14,9 +14,9 @@ import {
     منتقي الوقت بالساعة والدقيقة (منتقي الجهاز نفسه).
   • إن رُفض الإذن بقي «بلا تذكير»، ومعه شرح وزرّ يفتح إعدادات إشعارات التطبيق في الجهاز.
   • داخل التطبيق الأصلي وحده: في الموقع لا يظهر شيء.
-  value: «HH:MM» أو null · onChange(value)
+  value: «HH:MM» أو null · onChange(value) · bare: بلا اسم الحقل (في خطوة التذكير، سؤالها اسمه)
 */
-export default function ReminderField({ value, onChange, label = 'ما عليك' }) {
+export default function ReminderField({ value, onChange, label = 'ما عليك', bare = false }) {
   const [denied, setDenied] = useState(false);
   const [asking, setAsking] = useState(false);
   if (!remindersAvailable()) return null;
@@ -33,7 +33,7 @@ export default function ReminderField({ value, onChange, label = 'ما عليك'
 
   return (
     <div className="hifz__field reminder">
-      <span className="hifz__label">التذكير اليومي</span>
+      {!bare && <span className="hifz__label">التذكير اليومي</span>}
       <div className="khatma__segment" role="radiogroup" aria-label="التذكير اليومي">
         <button
           type="button"
