@@ -178,7 +178,7 @@ test('صفحة الورد: فتحها على صفحة فيها بداية ربع
   });
   await clickTopbar(page, 'القائمة');
   await side(page).getByRole('tab', { name: 'الختمة' }).click();
-  await side(page).getByRole('button', { name: 'اقرأ الورد' }).click();
+  await side(page).getByRole('button', { name: 'اقرأ', exact: true }).click();
   await expect(page.locator('.kpage')).toBeVisible();
   await expect(toast(page)).toHaveText('بداية الحزب');
   await expect(page.locator('.kpage .line--rubflash')).toHaveAttribute('aria-label', 'سورة الفاتحة');

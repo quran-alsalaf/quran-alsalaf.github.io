@@ -6,6 +6,7 @@ import { verseLabel } from '../lib/study.js';
 import { hafsOf, shownOf } from '../lib/verseMap.js';
 import { dayKey, addDays, daysText, formatDates, setReminder } from '../lib/khatma.js';
 import ReminderField, { ReminderLine } from './ReminderField.jsx';
+import { CardHead, Details, DetailsFooter, Task, withUndo } from './KhatmaTasks.jsx';
 import {
   DEFAULT_LINES,
   DEFAULT_NEAR,
@@ -40,8 +41,9 @@ import './Khatma.css';
   ختمة الحفظ في تبويب «الختمة» (٢٠٢٦-١١-١٦) — المنطق في src/lib/hifz.js.
   • HifzForm: الإنشاء (الاتجاه، والبداية والنهاية، و«لا أراجع ما قبل البداية»، والحفظ اليومي بالأسطر،
     والمراجعتان) وتعديل الخطة (الحفظ اليومي والمراجعتان وحدها).
-  • HifzCard: التقدّم والمحفوظ، وخطوات اليوم الثلاث: المراجعة البعيدة، والمراجعة القريبة، وحفظ الورد. لكل
-    خطوة زرّ يفتح صفحتها (HifzPage) وزرّ «تم» لمن سمّع على شيخ أو من مصحف ورقي، و✓ إذا أُتمّت اليوم.
+  • HifzCard: التقدّم والمحفوظ، وخطوات اليوم الثلاث أسطرًا: المراجعة البعيدة، والمراجعة القريبة، وحفظ الورد. لكل
+    خطوة زرّ يفتح صفحتها (HifzPage) ودائرة تسجّلها لمن سمّع على شيخ أو من مصحف ورقي (ومعها «تراجع»)، و✓ إذا
+    أُتمّت اليوم؛ ثم «التفاصيل» المطوية (KhatmaTasks.jsx).
   • HifzFinished: بعد الختم.
   الخطة بترقيم حفص (hafs)، وتُعرض بترقيم المصحف المعروض (quran) — في ورش بما يقابلها.
 */
@@ -336,6 +338,8 @@ export function finishReview(hafs, kind, onToast) {
 }
 
 // ---------- أثناء الختمة ----------
+// البطاقة (تنسيق ٢٠٢٦-١١-٢٠): الرأس (التقدّم والحالة والمحفوظ)، ثم التنبيهات، ثم خطوات اليوم الثلاث أسطرًا — لكلٍّ
+// دائرة تسجّلها (ومعها «تراجع») وزرّ يفتح صفحتها — ثم «التفاصيل» المطوية
 export function HifzCard({ quran, hafs, k, onOpen, onEdit, onToast, doneCount }) {
   const today = dayKey();
   const s = hifzState(hafs, k, today);
@@ -349,30 +353,21 @@ export function HifzCard({ quran, hafs, k, onOpen, onEdit, onToast, doneCount })
         ? { text: 'أتممت حفظ اليوم ✓', kind: 'done' }
         : { text: 'على الخطة', kind: 'on' };
   const nearLabel = s.near.length ? hifzLabel(quran, [Math.min(...s.near.map((r) => r[0])), Math.max(...s.near.map((r) => r[1]))]) : null;
+  const lastLearned = s.doneToday ? (k.recent ?? []).at(-1) : null;
+  const record = (fn) => () => withUndo(onToast, fn);
 
   return (
     <div className="khatma">
       <section className="khatma__card hifz-card">
-        <header className="khatma__head">
-          <h3 className="khatma__title">ختمة الحفظ</h3>
-          <span className="khatma__index">
-            الورد {n(s.index)} من {n(s.total)}
-          </span>
-        </header>
-        <div
-          className="khatma__bar"
-          role="progressbar"
-          aria-label="تقدم ختمة الحفظ"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={s.percent}
-        >
-          <span style={{ width: `${s.percent}%` }} />
-        </div>
-        <p className="khatma__progress">
-          <strong>{n(s.percent)}٪</strong> من الخطة، وتحفظ الآن {memorizedText(hafs, s.memorized)}
-        </p>
-        <p className={`khatma__status khatma__status--${status.kind}`}>{status.text}</p>
+        <CardHead
+          title="ختمة الحفظ"
+          index={s.index}
+          total={s.total}
+          percent={s.percent}
+          label="تقدم ختمة الحفظ"
+          status={status}
+          extra={`تحفظ الآن ${memorizedText(hafs, s.memorized)}`}
+        />
 
         {s.suggest && (
           <div className="hifz__note" role="note">
@@ -400,112 +395,55 @@ export function HifzCard({ quran, hafs, k, onOpen, onEdit, onToast, doneCount })
           </p>
         )}
 
-        <ol className="hifz__steps">
-          <Step
-            n={1}
+        <ul className="tasks">
+          <Task
             title="المراجعة البعيدة"
             done={s.farDone}
-            detail={s.far ? s.far.name : 'لا محفوظ للمراجعة بعد'}
-            sub={s.far && s.far.ranges.length ? hifzLabel(quran, [s.far.ranges[0][0], s.far.ranges.at(-1)[1]]) : null}
+            detail={s.farDone ? null : s.far ? s.far.name : 'لا محفوظ للمراجعة بعد'}
+            sub={!s.farDone && s.far && s.far.ranges.length ? hifzLabel(quran, [s.far.ranges[0][0], s.far.ranges.at(-1)[1]]) : null}
             action={s.far ? { label: 'راجع', onClick: () => onOpen('far') } : null}
-            onDone={s.far ? () => finishReview(hafs, 'far', onToast) : null}
+            onCheck={s.far ? record((toast) => finishReview(hafs, 'far', toast)) : null}
           />
           {k.near > 0 && (
-            <Step
-              n={2}
+            <Task
               title="المراجعة القريبة"
               done={s.nearDone}
               detail={
-                s.near.length
-                  ? k.near === 1
-                    ? 'الورد السابق'
-                    : `آخر ${wirdsText(Math.min(k.near, s.near.length), false)}`
-                  : 'تبدأ بعد أول ورد تحفظه'
+                s.nearDone
+                  ? null
+                  : s.near.length
+                    ? k.near === 1
+                      ? 'الورد السابق'
+                      : `آخر ${wirdsText(Math.min(k.near, s.near.length), false)}`
+                    : 'تبدأ بعد أول ورد تحفظه'
               }
-              sub={nearLabel}
+              sub={s.nearDone ? null : nearLabel}
               action={s.near.length ? { label: 'سمع', onClick: () => onOpen('near') } : null}
-              onDone={s.near.length ? () => finishReview(hafs, 'near', onToast) : null}
+              onCheck={s.near.length ? record((toast) => finishReview(hafs, 'near', toast)) : null}
             />
           )}
-          <Step
-            n={k.near > 0 ? 3 : 2}
+          {s.doneToday && <Task title="حفظ اليوم" done detail={lastLearned ? hifzLabel(quran, lastLearned) : null} />}
+          <Task
             title={s.doneToday ? 'الورد التالي' : 'حفظ اليوم'}
-            done={s.doneToday}
             detail={hifzLabel(quran, s.current)}
             sub={countText(Math.max(1, Math.round(linesOf(hafs, s.current[0], s.current[1]))), LINES, n, true)}
-            action={{
-              label: 'احفظ',
-              onClick: () => onOpen('learn'),
-              primary: true,
-            }}
-            onDone={() => finishHifz(hafs, onToast)}
-            doneLabel="أتممت الحفظ"
+            action={{ label: 'احفظ', onClick: () => onOpen('learn') }}
+            onCheck={record((toast) => finishHifz(hafs, toast))}
           />
-        </ol>
+        </ul>
 
-        <p className="khatma__date">
-          <span>ختم الحفظ المتوقع</span>
-          <strong>{dates.gregorian}</strong>
-          <strong>{dates.hijri}</strong>
-        </p>
-
-        <ReminderLine time={k.reminder} />
-
-        <div className="khatma__footer">
-          {confirm ? (
-            <>
-              <span>حذف ختمة الحفظ وكل تقدمها؟</span>
-              <button type="button" className="khatma__link khatma__link--danger" onClick={removeHifz}>
-                نعم، احذفها
-              </button>
-              <button type="button" className="khatma__link" onClick={() => setConfirm(false)}>
-                لا
-              </button>
-            </>
-          ) : (
-            <>
-              <button type="button" className="khatma__link" onClick={onEdit}>
-                تعديل الخطة
-              </button>
-              <button type="button" className="khatma__link khatma__link--danger" onClick={() => setConfirm(true)}>
-                حذف الختمة
-              </button>
-            </>
-          )}
-        </div>
+        <Details>
+          <p className="khatma__date">
+            <span>ختم الحفظ المتوقع</span>
+            <strong>{dates.gregorian}</strong>
+            <strong>{dates.hijri}</strong>
+          </p>
+          <ReminderLine time={k.reminder} />
+          {doneCount > 0 && <p className="khatma__count">أتممت قبلها {countText(doneCount, KHATMAS, n)} حفظ</p>}
+          <DetailsFooter confirm={confirm} setConfirm={setConfirm} onEdit={onEdit} onRemove={removeHifz} question="حذف ختمة الحفظ وكل تقدمها؟" />
+        </Details>
       </section>
-      {doneCount > 0 && <p className="khatma__count">أتممت قبلها {countText(doneCount, KHATMAS, n)} حفظ</p>}
     </div>
-  );
-}
-
-// خطوة من خطوات اليوم: رقمها أو ✓، واسمها وما فيها، وزرّها، و«تم» لإتمامها دون فتح صفحتها
-function Step({ n: num, title, done, detail, sub, action, onDone, doneLabel = 'تم' }) {
-  return (
-    <li className={`hifz__step${done ? ' hifz__step--done' : ''}`} aria-label={`${title}${done ? '، أتممتها اليوم' : ''}`}>
-      <span className="hifz__num" aria-hidden="true">
-        {done ? '✓' : n(num)}
-      </span>
-      <div className="hifz__body">
-        <span className="khatma__label">{title}</span>
-        <strong className="hifz__detail">{detail}</strong>
-        {sub && <span className="khatma__suras">{sub}</span>}
-        {(action || onDone) && (
-          <div className="khatma__actions">
-            {action && (
-              <button type="button" className={`khatma__btn${action.primary ? ' khatma__btn--primary' : ''}`} onClick={action.onClick}>
-                {action.label}
-              </button>
-            )}
-            {onDone && (
-              <button type="button" className="khatma__btn" onClick={onDone}>
-                {doneLabel}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </li>
   );
 }
 

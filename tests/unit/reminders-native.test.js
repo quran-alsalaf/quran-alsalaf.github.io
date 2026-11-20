@@ -114,7 +114,9 @@ describe('«التذكير اليومي» في نموذج الختمة', () => {
     await setTime('05:30');
     await act(() => button('ابدأ الختمة').click());
     expect(K.readWird().reminder).toBe('05:30');
-    // في بطاقة الختمة سطر بوقت التذكير
+    // في «التفاصيل» بطاقة الختمة سطر بوقت التذكير
+    expect(el.textContent).not.toContain('التذكير اليومي: ٥:٣٠ ص');
+    await act(() => button('التفاصيل').click());
     expect(el.textContent).toContain('التذكير اليومي: ٥:٣٠ ص');
   });
 
@@ -136,6 +138,7 @@ describe('«التذكير اليومي» في نموذج الختمة', () => {
     K.startWird('days', 30, '2026-11-18');
     const before = K.readWird();
     await render();
+    await act(() => button('التفاصيل').click());
     await act(() => button('تعديل الخطة').click());
     await act(() => button('تذكير يومي').click());
     await tick();
@@ -157,6 +160,7 @@ describe('«التذكير اليومي» في نموذج الختمة', () => {
     const hifz = K.readKhatmas().find((x) => x.type === 'hifz');
     expect(hifz.reminder).toBe('17:15');
     expect(K.readWird().reminder).toBe('20:00');
+    for (const b of [...el.querySelectorAll('.kdetails__toggle')]) await act(() => b.click());
     expect(el.textContent).toContain('التذكير اليومي: ٨:٠٠ م');
     expect(el.textContent).toContain('التذكير اليومي: ٥:١٥ م');
   });

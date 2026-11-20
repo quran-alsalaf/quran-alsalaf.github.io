@@ -49,7 +49,10 @@ async function waitHpage(page) {
   await expect(hpage(page).locator('.sheet--current .mushaf-page:not(.mushaf-page--pending)').first()).toBeVisible();
   await page.waitForFunction(() => !document.querySelector('.hpage')?.getAnimations().length);
 }
-const step = (page, name) => side(page).locator('.hifz__step').filter({ hasText: name });
+const step = (page, name) => side(page).locator('.task').filter({ hasText: name });
+// دائرة المهمة: تسجّلها بلا صفحتها (لمن سمّع على شيخ أو من مصحف ورقي)
+const check = (page, name) => step(page, name).getByRole('button', { name: /سجّل أنك أتممت/ });
+const details = (page) => side(page).locator('.hifz-card').getByRole('button', { name: 'التفاصيل' }).click();
 const radio = (page, name) => side(page).getByRole('radio', { name, exact: true });
 
 // يكشف بزرّ «كشف الآية» حتى يظهر زرّ الإتمام
@@ -247,13 +250,13 @@ test('المراجعة البعيدة: تسميع المحفوظ من الوحد
   await openTab(page);
   await expect(step(page, 'المراجعة البعيدة')).toContainText('الحزب ١');
   await expect(step(page, 'المراجعة البعيدة')).toContainText('الفاتحة ١ – البقرة ٢٥');
-  await step(page, 'المراجعة البعيدة').getByRole('button', { name: 'راجع' }).click();
+  await step(page, 'المراجعة البعيدة').getByRole('button', { name: 'راجع', exact: true }).click();
   await waitHpage(page);
   await expect(hpage(page).locator('.kpage__title h2')).toHaveText('المراجعة البعيدة، الحزب ١');
   await revealAll(page, 'أتممت المراجعة ✓');
   await hpage(page).getByRole('button', { name: 'أتممت المراجعة ✓' }).click();
   await expect(toast(page)).toHaveText('أحسنت، تمت المراجعة البعيدة');
-  await expect(step(page, 'المراجعة البعيدة')).toHaveClass(/hifz__step--done/);
+  await expect(step(page, 'المراجعة البعيدة')).toHaveClass(/task--done/);
   const [k] = await stored(page, 'hq.khatmas');
   expect(k.reviewed).toEqual({ day: '2026-11-16', far: true });
   expect(k.lastFar).toBe('2026-11-16');
@@ -281,19 +284,21 @@ test('المراجعة القريبة: الأوراد غير المتصلة في
   await revealAll(page, 'أتممت المراجعة ✓');
   await hpage(page).getByRole('button', { name: 'أتممت المراجعة ✓' }).click();
   await expect(toast(page)).toHaveText('أحسنت، تمت المراجعة القريبة');
-  await expect(step(page, 'المراجعة القريبة')).toHaveClass(/hifz__step--done/);
+  await expect(step(page, 'المراجعة القريبة')).toHaveClass(/task--done/);
 });
 
 test('من يسجّل الحفظ ويترك المراجعة يُنبَّه، ومن لم يراجع منذ أيام يرى تنبيها في البطاقة', async ({ page }) => {
   await open(page, { 'hq.khatmas': [hifz({ start: at(10, 1), next: at(10, 1), lastFar: '2026-11-12' })] });
   await openTab(page);
   await expect(side(page).locator('.hifz__note--warn')).toHaveText('لم تراجع منذ ٤ أيام. المراجعة تثبت الحفظ، فلا تتركها.');
-  await step(page, 'حفظ اليوم').getByRole('button', { name: 'أتممت الحفظ' }).click();
-  await expect(toast(page)).toHaveText('سجل حفظ الورد. لا تترك المراجعة، فبها يثبت الحفظ');
-  // «تم» يسجّل المراجعة البعيدة بلا صفحتها، فيزول التنبيه
-  await step(page, 'المراجعة البعيدة').getByRole('button', { name: 'تم' }).click();
+  await check(page, 'حفظ اليوم').click();
+  await expect(toast(page)).toContainText('سجل حفظ الورد. لا تترك المراجعة، فبها يثبت الحفظ');
+  await expect(toast(page).getByRole('button', { name: 'تراجع' })).toBeVisible();
+  await expect(step(page, 'حفظ اليوم')).toHaveClass(/task--done/);
+  // الدائرة تسجّل المراجعة البعيدة بلا صفحتها، فيزول التنبيه
+  await check(page, 'المراجعة البعيدة').click();
   await expect(side(page).locator('.hifz__note--warn')).toHaveCount(0);
-  await expect(step(page, 'المراجعة البعيدة')).toHaveClass(/hifz__step--done/);
+  await expect(step(page, 'المراجعة البعيدة')).toHaveClass(/task--done/);
 });
 
 test('اقتراح زيادة المراجعة بعد النصف، وتعديل الخطة، وحذف الختمة', async ({ page }) => {
@@ -306,6 +311,7 @@ test('اقتراح زيادة المراجعة بعد النصف، وتعديل 
   await expect(note).toHaveCount(0);
   await expect(step(page, 'المراجعة البعيدة')).toContainText('الجزء ١');
 
+  await details(page);
   await side(page).getByRole('button', { name: 'تعديل الخطة' }).click();
   await expect(side(page).locator('.khatma__title')).toHaveText('تعديل خطة الحفظ');
   await expect(radio(page, 'من الفاتحة إلى الناس')).toHaveCount(0);
@@ -315,6 +321,7 @@ test('اقتراح زيادة المراجعة بعد النصف، وتعديل 
   await expect(toast(page)).toHaveText('تم تعديل الخطة');
   expect((await stored(page, 'hq.khatmas'))[0].lines).toBe(30);
 
+  await details(page);
   await side(page).getByRole('button', { name: 'حذف الختمة' }).click();
   await side(page).getByRole('button', { name: 'نعم، احذفها' }).click();
   await expect(radio(page, 'ختمة الورد')).toBeVisible();
@@ -325,12 +332,12 @@ test('ختمة الورد وختمة الحفظ معا: لكلٍّ بطاقته�
   const wird = { type: 'wird', created: '2026-11-16', mode: 'days', value: 30, from: 1, planStart: '2026-11-16', done: 0, doneBefore: 0, lastDone: null, finished: null };
   await open(page, { 'hq.khatmas': [wird] });
   await openTab(page);
-  await expect(side(page).getByRole('button', { name: 'اقرأ الورد' })).toBeVisible();
+  await expect(side(page).getByRole('button', { name: 'اقرأ', exact: true })).toBeVisible();
   await side(page).getByRole('button', { name: 'ختمة حفظ جديدة' }).click();
   await expect(side(page).locator('.khatma__title').last()).toHaveText('ختمة حفظ جديدة');
   await side(page).getByRole('button', { name: 'ابدأ ختمة الحفظ' }).click();
   await expect(side(page).locator('.khatma__card')).toHaveCount(2);
-  await expect(side(page).getByRole('button', { name: 'اقرأ الورد' })).toBeVisible();
+  await expect(side(page).getByRole('button', { name: 'اقرأ', exact: true })).toBeVisible();
   await expect(side(page).locator('.hifz-card')).toBeVisible();
   await expect(side(page).getByRole('button', { name: /ختمة (ورد|حفظ) جديدة/ })).toHaveCount(0);
   expect((await stored(page, 'hq.khatmas')).map((k) => k.type)).toEqual(['wird', 'hifz']);

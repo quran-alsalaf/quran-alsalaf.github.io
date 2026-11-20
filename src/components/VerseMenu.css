@@ -610,3 +610,20 @@
     margin-top: 8px;
   }
 }
+
+/* رسالة فيها زرّ («تراجع» بعد تسجيل مهمة في الختمة): تُضغط، والزرّ بلون التطبيق */
+.toast--action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-inline-end: 8px;
+  pointer-events: auto;
+}
+
+.toast__action {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
