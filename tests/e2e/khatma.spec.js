@@ -17,6 +17,10 @@ async function open(page, storage = {}) {
   await openApp(page, storage);
 }
 
+// دائرة المهمة في البطاقة («ورد اليوم» أو «الورد التالي»)، و«التفاصيل» المطوية
+const check = (card) => card.getByRole('button', { name: /سجّل أنك أتممت/ });
+const details = (card) => card.getByRole('button', { name: 'التفاصيل' }).click();
+
 async function openKhatmaTab(page) {
   await clickTopbar(page, 'القائمة');
   await expect(side(page)).toHaveClass(/sidemenu--open/);
@@ -82,6 +86,7 @@ test('إنشاء ختمة بالأيام: ٣٠ يوما افتراضيا، وي�
   await expect(card).toContainText('من الصفحة ١ إلى ٢٠');
   await expect(card).toContainText('الفاتحة – البقرة');
   await expect(card).toContainText('على الخطة');
+  await details(card);
   await expect(card).toContainText('الجمعة ١١ ديسمبر ٢٠٢٦م');
   await noTashkeel(side(page).locator('.khatma'));
   expect(await stored(page, 'hq.khatmas')).toEqual([expect.objectContaining({ type: 'wird', mode: 'days', value: 30, from: 1, done: 0 })]);
@@ -116,7 +121,7 @@ test('صفحة الورد: تفتح على أوله ولا تقلب خارجه،
   await open(page, { 'hq.page': '300', 'hq.sideTab': 'khatma', 'hq.khatmas': wird({ mode: 'pages', value: 6, from: 4, done: 3, lastDone: '2026-11-11', planStart: '2026-11-08' }) });
   await clickTopbar(page, 'القائمة');
   await expect(side(page).locator('.khatma__card')).toContainText('من الصفحة ٢٢ إلى ٢٧');
-  await side(page).getByRole('button', { name: 'اقرأ الورد' }).click();
+  await side(page).getByRole('button', { name: 'اقرأ', exact: true }).click();
   await expect(kpage(page)).toBeVisible();
   await expect(side(page)).not.toHaveClass(/sidemenu--open/);
   await waitKpage(page);
@@ -170,7 +175,7 @@ test('صفحة الورد تغلق بزر الرجوع وEsc وزر رجوع ا�
   await open(page, { 'hq.sideTab': 'khatma', 'hq.khatmas': wird() });
   for (const close of ['button', 'esc', 'history']) {
     await clickTopbar(page, 'القائمة');
-    await side(page).getByRole('button', { name: 'اقرأ الورد' }).click();
+    await side(page).getByRole('button', { name: 'اقرأ', exact: true }).click();
     await waitKpage(page);
     if (close === 'button') await kpage(page).getByRole('button', { name: 'رجوع' }).click();
     else if (close === 'esc') await page.keyboard.press('Escape');
@@ -186,7 +191,7 @@ test('صفحة الورد تغلق بزر الرجوع وEsc وزر رجوع ا�
 test('الضغط المطول على آية في صفحة الورد يفتح مربعها بلا «تشغيل»', async ({ page }) => {
   await open(page, { 'hq.sideTab': 'khatma', 'hq.khatmas': wird({ mode: 'pages', value: 3, from: 50 }) });
   await clickTopbar(page, 'القائمة');
-  await side(page).getByRole('button', { name: 'اقرأ الورد' }).click();
+  await side(page).getByRole('button', { name: 'اقرأ', exact: true }).click();
   await waitKpage(page);
   const v = await kpage(page).locator('.sheet--current .w[data-v]').first().getAttribute('data-v');
   const box = await kpage(page).locator(`.sheet--current .w[data-v="${v}"]`).first().boundingBox();
@@ -215,13 +220,20 @@ test('إتمام الورد من البطاقة، والتأخر والتقدم 
   const card = side(page).locator('.khatma__card');
   await expect(card).toContainText('متأخر عن الخطة ٣ أيام');
   await expect(card).toContainText('من الصفحة ١ إلى ٢٠');
+  // التواريخ في «التفاصيل» المطوية
+  await expect(card).not.toContainText('الجمعة ١١ ديسمبر ٢٠٢٦م');
+  await details(card);
   await expect(card).toContainText('الجمعة ١١ ديسمبر ٢٠٢٦م');
-  for (let i = 0; i < 3; i++) await card.getByRole('button', { name: 'أتممت الورد' }).click();
+  for (let i = 0; i < 3; i++) await check(card).click();
   await expect(card).toContainText('أتممت ورد اليوم');
-  await expect(card).toContainText('من الصفحة ٦١ إلى ٨٠');
-  await expect(card).toContainText('٩٪، قرأت ٦٠ من ٦٠٤ صفحات');
-  await card.getByRole('button', { name: 'أتممت الورد' }).click();
-  await card.getByRole('button', { name: 'أتممت الورد' }).click();
+  // ورد اليوم ✓ بصفحاته، وتحته «الورد التالي» لمن يتقدّم
+  await expect(card.locator('.task--done')).toContainText('من الصفحة ٤١ إلى ٦٠');
+  await expect(card.locator('.task').last()).toContainText('الورد التالي');
+  await expect(card.locator('.task').last()).toContainText('من الصفحة ٦١ إلى ٨٠');
+  await expect(card.locator('.khatma__meta')).toContainText('٩٪');
+  await expect(card).toContainText('قرأت ٦٠ من ٦٠٤ صفحات');
+  await check(card).click();
+  await check(card).click();
   await expect(card).toContainText('متقدم على الخطة يوم واحد');
 });
 
@@ -230,6 +242,7 @@ test('تعديل الخطة يعيد التقسيم مما بقي، وحذف ا�
   await clickTopbar(page, 'القائمة');
   const card = side(page).locator('.khatma__card');
   await expect(card).toContainText('من الصفحة ٤١ إلى ٦٠');
+  await details(card);
   await card.getByRole('button', { name: 'تعديل الخطة' }).click();
   await expect(card).toContainText('تعديل الخطة');
   await expect(card).toContainText('من الصفحة ٤١');
@@ -239,6 +252,7 @@ test('تعديل الخطة يعيد التقسيم مما بقي، وحذف ا�
   await expect(page.locator('.toast')).toHaveText('تم تعديل الخطة');
   await expect(card).toContainText('من الصفحة ٤١ إلى ٦٠');
   await expect(card).toContainText('الورد ٣ من ٣١');
+  await details(card);
   await expect(card).toContainText('قرأت ٤٠ من ٦٠٤');
 
   // إلغاء التعديل يبقي الخطة
@@ -246,6 +260,7 @@ test('تعديل الخطة يعيد التقسيم مما بقي، وحذف ا�
   await card.getByRole('button', { name: 'إلغاء' }).click();
   await expect(card).toContainText('الورد ٣ من ٣١');
 
+  await details(card);
   await card.getByRole('button', { name: 'حذف الختمة' }).click();
   await card.getByRole('button', { name: 'لا' }).click();
   await expect(card).toContainText('الورد ٣ من ٣١');
@@ -261,8 +276,9 @@ test('إتمام آخر ورد يختم المصحف: تهنئة وعدد الخ
   await clickTopbar(page, 'القائمة');
   const card = side(page).locator('.khatma__card');
   await expect(card).toContainText('الصفحة ٦٠٤');
+  await details(card);
   await expect(side(page).locator('.khatma__count')).toHaveText('أتممت قبلها ختمتين');
-  await side(page).getByRole('button', { name: 'اقرأ الورد' }).click();
+  await side(page).getByRole('button', { name: 'اقرأ', exact: true }).click();
   await waitKpage(page);
   // ورد بصفحة واحدة: أوله آخره، فزر الإتمام ظاهر من البداية
   await kpage(page).getByRole('button', { name: /أتممت الورد/ }).click();
@@ -290,6 +306,41 @@ test('في الموقع لا «تذكير يومي» في نموذجي الخت�
 test('في الموقع لا سطر تذكير في بطاقة ختمة لها تذكير', async ({ page }) => {
   await open(page, { 'hq.khatmas': JSON.stringify(wird({ reminder: '20:00' })) });
   await openKhatmaTab(page);
-  await expect(side(page).getByRole('button', { name: 'اقرأ الورد' })).toBeVisible();
+  await expect(side(page).getByRole('button', { name: 'اقرأ', exact: true })).toBeVisible();
   await expect(side(page).getByText('التذكير اليومي')).toHaveCount(0);
+});
+
+// تنسيق تبويب الختمة (الجزء ١، ٢٠٢٦-١١-٢٠): الدائرة تسجّل المهمة، و«تراجع» في الرسالة يعيد الختمة كما كانت
+test('الدائرة تسجّل الورد، و«تراجع» يعيده كما كان', async ({ page }) => {
+  await open(page, { 'hq.sideTab': 'khatma', 'hq.khatmas': wird() });
+  await clickTopbar(page, 'القائمة');
+  const card = side(page).locator('.khatma__card');
+  // مهمة واحدة بزرّ واحد، و«التفاصيل» مطوية
+  await expect(card.locator('.task')).toHaveCount(1);
+  await expect(card.locator('.task').getByRole('button')).toHaveCount(2); // الدائرة و«اقرأ»
+  await expect(card.getByRole('button', { name: 'التفاصيل' })).toHaveAttribute('aria-expanded', 'false');
+  await expect(card.getByRole('button', { name: 'حذف الختمة' })).toHaveCount(0);
+
+  await check(card).click();
+  const toast = page.locator('.toast');
+  await expect(toast).toContainText('أحسنت، تم تسجيل الورد');
+  await expect(card.locator('.task--done')).toContainText('ورد اليوم');
+  expect((await stored(page, 'hq.khatmas'))[0].done).toBe(1);
+  await toast.getByRole('button', { name: 'تراجع' }).click();
+  await expect(toast).toHaveText('تم التراجع');
+  await expect(card.locator('.task--done')).toHaveCount(0);
+  await expect(card.locator('.task')).toContainText('ورد اليوم');
+  expect(await stored(page, 'hq.khatmas')).toEqual(wird());
+});
+
+test('«تراجع» بعد ختم المصحف يعيد آخر ورد وعدد الختمات', async ({ page }) => {
+  await open(page, { 'hq.sideTab': 'khatma', 'hq.khatmas': wird({ mode: 'pages', value: 3, from: 598, done: 2, lastDone: '2026-11-11' }), 'hq.khatmasDone': { wird: 2 } });
+  await clickTopbar(page, 'القائمة');
+  const card = side(page).locator('.khatma__card');
+  await check(card).click();
+  await expect(card).toContainText('أتممت الختمة');
+  expect(await stored(page, 'hq.khatmasDone')).toEqual({ wird: 3 });
+  await page.locator('.toast').getByRole('button', { name: 'تراجع' }).click();
+  await expect(card).toContainText('الصفحة ٦٠٤');
+  expect(await stored(page, 'hq.khatmasDone')).toEqual({ wird: 2 });
 });

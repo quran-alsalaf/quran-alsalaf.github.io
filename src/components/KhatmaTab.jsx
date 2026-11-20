@@ -23,14 +23,16 @@ import { FIRST_PAGE, LAST_PAGE } from '../lib/position.js';
 import { countNoun, countText, KHATMAS, PAGES } from '../lib/count.js';
 import { HifzCard, HifzFinished, HifzForm } from './HifzTab.jsx';
 import ReminderField, { ReminderLine } from './ReminderField.jsx';
+import { CardHead, Details, DetailsFooter, Task, withUndo } from './KhatmaTasks.jsx';
 import './Khatma.css';
 
 /*
   تبويب «الختمة» في القائمة اليمنى (٢٠٢٦-١١-١٢): ختمة الورد اليومي (src/lib/khatma.js)، وختمة الحفظ
   (٢٠٢٦-١١-١٦، HifzTab.jsx). تجتمع الختمتان، ومن كل نوع واحدة؛ وبلا ختمة يُختار النوع أعلى النموذج.
   • بلا ختمة: نموذج الإنشاء — بالأيام أو بالصفحات يوميا، ويظهر المقابل ويوم الختم قبل التأكيد.
-  • أثناء الختمة: التقدم، وورد اليوم بزري «اقرأ الورد» (يفتح صفحة الختمة) و«أتممت الورد»،
-    ويوم الختم المتوقع بالميلادي والهجري، وتعديل الخطة وحذف الختمة.
+  • أثناء الختمة (تنسيق ٢٠٢٦-١١-٢٠): بطاقة مختصرة — التقدم والحالة، ثم مهمة اليوم سطرًا بدائرة تسجّله
+    (ومعها «تراجع») وزرّ «اقرأ» يفتح صفحة الختمة، ثم «التفاصيل» المطوية: الختم المتوقع بالميلادي والهجري،
+    والتذكير، وتعديل الخطة وحذف الختمة (KhatmaTasks.jsx).
   • بعد الختم: تهنئة وزر «ابدأ ختمة جديدة».
 */
 const n = toArabicDigits;
@@ -250,6 +252,8 @@ function PlanForm({ editing, initial, from, start, doneCount, onSubmit, onCancel
 }
 
 // ---------- أثناء الختمة ----------
+// البطاقة: الرأس (الاسم ورقم الورد، والتقدّم والحالة)، ثم المهمة (ورد اليوم، وبعد إتمامه «الورد التالي» لمن يتقدّم)،
+// ثم «التفاصيل» المطوية
 function Active({ quran, wird, today, doneCount, onRead, onEdit, onToast }) {
   const s = wirdState(wird, today);
   const [confirm, setConfirm] = useState(false);
@@ -262,79 +266,52 @@ function Active({ quran, wird, today, doneCount, onRead, onEdit, onToast }) {
       : s.doneToday
         ? { text: 'أتممت ورد اليوم ✓', kind: 'done' }
         : { text: 'على الخطة', kind: 'on' };
+  // ورد اليوم المتمّ (إن بقي في الخطة الحالية بعد تعديلها)
+  const doneWird = s.doneToday ? s.wirds[wird.done - 1] : null;
 
-  const complete = () => {
-    if (completeWird(today) === 'next') onToast('أحسنت، تم تسجيل الورد');
-  };
+  const complete = () =>
+    withUndo(onToast, (toast) => {
+      const result = completeWird(today);
+      if (result === 'next') toast('أحسنت، تم تسجيل الورد');
+      else if (result === 'finished') toast('أتممت الختمة، تقبل الله منك');
+    });
 
   return (
     <div className="khatma">
       <section className="khatma__card">
-        <header className="khatma__head">
-          <h3 className="khatma__title">ختمة الورد</h3>
-          <span className="khatma__index">
-            الورد {n(s.index)} من {n(s.total)}
-          </span>
-        </header>
-        <div className="khatma__bar" role="progressbar" aria-label="تقدم الختمة" aria-valuemin={0} aria-valuemax={100} aria-valuenow={s.percent}>
-          <span style={{ width: `${s.percent}%` }} />
-        </div>
-        <p className="khatma__progress">
-          <strong>{n(s.percent)}٪</strong>، قرأت {n(s.read)} من {n(LAST_PAGE)} {countNoun(LAST_PAGE, PAGES)}
-        </p>
-        <p className={`khatma__status khatma__status--${status.kind}`}>{status.text}</p>
+        <CardHead title="ختمة الورد" index={s.index} total={s.total} percent={s.percent} label="تقدم الختمة" status={status} />
 
-        <div className="khatma__today">
-          <span className="khatma__label">{s.doneToday ? 'الورد التالي' : 'ورد اليوم'}</span>
-          <strong className="khatma__pages">{a === b ? `الصفحة ${n(a)}` : `من الصفحة ${n(a)} إلى ${n(b)}`}</strong>
-          <span className="khatma__suras">
-            {wirdSuras(quran, a, b)}، {pagesText(b - a + 1, n, true)}
-          </span>
-          <div className="khatma__actions">
-            <button type="button" className="khatma__btn khatma__btn--primary" onClick={onRead}>
-              اقرأ الورد
-            </button>
-            <button type="button" className="khatma__btn" onClick={complete}>
-              أتممت الورد
-            </button>
-          </div>
-        </div>
+        <ul className="tasks">
+          {s.doneToday && <Task title="ورد اليوم" done detail={doneWird ? pagesRange(doneWird) : null} />}
+          <Task
+            title={s.doneToday ? 'الورد التالي' : 'ورد اليوم'}
+            detail={pagesRange(s.current)}
+            sub={`${wirdSuras(quran, a, b)}، ${pagesText(b - a + 1, n, true)}`}
+            action={{ label: 'اقرأ', onClick: onRead }}
+            onCheck={complete}
+          />
+        </ul>
 
-        <p className="khatma__date">
-          <span>الختم المتوقع</span>
-          <strong>{dates.gregorian}</strong>
-          <strong>{dates.hijri}</strong>
-        </p>
-
-        <ReminderLine time={wird.reminder} />
-
-        <div className="khatma__footer">
-          {confirm ? (
-            <>
-              <span>حذف الختمة وكل تقدمها؟</span>
-              <button type="button" className="khatma__link khatma__link--danger" onClick={removeWird}>
-                نعم، احذفها
-              </button>
-              <button type="button" className="khatma__link" onClick={() => setConfirm(false)}>
-                لا
-              </button>
-            </>
-          ) : (
-            <>
-              <button type="button" className="khatma__link" onClick={onEdit}>
-                تعديل الخطة
-              </button>
-              <button type="button" className="khatma__link khatma__link--danger" onClick={() => setConfirm(true)}>
-                حذف الختمة
-              </button>
-            </>
-          )}
-        </div>
+        <Details>
+          <p className="khatma__progress">
+            قرأت {n(s.read)} من {n(LAST_PAGE)} {countNoun(LAST_PAGE, PAGES)}
+          </p>
+          <p className="khatma__date">
+            <span>الختم المتوقع</span>
+            <strong>{dates.gregorian}</strong>
+            <strong>{dates.hijri}</strong>
+          </p>
+          <ReminderLine time={wird.reminder} />
+          {doneCount > 0 && <p className="khatma__count">أتممت قبلها {khatmasText(doneCount)}</p>}
+          <DetailsFooter confirm={confirm} setConfirm={setConfirm} onEdit={onEdit} onRemove={removeWird} question="حذف الختمة وكل تقدمها؟" />
+        </Details>
       </section>
-      {doneCount > 0 && <p className="khatma__count">أتممت قبلها {khatmasText(doneCount)}</p>}
     </div>
   );
 }
+
+// «من الصفحة ٢١ إلى ٤٠» أو «الصفحة ٥»
+const pagesRange = ([a, b]) => (a === b ? `الصفحة ${n(a)}` : `من الصفحة ${n(a)} إلى ${n(b)}`);
 
 // ---------- بعد الختم ----------
 function Finished({ date, doneCount }) {

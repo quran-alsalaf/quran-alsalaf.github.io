@@ -123,10 +123,11 @@ export default function App() {
   const [picking, setPicking] = useState(null);
   const [gotoPage, setGotoPage] = useState(null);
   const [toast, setToast] = useState(null);
-  const showToast = useCallback((text) => setToast({ text, n: Date.now() }), []);
+  // action: زرّ في الرسالة { label, run } (مثل «تراجع» بعد تسجيل مهمة في الختمة)، فتبقى أطول ليُضغط
+  const showToast = useCallback((text, action = null) => setToast({ text, action, n: Date.now() }), []);
   useEffect(() => {
     if (!toast) return undefined;
-    const t = setTimeout(() => setToast(null), 2600);
+    const t = setTimeout(() => setToast(null), toast.action ? 5000 : 2600);
     return () => clearTimeout(t);
   }, [toast]);
   // تحميل القرّاء على الجهاز (src/lib/offline.js): رسالة عند اكتماله أو توقّفه أينما كان المستخدم،
@@ -982,8 +983,20 @@ export default function App() {
         <MistakesPicker quran={quran} pages={shownPages} state={recite} onClose={() => setMistakesOpen(false)} onToast={showToast} />
       )}
       {toast && (
-        <div key={toast.n} className="toast" role="status">
-          {toast.text}
+        <div key={toast.n} className={`toast${toast.action ? ' toast--action' : ''}`} role="status">
+          <span>{toast.text}</span>
+          {toast.action && (
+            <button
+              type="button"
+              className="toast__action"
+              onClick={() => {
+                setToast(null);
+                toast.action.run();
+              }}
+            >
+              {toast.action.label}
+            </button>
+          )}
         </div>
       )}
     </>

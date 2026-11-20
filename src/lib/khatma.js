@@ -159,6 +159,18 @@ export function completeWird(today = dayKey()) {
 
 export const removeWird = () => saveWird(null);
 
+// «تراجع» بعد تسجيل مهمة من بطاقة الختمة (٢٠٢٦-١١-٢٠): صورة الختمات وعدد المتمّ قبل التسجيل، ثم إعادتها كما كانت
+export const snapshotKhatmas = () => ({ list: readKhatmas(), done: read(DONE_KEY, {}) });
+export function restoreKhatmas(snap) {
+  if (!snap) return;
+  try {
+    localStorage.setItem(DONE_KEY, JSON.stringify(snap.done));
+  } catch {
+    // بلا تخزين
+  }
+  write(KEY, snap.list);
+}
+
 // وقت التذكير اليومي لختمة من نوع (wird أو hifz): «HH:MM» أو null، دون مساس بخطتها
 export function setReminder(type, reminder) {
   const k = readKhatmas().find((x) => x.type === type);
