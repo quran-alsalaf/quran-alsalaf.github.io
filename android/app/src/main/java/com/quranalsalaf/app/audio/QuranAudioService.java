@@ -77,6 +77,10 @@ public class QuranAudioService extends MediaSessionService {
             .build();
         provider.setSmallIcon(R.drawable.ic_stat_quran);
         setMediaNotificationProvider(provider);
+        // تُضاف الجلسة إلى الخدمة بنفسها: Media3 لا يُظهر الإشعار (ولا يجعل الخدمة في المقدّمة) إلا لجلسة مضافة،
+        // وهو لا يضيفها وحده إلا إذا اتصل بها MediaController، والتطبيق يأمر المشغّل بإضافة QuranAudio لا بمتحكّم.
+        // (كان هذا ناقصًا في الجلسة ٢ أ، فلم يظهر إشعار التلاوة؛ اكتُشف في فحص الجلسة ٢ ب على سامسونج)
+        addSession(session);
 
         AudioEngine.attach(engine);
     }
