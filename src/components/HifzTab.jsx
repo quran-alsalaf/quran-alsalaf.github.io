@@ -6,6 +6,9 @@ import { verseLabel } from '../lib/study.js';
 import { hafsOf, shownOf } from '../lib/verseMap.js';
 import { dayKey, addDays, daysText, formatDates, setReminder } from '../lib/khatma.js';
 import ReminderField, { ReminderLine } from './ReminderField.jsx';
+import { StepCard, SummaryRows, TypeSwitch, useSteps } from './PlanSteps.jsx';
+import { planSteps } from '../lib/planSteps.js';
+import { isTime, remindersAvailable, timeText } from '../lib/reminders.js';
 import { CardHead, Details, DetailsFooter, Task, withUndo } from './KhatmaTasks.jsx';
 import {
   DEFAULT_LINES,
@@ -39,8 +42,9 @@ import './Khatma.css';
 
 /*
   ختمة الحفظ في تبويب «الختمة» (٢٠٢٦-١١-١٦) — المنطق في src/lib/hifz.js.
-  • HifzForm: الإنشاء (الاتجاه، والبداية والنهاية، و«لا أراجع ما قبل البداية»، والحفظ اليومي بالأسطر،
-    والمراجعتان) وتعديل الخطة (الحفظ اليومي والمراجعتان وحدها).
+  • HifzForm: الإنشاء خطوات (الجزء ٢، PlanSteps.jsx: الاتجاه، والبداية والنهاية و«لا أراجع ما قبل البداية»،
+    والحفظ اليومي بالأسطر، والمراجعتان، والتذكير، ثم الملخص) وتعديل الخطة شاشة واحدة (الحفظ اليومي والمراجعتان
+    وحدها).
   • HifzCard: التقدّم والمحفوظ، وخطوات اليوم الثلاث أسطرًا: المراجعة البعيدة، والمراجعة القريبة، وحفظ الورد. لكل
     خطوة زرّ يفتح صفحتها (HifzPage) ودائرة تسجّلها لمن سمّع على شيخ أو من مصحف ورقي (ومعها «تراجع»)، و✓ إذا
     أُتمّت اليوم؛ ثم «التفاصيل» المطوية (KhatmaTasks.jsx).
@@ -62,7 +66,7 @@ export function hifzLabel(quran, [a, b]) {
 }
 
 // ---------- الإنشاء وتعديل الخطة ----------
-export function HifzForm({ quran, hafs, k, onDone, onCancel }) {
+export function HifzForm({ quran, hafs, k, onDone, onCancel, typeStep }) {
   const editing = !!k;
   const last = hafs.verses.length - 1;
   const nasStart = hafs.verses.findIndex((v) => v.s === 114);
@@ -80,10 +84,13 @@ export function HifzForm({ quran, hafs, k, onDone, onCancel }) {
   const [far, setFar] = useState(k?.far ?? null); // null: المقترح
   const [picking, setPicking] = useState(null); // 'start' | 'end'
   const [reminder, setReminderTime] = useState(k?.reminder ?? null);
+  const [dirChanged, setDirChanged] = useState(false);
+  const steps = useSteps(planSteps('hifz', { withType: !!typeStep, withReminder: remindersAvailable() }), onCancel);
 
   const switchDir = (d) => {
     if (d === dir) return;
     setDir(d);
+    setDirChanged(true);
     setStart(d === 'forward' ? 0 : nasStart);
     setEnd(d === 'forward' ? last : fatihaEnd);
   };
@@ -123,195 +130,288 @@ export function HifzForm({ quran, hafs, k, onDone, onCancel }) {
     onDone(onlyReminder ? 'تم حفظ التذكير' : editing ? 'تم تعديل الخطة' : null);
   };
   const shownVerse = (h) => shownOf(quran, h)[0] ?? h;
+  const nearText = (p) => (p === 0 ? 'بلا' : p === 1 ? 'ورد واحد' : `آخر ${wirdsText(p, false)}`);
+
+  // الحقول: كلٌّ خطوة في الإنشاء، وتجتمع في «تعديل الخطة». و«label» اسم الحقل (null في الخطوة: سؤالها اسمه)
+  const dirField = (
+    <div className="khatma__segment" role="radiogroup" aria-label="الاتجاه">
+      <button type="button" role="radio" aria-checked={dir === 'forward'} onClick={() => switchDir('forward')}>
+        من الفاتحة إلى الناس
+      </button>
+      <button type="button" role="radio" aria-checked={dir === 'reverse'} onClick={() => switchDir('reverse')}>
+        من الناس إلى الفاتحة
+      </button>
+    </div>
+  );
+  const rangeField = (
+    <>
+      <div className="hifz__range">
+        <button
+          type="button"
+          className="hifz__pick"
+          onClick={() => setPicking('start')}
+          aria-label={`البداية: ${hifzLabel(quran, [start, start])}`}
+        >
+          <span>البداية</span>
+          <strong>{hifzLabel(quran, [start, start])}</strong>
+        </button>
+        <button
+          type="button"
+          className="hifz__pick"
+          onClick={() => setPicking('end')}
+          aria-label={`النهاية: ${hifzLabel(quran, [end, end])}`}
+        >
+          <span>النهاية</span>
+          <strong>{hifzLabel(quran, [end, end])}</strong>
+        </button>
+      </div>
+
+      {!valid && (
+        <p className="hifz__error" role="alert">
+          {dir === 'forward' ? 'النهاية قبل البداية. اختر نهاية بعدها.' : 'في هذا الاتجاه تكون سورة النهاية قبل سورة البداية.'}
+        </p>
+      )}
+      {valid && before.length > 0 && (
+        <label className="hifz__check">
+          <input type="checkbox" checked={!known} onChange={(e) => setKnown(!e.target.checked)} />
+          <span>لا أراجع ما قبل البداية</span>
+        </label>
+      )}
+    </>
+  );
+  const linesField = (label) => (
+    <div className="hifz__field">
+      {label && <span className="hifz__label">{label}</span>}
+      <div className="khatma__chips" role="radiogroup" aria-label="الحفظ اليومي">
+        {LINE_PRESETS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            role="radio"
+            aria-checked={!customLines && lines === p}
+            onClick={() => {
+              setCustomLines(false);
+              setLines(p);
+            }}
+          >
+            {linesText(p)}
+          </button>
+        ))}
+        <button type="button" role="radio" aria-checked={customLines} onClick={() => setCustomLines(true)}>
+          عدد آخر
+        </button>
+      </div>
+      {customLines && (
+        <label className="khatma__custom">
+          <span>عدد الأسطر يوميا</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoFocus
+            value={linesDraft}
+            onChange={(e) => setLinesDraft(e.target.value.replace(/[^0-9٠-٩]/g, '').slice(0, 3))}
+            placeholder={`١–${n(MAX_LINES)}`}
+          />
+        </label>
+      )}
+    </div>
+  );
+  const nearField = (label) => (
+    <div className="hifz__field">
+      {label && <span className="hifz__label">{label}</span>}
+      <div className="khatma__chips" role="radiogroup" aria-label="المراجعة القريبة">
+        {NEAR_PRESETS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            role="radio"
+            aria-checked={!customNear && near === p}
+            onClick={() => {
+              setCustomNear(false);
+              setNear(p);
+            }}
+          >
+            {nearText(p)}
+          </button>
+        ))}
+        <button type="button" role="radio" aria-checked={customNear} onClick={() => setCustomNear(true)}>
+          عدد آخر
+        </button>
+      </div>
+      {customNear && (
+        <label className="khatma__custom">
+          <span>عدد الأوراد</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoFocus
+            value={nearDraft}
+            onChange={(e) => setNearDraft(e.target.value.replace(/[^0-9٠-٩]/g, '').slice(0, 2))}
+            placeholder={`٠–${n(MAX_NEAR)}`}
+          />
+        </label>
+      )}
+    </div>
+  );
+  const farField = (label) => (
+    <div className="hifz__field">
+      {label && <span className="hifz__label">{label}</span>}
+      <div className="khatma__chips" role="radiogroup" aria-label="المراجعة البعيدة">
+        {FAR_UNITS.map((u) => (
+          <button key={u} type="button" role="radio" aria-checked={farChosen === u} onClick={() => setFar(u)}>
+            {FAR_NAMES[u]}
+            {!editing && u === suggested ? ' (مقترح)' : ''}
+          </button>
+        ))}
+      </div>
+      {/* بلا جملة «تحفظ الآن أقل/أكثر من نصف القرآن، فيقترح…» (أزيلت بطلب صاحب المشروع ٢٠٢٦-١١-٢٠): يكفي «(مقترح)» */}
+    </div>
+  );
+  // عدد الأوراد والحفظ اليومي ويوم الختم بالتاريخين
+  const preview = ready ? (
+    <div className="khatma__summary" aria-live="polite">
+      <p className="khatma__summaryMain">
+        {wirdsText(wirds.length)}، {linesText(chosenLines)} يوميا
+      </p>
+      <p className="khatma__date">
+        <span>تختم الحفظ يوم</span>
+        <strong>{dates.gregorian}</strong>
+        <strong>{dates.hijri}</strong>
+      </p>
+    </div>
+  ) : (
+    valid && <p className="khatma__summary khatma__summary--empty">اكتب عددا صحيحا</p>
+  );
+  const picker =
+    picking &&
+    createPortal(
+      <div className="hifz-picklayer">
+        <RangePicker
+          quran={quran}
+          mode="start"
+          title={picking === 'start' ? 'اختر آية البداية' : 'اختر آية النهاية'}
+          near={shownVerse(picking === 'start' ? start : end)}
+          onPick={pick}
+          onClose={() => setPicking(null)}
+        />
+      </div>,
+      document.body,
+    );
+
+  // تعديل الخطة: شاشة واحدة كما كان (الحفظ اليومي والمراجعتان والتذكير)
+  if (editing) {
+    return (
+      <div className="khatma">
+        <section className="khatma__card hifz-form">
+          <h3 className="khatma__title">تعديل خطة الحفظ</h3>
+          {linesField('الحفظ اليومي')}
+          {nearField('المراجعة القريبة قبل الحفظ')}
+          {farField('المراجعة البعيدة كل يوم')}
+          {preview}
+          <ReminderField value={reminder} onChange={setReminderTime} label="خطوات اليوم" />
+          <div className="khatma__actions">
+            <button type="button" className="khatma__btn khatma__btn--primary" disabled={!ready} onClick={submit}>
+              حفظ الخطة
+            </button>
+            {onCancel && (
+              <button type="button" className="khatma__btn" onClick={onCancel}>
+                إلغاء
+              </button>
+            )}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  // الإنشاء خطوات (الجزء ٢): نوع الختمة ← الاتجاه ← البداية والنهاية ← الحفظ اليومي ← المراجعة القريبة ←
+  // المراجعة البعيدة ← التذكير ← الملخص و«ابدأ»
+  const next = { label: steps.nextLabel(), onClick: () => steps.next() };
+  const range = `من ${hifzLabel(quran, [start, start])} إلى ${hifzLabel(quran, [end, end])}`;
+  const step = {
+    type: typeStep && {
+      question: 'أي ختمة تبدأ؟',
+      hint: 'ختمة الورد لقراءة القرآن كله بورد يومي، وختمة الحفظ لحفظه مع مراجعته.',
+      body: <TypeSwitch type={typeStep.type} onType={typeStep.onType} />,
+    },
+    dir: {
+      question: 'بأي اتجاه تحفظ؟',
+      hint: 'اختر ترتيب السور في حفظك.',
+      body: dirField,
+      // تغيير الاتجاه يعيد البداية والنهاية، فمن الملخص تمرّ بهما قبل الرجوع إليه
+      primary: { label: steps.nextLabel(dirChanged), onClick: () => (setDirChanged(false), steps.next(dirChanged)) },
+    },
+    range: {
+      question: 'من أين تبدأ؟ وأين تنتهي؟',
+      hint: 'اختر آية البداية وآية النهاية. وما قبل البداية تراجعه على أنه محفوظ، إلا إذا اخترت ألا تراجعه.',
+      body: rangeField,
+      primary: { ...next, disabled: !valid },
+    },
+    lines: {
+      question: 'كم تحفظ كل يوم؟',
+      hint: 'بأسطر صفحة المصحف، وتظهر لك مدة الختمة ويوم ختمها.',
+      body: (
+        <>
+          {linesField(null)}
+          {preview}
+        </>
+      ),
+      primary: { ...next, disabled: !chosenLines || !ready },
+    },
+    near: {
+      question: 'كم تراجع من آخر ما حفظت؟',
+      hint: 'المراجعة القريبة: تراجع آخر الأوراد التي حفظتها قبل أن تحفظ ورد اليوم.',
+      body: nearField(null),
+      primary: { ...next, disabled: chosenNear == null },
+    },
+    far: {
+      question: 'كم تراجع كل يوم من محفوظك القديم؟',
+      hint: 'المراجعة البعيدة: تبدأ من أول محفوظك، وتعود إليه كلما وصلت إلى ما تحفظه الآن.',
+      body: farField(null),
+    },
+    reminder: {
+      question: 'هل تريد تذكيرا يوميا؟',
+      hint: 'يصلك إشعار في الوقت الذي تختاره، إلا إذا أتممت خطوات اليوم قبله.',
+      body: <ReminderField bare value={reminder} onChange={setReminderTime} label="خطوات اليوم" />,
+    },
+    summary: {
+      question: 'ملخص الختمة',
+      hint: 'راجع ختمتك، واضغط على أي سطر لتغييره.',
+      body: (
+        <>
+          <SummaryRows
+            onOpen={(id) => {
+              setDirChanged(false);
+              steps.open(id);
+            }}
+            rows={[
+              { step: 'dir', label: 'الاتجاه', value: dir === 'forward' ? 'من الفاتحة إلى الناس' : 'من الناس إلى الفاتحة' },
+              { step: 'range', label: 'البداية والنهاية', value: range, note: before.length > 0 && !known ? 'لا تراجع ما قبل البداية' : null },
+              { step: 'lines', label: 'الحفظ اليومي', value: chosenLines ? `${linesText(chosenLines)} يوميا` : '—' },
+              { step: 'near', label: 'المراجعة القريبة', value: chosenNear == null ? '—' : nearText(chosenNear) },
+              { step: 'far', label: 'المراجعة البعيدة', value: `${FAR_NAMES[farChosen]} كل يوم${farChosen === suggested ? ' (مقترح)' : ''}` },
+              remindersAvailable() && { step: 'reminder', label: 'التذكير اليومي', value: isTime(reminder) ? timeText(reminder) : 'بلا تذكير' },
+            ].filter(Boolean)}
+          />
+          {preview}
+        </>
+      ),
+      primary: { label: 'ابدأ ختمة الحفظ', disabled: !ready, onClick: submit },
+    },
+  }[steps.id];
 
   return (
-    <div className="khatma">
-      <section className="khatma__card hifz-form">
-        <h3 className="khatma__title">{editing ? 'تعديل خطة الحفظ' : 'ختمة حفظ جديدة'}</h3>
-
-        {!editing && (
-          <>
-            <div className="hifz__field">
-              <span className="hifz__label">الاتجاه</span>
-              <div className="khatma__segment" role="radiogroup" aria-label="الاتجاه">
-                <button type="button" role="radio" aria-checked={dir === 'forward'} onClick={() => switchDir('forward')}>
-                  من الفاتحة إلى الناس
-                </button>
-                <button type="button" role="radio" aria-checked={dir === 'reverse'} onClick={() => switchDir('reverse')}>
-                  من الناس إلى الفاتحة
-                </button>
-              </div>
-            </div>
-
-            <div className="hifz__range">
-              <button
-                type="button"
-                className="hifz__pick"
-                onClick={() => setPicking('start')}
-                aria-label={`البداية: ${hifzLabel(quran, [start, start])}`}
-              >
-                <span>البداية</span>
-                <strong>{hifzLabel(quran, [start, start])}</strong>
-              </button>
-              <button
-                type="button"
-                className="hifz__pick"
-                onClick={() => setPicking('end')}
-                aria-label={`النهاية: ${hifzLabel(quran, [end, end])}`}
-              >
-                <span>النهاية</span>
-                <strong>{hifzLabel(quran, [end, end])}</strong>
-              </button>
-            </div>
-
-            {!valid && (
-              <p className="hifz__error" role="alert">
-                {dir === 'forward' ? 'النهاية قبل البداية. اختر نهاية بعدها.' : 'في هذا الاتجاه تكون سورة النهاية قبل سورة البداية.'}
-              </p>
-            )}
-            {valid && before.length > 0 && (
-              <label className="hifz__check">
-                <input type="checkbox" checked={!known} onChange={(e) => setKnown(!e.target.checked)} />
-                <span>لا أراجع ما قبل البداية</span>
-              </label>
-            )}
-          </>
-        )}
-
-        <div className="hifz__field">
-          <span className="hifz__label">الحفظ اليومي</span>
-          <div className="khatma__chips" role="radiogroup" aria-label="الحفظ اليومي">
-            {LINE_PRESETS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                role="radio"
-                aria-checked={!customLines && lines === p}
-                onClick={() => {
-                  setCustomLines(false);
-                  setLines(p);
-                }}
-              >
-                {linesText(p)}
-              </button>
-            ))}
-            <button type="button" role="radio" aria-checked={customLines} onClick={() => setCustomLines(true)}>
-              عدد آخر
-            </button>
-          </div>
-          {customLines && (
-            <label className="khatma__custom">
-              <span>عدد الأسطر يوميا</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                autoFocus
-                value={linesDraft}
-                onChange={(e) => setLinesDraft(e.target.value.replace(/[^0-9٠-٩]/g, '').slice(0, 3))}
-                placeholder={`١–${n(MAX_LINES)}`}
-              />
-            </label>
-          )}
-        </div>
-
-        <div className="hifz__field">
-          <span className="hifz__label">المراجعة القريبة قبل الحفظ</span>
-          <div className="khatma__chips" role="radiogroup" aria-label="المراجعة القريبة">
-            {NEAR_PRESETS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                role="radio"
-                aria-checked={!customNear && near === p}
-                onClick={() => {
-                  setCustomNear(false);
-                  setNear(p);
-                }}
-              >
-                {p === 0 ? 'بلا' : p === 1 ? 'ورد واحد' : `آخر ${wirdsText(p, false)}`}
-              </button>
-            ))}
-            <button type="button" role="radio" aria-checked={customNear} onClick={() => setCustomNear(true)}>
-              عدد آخر
-            </button>
-          </div>
-          {customNear && (
-            <label className="khatma__custom">
-              <span>عدد الأوراد</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                autoFocus
-                value={nearDraft}
-                onChange={(e) => setNearDraft(e.target.value.replace(/[^0-9٠-٩]/g, '').slice(0, 2))}
-                placeholder={`٠–${n(MAX_NEAR)}`}
-              />
-            </label>
-          )}
-        </div>
-
-        <div className="hifz__field">
-          <span className="hifz__label">المراجعة البعيدة كل يوم</span>
-          <div className="khatma__chips" role="radiogroup" aria-label="المراجعة البعيدة">
-            {FAR_UNITS.map((u) => (
-              <button key={u} type="button" role="radio" aria-checked={farChosen === u} onClick={() => setFar(u)}>
-                {FAR_NAMES[u]}
-                {!editing && u === suggested ? ' (مقترح)' : ''}
-              </button>
-            ))}
-          </div>
-          {!editing && (
-            <p className="khatma__hint">
-              {suggested === 'juz'
-                ? 'تحفظ الآن أكثر من نصف القرآن، فيقترح أن تراجع جزءا كل يوم.'
-                : 'تحفظ الآن أقل من نصف القرآن، فيقترح أن تراجع حزبا كل يوم.'}
-            </p>
-          )}
-        </div>
-
-        {ready ? (
-          <div className="khatma__summary" aria-live="polite">
-            <p className="khatma__summaryMain">
-              {wirdsText(wirds.length)}، {linesText(chosenLines)} يوميا
-            </p>
-            <p className="khatma__date">
-              <span>تختم الحفظ يوم</span>
-              <strong>{dates.gregorian}</strong>
-              <strong>{dates.hijri}</strong>
-            </p>
-          </div>
-        ) : (
-          valid && <p className="khatma__summary khatma__summary--empty">اكتب عددا صحيحا</p>
-        )}
-
-        <ReminderField value={reminder} onChange={setReminderTime} label="خطوات اليوم" />
-
-        <div className="khatma__actions">
-          <button type="button" className="khatma__btn khatma__btn--primary" disabled={!ready} onClick={submit}>
-            {editing ? 'حفظ الخطة' : 'ابدأ ختمة الحفظ'}
-          </button>
-          {onCancel && (
-            <button type="button" className="khatma__btn" onClick={onCancel}>
-              إلغاء
-            </button>
-          )}
-        </div>
-      </section>
-      {picking &&
-        createPortal(
-          <div className="hifz-picklayer">
-            <RangePicker
-              quran={quran}
-              mode="start"
-              title={picking === 'start' ? 'اختر آية البداية' : 'اختر آية النهاية'}
-              near={shownVerse(picking === 'start' ? start : end)}
-              onPick={pick}
-              onClose={() => setPicking(null)}
-            />
-          </div>,
-          document.body,
-        )}
-    </div>
+    <StepCard
+      title={steps.id === 'type' ? 'ختمة جديدة' : 'ختمة حفظ جديدة'}
+      steps={steps}
+      question={step.question}
+      hint={step.hint}
+      primary={step.primary ?? next}
+      className="hifz-form"
+      after={picker}
+    >
+      {step.body}
+    </StepCard>
   );
 }
 

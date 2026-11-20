@@ -93,6 +93,18 @@ describe('«التذكير اليومي» في نموذج الختمة', () => {
   });
   const button = (text) => [...el.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
   const reminderGroup = () => el.querySelector('[aria-label="التذكير اليومي"]');
+  // نموذج الإنشاء خطوات (الجزء ٢): «التالي» حتى خطوة التذكير، ثم إلى الملخص
+  const step = () => el.querySelector('.steps')?.dataset.step;
+  const nextUntil = async (id) => {
+    for (let i = 0; i < 10 && step() !== id; i++) await act(() => button('التالي').click());
+    expect(step()).toBe(id);
+  };
+  // يعيد وقت الملخص إلى ٥:٣٠ من خطوته
+  const setTimeBack = async () => {
+    await act(() => [...el.querySelectorAll('.steps__row')].find((b) => b.textContent.includes('التذكير اليومي')).click());
+    await setTime('05:30');
+    await act(() => button('العودة إلى الملخص').click());
+  };
   const setTime = (value) =>
     act(() => {
       const input = el.querySelector('input[type="time"]');
@@ -102,6 +114,12 @@ describe('«التذكير اليومي» في نموذج الختمة', () => {
 
   it('ملغى افتراضيًّا، وتفعيله يطلب الإذن ثم يظهر منتقي الوقت على ٨ م، والختمة تُحفظ بالوقت المختار', async () => {
     await render();
+    // داخل التطبيق: خطوة التذكير بين العدد والملخص، فالخطوات خمس
+    expect(el.querySelector('.steps__count').textContent).toBe('الخطوة ١ من ٥');
+    expect(reminderGroup()).toBeNull();
+    await nextUntil('reminder');
+    expect(el.querySelector('.steps__count').textContent).toBe('الخطوة ٤ من ٥');
+    expect(el.querySelector('.steps__question').textContent).toBe('هل تريد تذكيرا يوميا؟');
     expect(reminderGroup()).not.toBeNull();
     expect(button('بلا تذكير').getAttribute('aria-checked')).toBe('true');
     expect(el.querySelector('input[type="time"]')).toBeNull();
@@ -112,6 +130,16 @@ describe('«التذكير اليومي» في نموذج الختمة', () => {
     expect(input.value).toBe('20:00');
     expect(el.textContent).toContain('يصلك إشعار كل يوم نحو ٨:٠٠ م، إلا إذا أتممت ورد اليوم قبله.');
     await setTime('05:30');
+    await act(() => button('التالي').click());
+    // في الملخص سطر التذكير، والضغط عليه يفتح خطوته ثم يعود إليه
+    const row = () => [...el.querySelectorAll('.steps__row')].find((b) => b.textContent.includes('التذكير اليومي'));
+    expect(row().textContent).toContain('٥:٣٠ ص');
+    await act(() => row().click());
+    expect(step()).toBe('reminder');
+    await setTime('05:45');
+    await act(() => button('العودة إلى الملخص').click());
+    expect(row().textContent).toContain('٥:٤٥ ص');
+    await setTimeBack();
     await act(() => button('ابدأ الختمة').click());
     expect(K.readWird().reminder).toBe('05:30');
     // في «التفاصيل» بطاقة الختمة سطر بوقت التذكير
@@ -123,6 +151,7 @@ describe('«التذكير اليومي» في نموذج الختمة', () => {
   it('رفض الإذن: يبقى «بلا تذكير» ومعه شرح وزرّ إعدادات الجهاز', async () => {
     fake.granted = false;
     await render();
+    await nextUntil('reminder');
     await act(() => button('تذكير يومي').click());
     await tick();
     expect(button('بلا تذكير').getAttribute('aria-checked')).toBe('true');
@@ -130,6 +159,8 @@ describe('«التذكير اليومي» في نموذج الختمة', () => {
     expect(el.querySelector('[role="alert"]').textContent).toContain('الإشعارات غير مسموحة لهذا التطبيق');
     await act(() => button('فتح إعدادات الإشعارات').click());
     expect(fake.calls.some((c) => c.method === 'openSettings')).toBe(true);
+    await act(() => button('التالي').click());
+    expect([...el.querySelectorAll('.steps__row')].at(-1).textContent).toContain('بلا تذكير');
     await act(() => button('ابدأ الختمة').click());
     expect(K.readWird().reminder).toBe(null);
   });
@@ -151,11 +182,16 @@ describe('«التذكير اليومي» في نموذج الختمة', () => {
     K.startWird('days', 30, '2026-11-18', '20:00');
     await render();
     await act(() => button('ختمة حفظ جديدة').click());
+    // مع ختمة قائمة: لا خطوة للنوع، فخطوات الحفظ سبع (منها التذكير)
+    expect(el.querySelector('.steps__count').textContent).toBe('الخطوة ١ من ٧');
+    await nextUntil('reminder');
+    expect(el.querySelector('.steps__count').textContent).toBe('الخطوة ٦ من ٧');
     const groups = el.querySelectorAll('[aria-label="التذكير اليومي"]');
     expect(groups).toHaveLength(1); // نموذج الحفظ (وبطاقة الورد فيها سطر الوقت وحده)
     await act(() => [...groups[0].querySelectorAll('button')].find((b) => b.textContent === 'تذكير يومي').click());
     await tick();
     await setTime('17:15');
+    await act(() => button('التالي').click());
     await act(() => button('ابدأ ختمة الحفظ').click());
     const hifz = K.readKhatmas().find((x) => x.type === 'hifz');
     expect(hifz.reminder).toBe('17:15');
