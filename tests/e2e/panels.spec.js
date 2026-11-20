@@ -1,6 +1,6 @@
 // القائمة الجانبية اليمنى ولوحة الإعدادات اليسرى، والمظهر (الخلفيات والألوان)، ووضع القراءة
 import { test, expect } from '@playwright/test';
-import { clickTopbar, isLaptop, openApp, savedPage, shownPages, waitMushaf } from './helpers.js';
+import { clickTopbar, isLaptop, openApp, openCustomSettings, savedPage, shownPages, waitMushaf } from './helpers.js';
 
 const side = (page) => page.locator('.sidemenu');
 const settings = (page) => page.locator('.settings');
@@ -204,7 +204,7 @@ test('خلفيات القراءة الأربع وألوان التطبيق ال�
 });
 
 test('تمييز مقررات الأسابيع يُفعَّل ويُحفظ', async ({ page }) => {
-  await clickTopbar(page, 'الإعدادات');
+  await openCustomSettings(page);
   const sw = settings(page).getByRole('switch', { name: 'تمييز مقررات الأسابيع' });
   await expect(sw).toHaveAttribute('aria-checked', 'false');
   await sw.click();

@@ -82,6 +82,12 @@
   transition: transform 260ms cubic-bezier(0.2, 0.8, 0.25, 1), visibility 0s;
 }
 
+/* صفحة فرعية فُتحت فوقها صفحة من داخلها (النسخة الاحتياطية فوق الإعدادات التخصيصية) */
+.settings__page--in.settings__page--behind {
+  transform: translateX(18%);
+  opacity: 0.4;
+}
+
 .settings__head {
   flex: none;
   display: flex;
@@ -142,6 +148,22 @@
   /* حاوية التمرير نفسها تحتاجه، وإلا ألغى المتصفح السحب الأفقي بأول حركة */
   touch-action: pan-y;
   padding: 4px 18px calc(22px + var(--safe-bottom));
+}
+
+/* صفحة الإعدادات نفسها: أقسامها عمود، وآخرها (عن التطبيق، قيّم، شارك، تواصل) ملتصق بأسفل اللوحة؛ وإن لم
+   يبقَ فراغ (شاشة قصيرة) جاء تحت ما قبله مباشرة وتمرّرت الصفحة كلها */
+.settings__body--main {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings__body--main > * {
+  flex: none;
+}
+
+.settings__body--main > .settings__section.settings__section--foot {
+  margin-top: auto;
+  padding-top: 12px;
 }
 
 /* الأقسام: عنوان صغير ثم أسطرها */

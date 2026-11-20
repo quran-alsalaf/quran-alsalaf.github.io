@@ -3,7 +3,7 @@
 // وما يعمل بالربط (المحتوى والعلامات والملاحظات والمقادير) في warsh-map.spec.js، والأثمان في warsh-athman.spec.js
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { clickTopbar, copied, isLaptop, openApp, prepare, savedPage, showChrome, shownPages, waitMushaf } from './helpers.js';
+import { clickTopbar, closeSettingsPanel, copied, isLaptop, openApp, openCustomSettings, prepare, savedPage, showChrome, shownPages, waitMushaf } from './helpers.js';
 
 const W = JSON.parse(readFileSync(new URL('../../public/data/warsh/quran.json', import.meta.url), 'utf8'));
 const at = (s, a) => W.verses.findIndex((v) => v.s === s && v.a === a);
@@ -60,19 +60,19 @@ test.describe('اختيار الرواية عند أول فتح', () => {
 test('التبديل من الإعدادات: المصحف كله على الصفحة نفسها، ثم الرجوع إلى حفص', async ({ page }, testInfo) => {
   await openApp(page, { 'hq.page': '263' });
   const before = await shownPages(page);
-  await clickTopbar(page, 'الإعدادات');
+  await openCustomSettings(page);
   const row = page.getByRole('radiogroup', { name: 'الرواية' });
   await expect(row.getByRole('radio', { name: 'حفص' })).toHaveAttribute('aria-checked', 'true');
   await row.getByRole('radio', { name: 'ورش' }).click();
   await expect(row.getByRole('radio', { name: 'ورش' })).toHaveAttribute('aria-checked', 'true');
-  await page.keyboard.press('Escape');
+  await closeSettingsPanel(page);
   await expect(warshPage(page)).toBeVisible();
   expect(await shownPages(page)).toEqual(before);
   expect(await page.locator('.sheet--current .mushaf-page--warsh').count()).toBe(isLaptop(testInfo) ? 2 : 1);
   // أول الحجر في الصفحة ٢٦٢، فالصفحة ٢٦٣ تبدأ بآية من الحجر بترقيم ورش
-  await clickTopbar(page, 'الإعدادات');
+  await openCustomSettings(page);
   await page.getByRole('radiogroup', { name: 'الرواية' }).getByRole('radio', { name: 'حفص' }).click();
-  await page.keyboard.press('Escape');
+  await closeSettingsPanel(page);
   await waitMushaf(page);
   await expect(page.locator('.mushaf-page--warsh')).toHaveCount(0);
   expect(await shownPages(page)).toEqual(before);
@@ -152,9 +152,9 @@ test.describe('مصحف ورش', () => {
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('hq.listen')).reciter ?? 'shuraym')).toBe('shuraym');
     await listen(page).getByRole('button', { name: 'إغلاق' }).click();
     // إلى حفص
-    await clickTopbar(page, 'الإعدادات');
+    await openCustomSettings(page);
     await page.getByRole('radiogroup', { name: 'الرواية' }).getByRole('radio', { name: 'حفص' }).click();
-    await page.keyboard.press('Escape');
+    await closeSettingsPanel(page);
     await waitMushaf(page);
     await showChrome(page);
     await page.locator('.dock').getByRole('button', { name: 'الاستماع للآيات' }).click();

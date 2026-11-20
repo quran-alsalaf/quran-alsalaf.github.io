@@ -2,7 +2,7 @@
 // (متصفح فارغ ببيانات مختلفة) بعد الملخّص والتأكيد، والإلغاء، والملف غير الصالح
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { clickTopbar, openApp, savedPage, shownPages, stored, waitMushaf } from './helpers.js';
+import { clickTopbar, openApp, openCustomSettings, savedPage, shownPages, stored, waitMushaf } from './helpers.js';
 
 const settings = (page) => page.locator('.settings');
 const saveButton = (page) => settings(page).getByRole('button', { name: /حفظ نسخة احتياطية/ });
@@ -24,9 +24,9 @@ const DEVICE_A = {
   'hq.searchHistory': ['الصبر'],
 };
 
-// يفتح الإعدادات ثم صفحة «النسخة الاحتياطية» الفرعية (سطر واحد في الإعدادات، وفيها خياراها)
+// يفتح الإعدادات ثم «الإعدادات التخصيصية» ثم صفحة «النسخة الاحتياطية» الفرعية (سطر واحد فيها، وفيها خياراها)
 async function openSettings(page) {
-  await clickTopbar(page, 'الإعدادات');
+  await openCustomSettings(page);
   await expect(settings(page)).toHaveClass(/settings--open/);
   await settings(page).getByRole('button', { name: 'النسخة الاحتياطية' }).click();
   await expect(saveButton(page)).toBeVisible();
@@ -38,22 +38,41 @@ async function saveBackup(page) {
   return { name: download.suggestedFilename(), text: await readFile(await download.path(), 'utf8') };
 }
 
-test('النسخة الاحتياطية سطر واحد في الإعدادات يفتح صفحة فيها خياراها، وسهم الرجوع يعيد إلى الإعدادات', async ({ page }) => {
+test('النسخة الاحتياطية سطر واحد في «الإعدادات التخصيصية» يفتح صفحة فيها خياراها، وسهم الرجوع يعيد إليها', async ({ page }) => {
   await openApp(page, DEVICE_A);
   await clickTopbar(page, 'الإعدادات');
+  // ليست في الإعدادات نفسها
+  await expect(settings(page).locator('.settings__page').first().getByRole('button', { name: 'النسخة الاحتياطية' })).toHaveCount(0);
+  await settings(page).getByRole('button', { name: 'الإعدادات التخصيصية' }).click();
   const row = settings(page).getByRole('button', { name: 'النسخة الاحتياطية' });
   await expect(row).toBeVisible();
   // الخياران داخل الصفحة الفرعية لا في الإعدادات نفسها
   await expect(saveButton(page)).not.toBeVisible();
   await expect(restoreButton(page)).not.toBeVisible();
   await row.click();
-  const sub = settings(page).locator('.settings__page--in');
+  // الصفحة الأمامية (التخصيصية خلفها)
+  const sub = settings(page).locator('.settings__page--in:not(.settings__page--behind)');
   await expect(sub.getByRole('heading', { name: 'النسخة الاحتياطية' })).toBeVisible();
   await expect(sub.getByRole('button', { name: /حفظ نسخة احتياطية/ })).toBeVisible();
   await expect(sub.getByRole('button', { name: 'استعادة من نسخة' })).toBeVisible();
   await sub.getByRole('button', { name: 'رجوع' }).click();
   await expect(row).toBeVisible();
+  await expect(settings(page).locator('.settings__page--in').getByRole('heading', { name: 'الإعدادات التخصيصية' })).toBeVisible();
   await expect(saveButton(page)).not.toBeVisible();
+  // وEsc وزرّ الرجوع كذلك: من النسخة الاحتياطية إلى التخصيصية، ثم إلى الإعدادات
+  await row.click();
+  await expect(saveButton(page)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(row).toBeVisible();
+  await row.click();
+  await expect(saveButton(page)).toBeVisible();
+  await page.goBack();
+  await expect(row).toBeVisible();
+  await page.goBack();
+  await expect(settings(page).locator('.settings__page--in')).toHaveCount(0);
+  await expect(settings(page)).toHaveClass(/settings--open/);
+  await page.goBack();
+  await expect(settings(page)).not.toHaveClass(/settings--open/);
 });
 
 test('حفظ نسخة: ملف فيه البيانات، وسطر «آخر نسخة» يتحدّث', async ({ page }) => {

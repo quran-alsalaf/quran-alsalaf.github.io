@@ -149,6 +149,19 @@ export async function clickTopbar(page, name) {
   await page.locator('.topbar').getByRole('button', { name }).click();
 }
 
+// يفتح الإعدادات ثم صفحة «الإعدادات التخصيصية» (الرواية، ومفتاحا القراءة، والنسخة الاحتياطية — ٢٠٢٦-١١-٢٠)
+export async function openCustomSettings(page) {
+  await clickTopbar(page, 'الإعدادات');
+  await page.locator('.settings').getByRole('button', { name: 'الإعدادات التخصيصية' }).click();
+  await expect(page.locator('.settings .settings__page--in').getByRole('heading', { name: 'الإعدادات التخصيصية' })).toBeVisible();
+}
+
+// يغلق لوحة الإعدادات كلها من صفحتها الفرعية الظاهرة (زرّ ✕)، ويتأكد من إغلاقها
+export async function closeSettingsPanel(page) {
+  await page.locator('.settings .settings__page--in:not(.settings__page--behind)').getByRole('button', { name: 'إغلاق' }).click();
+  await expect(page.locator('.settings')).not.toHaveClass(/settings--open/);
+}
+
 // كلمة من آية في الصفحة الظاهرة
 export const word = (page, v) => page.locator(`.sheet--current .w[data-v="${v}"]`).first();
 

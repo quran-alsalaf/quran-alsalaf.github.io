@@ -2,7 +2,7 @@
 // والتنزيل للاستماع بلا إنترنت، وسحب لوحة اللمس، ولوحة المفاتيح، وإخفاء الأزرار بعد توقف الفأرة،
 // وتمييز مقررات الأسابيع
 import { test, expect } from '@playwright/test';
-import { clickDock, clickTopbar, drag, isLaptop, openApp, prepare, savedPage, shownPages, waitMushaf } from './helpers.js';
+import { clickDock, clickTopbar, closeSettingsPanel, drag, isLaptop, openApp, openCustomSettings, prepare, savedPage, shownPages, waitMushaf } from './helpers.js';
 
 // ---------- الوضع الأفقي للجوال ----------
 test.describe('الجوال أفقيًّا', () => {
@@ -275,9 +275,9 @@ test('تمييز مقررات الأسابيع يظلّل مقررًا والذ�
   const third = page.locator('.sheet--current .w[data-v="14"]').first();
   // ملغى افتراضيًّا: لا تظليل
   expect(await bg(third)).toBe(clear);
-  await clickTopbar(page, 'الإعدادات');
+  await openCustomSettings(page);
   await page.locator('.settings').getByRole('switch', { name: 'تمييز مقررات الأسابيع' }).click();
-  await page.keyboard.press('Escape');
+  await closeSettingsPanel(page);
   expect(await bg(third)).not.toBe(clear);
   expect(await bg(second)).toBe(clear);
   await expect(page.locator('.sheet--current .w[data-v="13"].w--week')).toHaveCount(0);
