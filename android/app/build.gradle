@@ -54,6 +54,8 @@ dependencies {
     // مشغّل التلاوة الأصلي (audio/): مكتبة الصوت الرسمية في أندرويد، وجلسة الوسائط (الإشعار وشاشة القفل)
     implementation "androidx.media3:media3-exoplayer:$media3Version"
     implementation "androidx.media3:media3-session:$media3Version"
+    // خدمة التحميل في الخلفية (audio/QuranDownloadService): الإشعار والخدمة الأمامية بأحدث واجهاتها (ServiceCompat)
+    implementation "androidx.core:core:$androidxCoreVersion"
     testImplementation "junit:junit:$junitVersion"
     // اختبار ترتيب التلاوة (SequencerTest) يقرأ حالاته من tests/fixtures/sequence.json
     testImplementation "org.json:json:$orgJsonVersion"

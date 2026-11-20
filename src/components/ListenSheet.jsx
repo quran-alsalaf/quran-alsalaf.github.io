@@ -41,7 +41,14 @@ export default function ListenSheet({ quran, verses, continuous, label, suras, r
   useLayer(close);
   const [downloaded, setDownloaded] = useState(false);
   const key = reciterKey(quran);
-  useEffect(() => setDownloaded(isDownloaded(quran, verses)), [quran, verses, settings[key], download?.done]);
+  // وداخل التطبيق يأتي الجواب من أندرويد بعد لحظة (وعد)، ويُهمل جواب متأخر عن مقدار أو قارئ سابق
+  useEffect(() => {
+    let live = true;
+    Promise.resolve(isDownloaded(quran, verses)).then((d) => live && setDownloaded(!!d), () => live && setDownloaded(false));
+    return () => {
+      live = false;
+    };
+  }, [quran, verses, settings[key], download?.done]);
 
   const chosen = chosenReciter(quran, settings);
   const missing = !covers(chosen, suras);
@@ -54,6 +61,7 @@ export default function ListenSheet({ quran, verses, continuous, label, suras, r
     const result = await downloadRange(quran, verses);
     if (result === 'unsupported') onToast('تسجيل هذا القارئ لا يشمل هذا الموضع؛ اختر قارئًا آخر.');
     else if (result === 'failed') onToast('تعذّر تنزيل الصوت. تحقّق من اتصالك بالإنترنت.');
+    else if (result === 'nospace') onToast('تعذّر تنزيل الصوت: لا تكفي المساحة المتاحة على الجهاز.');
   };
 
   return (

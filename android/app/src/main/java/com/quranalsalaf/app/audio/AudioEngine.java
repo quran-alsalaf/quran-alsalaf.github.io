@@ -19,6 +19,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -284,13 +285,22 @@ public final class AudioEngine implements Player.Listener {
         return new MediaItem.Builder().setMediaId(id).setUri(uri(seq.file(c))).setMediaMetadata(md).build();
     }
 
+    /** مجلد ملفات الصوت المحفوظة على الجهاز (QuranDownloads.root)، يضبطه QuranAudioService. */
+    @Nullable
+    static File filesRoot;
+
     /**
      * رابط الملف للمشغّل. ما في التطبيق نفسه (مقاطع ورش المقطوعة، public/audio/warsh) رابطه في الصفحة على
      * https://localhost (خادم Capacitor الداخلي)، والمشغّل يقرؤه من ملفات التطبيق مباشرة.
+     * وما حُفظ على الجهاز (تحميل القارئ لكامل القرآن، أو «تنزيل» مقدار — AudioFiles) يُقرأ من ملفه بلا إنترنت،
+     * ولو كان تحميل القارئ ناقصًا؛ وإلا بُثّ من رابطه.
      */
     static Uri uri(String url) {
         Uri u = Uri.parse(url);
         if ("localhost".equals(u.getHost())) return Uri.parse("asset:///public" + u.getEncodedPath());
+        File root = filesRoot;
+        File saved = root == null ? null : AudioFiles.saved(root, url);
+        if (saved != null) return Uri.fromFile(saved);
         return u;
     }
 
