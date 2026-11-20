@@ -4,18 +4,21 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import com.sun.net.httpserver.HttpServer;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.net.InetSocketAddress;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,7 +33,8 @@ public class BulkDownloadTest {
     @Rule
     public TemporaryFolder tmp = new TemporaryFolder();
 
-    private HttpServer server;
+    // خادم محلي صغير (ServerSocket): واجهة com.sun.net.httpserver غير متاحة في اختبارات أندرويد
+    private ServerSocket server;
     private String base;
     private final AtomicInteger hits = new AtomicInteger();
     private final Set<String> broken = ConcurrentHashMap.newKeySet();
@@ -38,33 +42,49 @@ public class BulkDownloadTest {
 
     @Before
     public void up() throws IOException {
-        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/", ex -> {
-            hits.incrementAndGet();
-            String path = ex.getRequestURI().getPath();
-            try {
-                if (delayMs > 0) Thread.sleep(delayMs);
-            } catch (InterruptedException ignored) {
-            }
-            byte[] body = ("audio:" + path).getBytes();
-            if (broken.contains(path)) {
-                ex.sendResponseHeaders(404, -1);
-                ex.close();
-                return;
-            }
-            ex.sendResponseHeaders(200, body.length);
-            try (OutputStream out = ex.getResponseBody()) {
-                out.write(body);
+        server = new ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"));
+        base = "http://127.0.0.1:" + server.getLocalPort();
+        Thread accept = new Thread(() -> {
+            while (!server.isClosed()) {
+                try {
+                    Socket sock = server.accept();
+                    new Thread(() -> serve(sock)).start();
+                } catch (IOException e) {
+                    return;
+                }
             }
         });
-        server.setExecutor(java.util.concurrent.Executors.newFixedThreadPool(8));
-        server.start();
-        base = "http://127.0.0.1:" + server.getAddress().getPort();
+        accept.setDaemon(true);
+        accept.start();
+    }
+
+    private void serve(Socket sock) {
+        try (Socket s = sock) {
+            BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream(), StandardCharsets.UTF_8));
+            String line = in.readLine();
+            if (line == null) return;
+            String path = line.split(" ")[1];
+            while ((line = in.readLine()) != null && !line.isEmpty()) {
+                // العناوين لا تُستعمل
+            }
+            hits.incrementAndGet();
+            if (delayMs > 0) Thread.sleep(delayMs);
+            OutputStream out = s.getOutputStream();
+            if (broken.contains(path)) {
+                out.write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".getBytes(StandardCharsets.UTF_8));
+            } else {
+                byte[] body = ("audio:" + path).getBytes(StandardCharsets.UTF_8);
+                out.write(("HTTP/1.1 200 OK\r\nContent-Type: audio/mpeg\r\nContent-Length: " + body.length + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                out.write(body);
+            }
+            out.flush();
+        } catch (IOException | InterruptedException | RuntimeException ignored) {
+        }
     }
 
     @After
-    public void down() {
-        server.stop(0);
+    public void down() throws IOException {
+        server.close();
     }
 
     private static BulkDownload.Options fast() {
@@ -125,7 +145,7 @@ public class BulkDownloadTest {
     public void انقطاع_الاتصال() throws IOException {
         File root = tmp.newFolder("audio");
         List<String> list = urls(3);
-        server.stop(0);
+        server.close();
         assertEquals(BulkDownload.Result.NETWORK, new BulkDownload(fast()).run(root, list, null));
         assertEquals(3, AudioFiles.missing(root, list).size());
     }
