@@ -4,7 +4,8 @@ import RangePicker from './RangePicker.jsx';
 import { toArabicDigits } from '../data/quran.js';
 import { verseLabel } from '../lib/study.js';
 import { hafsOf, shownOf } from '../lib/verseMap.js';
-import { dayKey, addDays, daysText, formatDates } from '../lib/khatma.js';
+import { dayKey, addDays, daysText, formatDates, setReminder } from '../lib/khatma.js';
+import ReminderField, { ReminderLine } from './ReminderField.jsx';
 import {
   DEFAULT_LINES,
   DEFAULT_NEAR,
@@ -76,6 +77,7 @@ export function HifzForm({ quran, hafs, k, onDone, onCancel }) {
   const [nearDraft, setNearDraft] = useState(k && !NEAR_PRESETS.includes(k.near) ? String(k.near) : '');
   const [far, setFar] = useState(k?.far ?? null); // null: المقترح
   const [picking, setPicking] = useState(null); // 'start' | 'end'
+  const [reminder, setReminderTime] = useState(k?.reminder ?? null);
 
   const switchDir = (d) => {
     if (d === dir) return;
@@ -109,9 +111,14 @@ export function HifzForm({ quran, hafs, k, onDone, onCancel }) {
   };
   const submit = () => {
     const plan = { lines: chosenLines, near: chosenNear, far: farChosen };
-    if (editing) editHifz(plan, today);
-    else startHifz({ ...plan, dir, start, end, known: before.length ? known : true }, today);
-    onDone(editing ? 'تم تعديل الخطة' : null);
+    // تغيير التذكير وحده لا يعيد تقسيم الخطة
+    const onlyReminder =
+      editing && plan.lines === k.lines && plan.near === k.near && plan.far === k.far && reminder !== (k.reminder ?? null);
+    if (editing) {
+      if (!onlyReminder) editHifz(plan, today);
+      setReminder('hifz', reminder);
+    } else startHifz({ ...plan, dir, start, end, known: before.length ? known : true, reminder }, today);
+    onDone(onlyReminder ? 'تم حفظ التذكير' : editing ? 'تم تعديل الخطة' : null);
   };
   const shownVerse = (h) => shownOf(quran, h)[0] ?? h;
 
@@ -274,6 +281,8 @@ export function HifzForm({ quran, hafs, k, onDone, onCancel }) {
         ) : (
           valid && <p className="khatma__summary khatma__summary--empty">اكتب عددا صحيحا</p>
         )}
+
+        <ReminderField value={reminder} onChange={setReminderTime} label="خطوات اليوم" />
 
         <div className="khatma__actions">
           <button type="button" className="khatma__btn khatma__btn--primary" disabled={!ready} onClick={submit}>
@@ -439,6 +448,8 @@ export function HifzCard({ quran, hafs, k, onOpen, onEdit, onToast, doneCount })
           <strong>{dates.gregorian}</strong>
           <strong>{dates.hijri}</strong>
         </p>
+
+        <ReminderLine time={k.reminder} />
 
         <div className="khatma__footer">
           {confirm ? (

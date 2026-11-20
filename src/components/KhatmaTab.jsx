@@ -14,6 +14,7 @@ import {
   pagesText,
   previewPlan,
   removeWird,
+  setReminder,
   startWird,
   useKhatma,
   wirdState,
@@ -21,6 +22,7 @@ import {
 import { FIRST_PAGE, LAST_PAGE } from '../lib/position.js';
 import { countNoun, countText, KHATMAS, PAGES } from '../lib/count.js';
 import { HifzCard, HifzFinished, HifzForm } from './HifzTab.jsx';
+import ReminderField, { ReminderLine } from './ReminderField.jsx';
 import './Khatma.css';
 
 /*
@@ -47,15 +49,18 @@ export default function KhatmaTab({ quran, hafs, onRead, onHifz, onToast }) {
     return (
       <PlanForm
         editing={!!wird}
-        initial={wird ? { mode: wird.mode, value: wird.value } : DEFAULT_PLAN}
+        initial={wird ? { mode: wird.mode, value: wird.value, reminder: wird.reminder ?? null } : { ...DEFAULT_PLAN, reminder: null }}
         from={state ? state.next : FIRST_PAGE}
         start={wird?.lastDone === today ? addDays(today, 1) : today}
         doneCount={doneCount}
-        onSubmit={(mode, value) => {
+        onSubmit={(mode, value, reminder) => {
           if (wird) {
-            editWird(mode, value, today);
-            onToast('تم تعديل الخطة');
-          } else startWird(mode, value, today);
+            // تغيير التذكير وحده لا يعيد تقسيم الخطة
+            const onlyReminder = mode === wird.mode && value === wird.value && reminder !== (wird.reminder ?? null);
+            if (!onlyReminder) editWird(mode, value, today);
+            setReminder('wird', reminder);
+            onToast(onlyReminder ? 'تم حفظ التذكير' : 'تم تعديل الخطة');
+          } else startWird(mode, value, today, reminder);
           setEditing(false);
           setAdding(false);
         }}
@@ -143,6 +148,7 @@ function PlanForm({ editing, initial, from, start, doneCount, onSubmit, onCancel
   const [value, setValue] = useState(initial.value);
   const [custom, setCustom] = useState(!presets.includes(initial.value));
   const [draft, setDraft] = useState(custom ? String(initial.value) : '');
+  const [reminder, setReminderTime] = useState(initial.reminder ?? null);
   const remaining = LAST_PAGE - from + 1;
 
   const switchMode = (m) => {
@@ -225,8 +231,10 @@ function PlanForm({ editing, initial, from, start, doneCount, onSubmit, onCancel
           <p className="khatma__summary khatma__summary--empty">اكتب عددا من ١ إلى {n(remaining)}</p>
         )}
 
+        <ReminderField value={reminder} onChange={setReminderTime} label="ورد اليوم" />
+
         <div className="khatma__actions">
-          <button type="button" className="khatma__btn khatma__btn--primary" disabled={!plan} onClick={() => onSubmit(mode, chosen)}>
+          <button type="button" className="khatma__btn khatma__btn--primary" disabled={!plan} onClick={() => onSubmit(mode, chosen, reminder)}>
             {editing ? 'حفظ الخطة' : 'ابدأ الختمة'}
           </button>
           {onCancel && (
@@ -297,6 +305,8 @@ function Active({ quran, wird, today, doneCount, onRead, onEdit, onToast }) {
           <strong>{dates.gregorian}</strong>
           <strong>{dates.hijri}</strong>
         </p>
+
+        <ReminderLine time={wird.reminder} />
 
         <div className="khatma__footer">
           {confirm ? (

@@ -619,3 +619,26 @@
   font-weight: 600;
   white-space: nowrap;
 }
+
+/* التذكير اليومي (تطبيق أندرويد وحده، ReminderField.jsx) */
+.reminder__time input {
+  width: 140px;
+  direction: ltr;
+}
+
+.reminder__denied {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+
+.reminder__denied p {
+  margin: 0;
+  line-height: 1.8;
+}
+
+.khatma__reminder {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}

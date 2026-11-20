@@ -32,6 +32,7 @@ import { MistakesPicker, ReciteBar } from './components/Recite.jsx';
 import { hideFrom, reveal } from './lib/recite.js';
 import { closeTopLayer, hasMouse, hasOpenLayer } from './lib/layers.js';
 import { createBackHandler, exitApp, followSystemBars, leaveBackMode, listenBackButton } from './lib/native.js';
+import { listenReminderOpen, remindersAvailable, syncReminders } from './lib/reminders.js';
 import { hafsList, hafsRange, shownBookmarks, shownNotes, shownRange } from './lib/verseMap.js';
 import './App.css';
 
@@ -488,6 +489,42 @@ export default function App() {
     setSettingsPage('main');
     setSideMenuOpen(true);
   }, []);
+
+  // تذكير الختمة اليومي (تطبيق أندرويد، الجلسة ٣ أ — src/lib/reminders.js): تُرسل إشعارات الأيام القادمة إلى
+  // أندرويد كلما تغيّرت الختمتان، وكلما رجع المستخدم إلى التطبيق (فقد يكون اليوم تغيّر). والضغط على الإشعار
+  // يفتح صفحة الورد، أو تبويب «الختمة» لختمة الحفظ (فيها خطوات اليوم الثلاث)
+  const [sideTabRequest, setSideTabRequest] = useState(null);
+  const remindRef = useRef(null);
+  remindRef.current = { wird: khatma.wird, hifz: khatma.hifz, hafs, active: !!wird, khatmaOpen, hifzOpen };
+  useEffect(() => {
+    syncReminders({ wird: khatma.wird, hifz: khatma.hifz, hafs });
+  }, [khatma.wird, khatma.hifz, hafs]);
+  useEffect(() => {
+    if (!remindersAvailable()) return undefined;
+    let handle = null;
+    let cancelled = false;
+    import('@capacitor/app')
+      .then(({ App: NativeApp }) => NativeApp.addListener('resume', () => syncReminders(remindRef.current)))
+      .then((h) => {
+        if (cancelled) h?.remove?.();
+        else handle = h;
+      })
+      .catch(() => {});
+    const unlisten = listenReminderOpen((type) => {
+      const r = remindRef.current;
+      if (r.khatmaOpen || r.hifzOpen) return;
+      if (type === 'wird' && r.active) openKhatma();
+      else {
+        setSideTabRequest({ tab: 'khatma', at: Date.now() });
+        openSideMenu();
+      }
+    });
+    return () => {
+      cancelled = true;
+      handle?.remove?.();
+      unlisten();
+    };
+  }, [openKhatma, openSideMenu]);
   useEffect(() => {
     if (window.history.state?.hqSettings) window.history.replaceState(null, '');
     const onPop = () => {
@@ -860,6 +897,7 @@ export default function App() {
           onGoto={gotoPageNumber}
           onClose={() => setSideMenuOpen(false)}
           onReadWird={openKhatma}
+          tabRequest={sideTabRequest}
           onEditNote={editNote}
           onToast={showToast}
         />
