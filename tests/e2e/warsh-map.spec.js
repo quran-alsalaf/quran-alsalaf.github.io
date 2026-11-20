@@ -2,7 +2,7 @@
 // المحتوى ومقدارها، والعلامات والملاحظات مشتركة بين الروايتين (محفوظة بترقيم حفص)
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { QURAN, clickDock, clickTopbar, openApp, stored, toArabic } from './helpers.js';
+import { QURAN, clickDock, clickTopbar, closeSettingsPanel, openApp, openCustomSettings, stored, toArabic } from './helpers.js';
 import { muyassarPlain } from '../../src/lib/study.js';
 
 const W = JSON.parse(readFileSync(new URL('../../public/data/warsh/quran.json', import.meta.url), 'utf8'));
@@ -45,9 +45,9 @@ async function pickWarsh(page, s, a) {
 }
 
 async function switchTo(page, name) {
-  await clickTopbar(page, 'الإعدادات');
+  await openCustomSettings(page);
   await page.getByRole('radiogroup', { name: 'الرواية' }).getByRole('radio', { name }).click();
-  await page.keyboard.press('Escape');
+  await closeSettingsPanel(page);
 }
 
 test('علامة وملاحظة من حفص تظهران في ورش على ما يقابل آيتهما، وفي القائمة بترقيم ورش', async ({ page }) => {

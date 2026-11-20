@@ -3,6 +3,9 @@ import { ACCENTS, BACKGROUNDS, readAppearance, setAccent, setBackground } from '
 import { readRubAlert, readWeeksTint, setRubAlert, setWeeksTint } from '../lib/settings.js';
 import AboutContent from './AboutPage.jsx';
 import BackupRows from './BackupRows.jsx';
+import ContactPage from './ContactPage.jsx';
+import { openStore, ratingAvailable, shareMessage } from '../lib/feedback.js';
+import { shareText } from '../lib/userdata.js';
 import ReadingInfo from './ReadingInfo.jsx';
 import { ReciteInfo } from './Recite.jsx';
 import './SettingsSheet.css';
@@ -19,6 +22,12 @@ import { RIWAYAT, setRiwayah, useRiwayah } from '../lib/riwayah.js';
   «وضع القراءة» شرحه وزرّ يبدأه (٢٠٢٦-١١-١٤، كان السطر يبدأ الوضع مباشرة).
   و«النسخة الاحتياطية» (٢٠٢٦-١١-١٦) سطر واحد يفتح صفحة فرعية فيها خياراها: حفظ نسخة، واستعادة من نسخة.
 
+  ترتيب الإعدادات (٢٠٢٦-١١-٢٠، الجلسة ٣ ب، بقرار صاحب المشروع): المظهر والقراءة ثابتان في أولها، ثم سطر
+  «الإعدادات التخصيصية» يفتح صفحة فيها الرواية ومفتاحا القراءة والنسخة الاحتياطية (وهذه صفحة داخلها، سهمها
+  يرجع إليها)، ثم فراغ، وفي أسفل اللوحة أربعة أسطر بلا عنوان: عن التطبيق، وقيّم التطبيق (في التطبيق الأصلي
+  وحده)، وشارك التطبيق، وتواصل معنا (src/lib/feedback.js).
+  الصفحات الفرعية وآباؤها في PARENT: سهم الرجوع وEsc وزرّ الرجوع في أندرويد ترجع من كل صفحة إلى أبيها.
+
   إضافة إعداد أو ميزة جديدة: سطر في قسمه بأحد الأسطر الجاهزة أدناه
   (SegmentRow للاختيار من خيارات، SwatchRow للاختيار من ألوان، SwitchRow للتشغيل والإيقاف،
   LinkRow لما يفتح شيئًا)،
@@ -30,7 +39,11 @@ const DRAG_START = 8;
 const CLOSE_RATIO = 0.3;
 const FLING_SPEED = 0.5; // px/ms
 
-export default function SettingsSheet({ open, panel, page = 'main', onPage, onClose, onStartReading, onStartRecite }) {
+// أبو كل صفحة فرعية (وما لم يُذكر أبوه الإعدادات نفسها)
+export const PARENT = { backup: 'custom' };
+export const settingsParent = (page) => (page === 'main' ? null : PARENT[page] ?? 'main');
+
+export default function SettingsSheet({ open, panel, page = 'main', onPage, onClose, onStartReading, onStartRecite, onToast }) {
   const [look, setLook] = useState(readAppearance);
   const [weeks, setWeeks] = useState(readWeeksTint);
   const [rubAlert, setRubAlertOn] = useState(readRubAlert);
@@ -39,7 +52,8 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
   const riwayah = useRiwayah() ?? 'hafs';
 
   // Esc في الصفحة الفرعية يرجع إلى الإعدادات، وفي الإعدادات يغلق اللوحة
-  useLayer(() => (sub ? onPage('main') : onClose()), open);
+  useLayer(() => (sub ? onPage(settingsParent(page)) : onClose()), open);
+  const back = () => onPage(settingsParent(page));
 
   // المظهر يُطبَّق فورًا ويُحفظ محليًّا (src/lib/appearance.js)
   const chooseBackground = (id) => setLook(setBackground(id));
@@ -55,6 +69,13 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
   const toggleRubAlert = () => {
     setRubAlert(!rubAlert);
     setRubAlertOn(!rubAlert);
+  };
+
+  // شارك التطبيق: قائمة المشاركة، وحيث لا قائمة يُنسخ النص
+  const share = async () => {
+    const result = await shareText(shareMessage());
+    if (result === 'copied') onToast?.('نُسخ رابط التطبيق');
+    else if (result === 'failed') onToast?.('تعذّرت المشاركة');
   };
 
   const card = useDragToClose(onClose, open);
@@ -73,11 +94,7 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
             <CloseButton onClick={onClose} />
           </header>
 
-          <div className="settings__body">
-            <Section title="المصحف">
-              <SegmentRow label="الرواية" value={riwayah} options={RIWAYAT.map((r) => ({ value: r.id, label: r.name }))} onChange={setRiwayah} />
-            </Section>
-
+          <div className="settings__body settings__body--main">
             <Section title="المظهر">
               <SwatchRow
                 label="خلفية القراءة"
@@ -101,28 +118,47 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
             <Section title="القراءة">
               <LinkRow label="وضع القراءة" onClick={() => onPage('reading')} />
               <LinkRow label="وضع التسميع" onClick={() => onPage('recite')} />
-              <SwitchRow label="تمييز مقررات الأسابيع" checked={weeks} onChange={toggleWeeks} />
-              <SwitchRow label="التنبيه ببداية الربع" checked={rubAlert} onChange={toggleRubAlert} />
             </Section>
 
             <Section>
-              <LinkRow label="النسخة الاحتياطية" onClick={() => onPage('backup')} />
+              <LinkRow label="الإعدادات التخصيصية" onClick={() => onPage('custom')} />
+            </Section>
+
+            <Section foot>
               <LinkRow label="عن التطبيق" onClick={() => onPage('about')} />
+              {ratingAvailable() && <ActionRow label="قيّم التطبيق" icon={<StarIcon />} onClick={openStore} />}
+              <ActionRow label="شارك التطبيق" icon={<ShareIcon />} onClick={share} />
+              <LinkRow label="تواصل معنا" onClick={() => onPage('contact')} />
             </Section>
           </div>
         </div>
 
-        <SubPage title="وضع القراءة" shown={page === 'reading'} onBack={() => onPage('main')} onClose={onClose}>
+        <SubPage title="الإعدادات التخصيصية" shown={page === 'custom' || page === 'backup'} behind={page === 'backup'} onBack={back} onClose={onClose}>
+          <Section title="المصحف">
+            <SegmentRow label="الرواية" value={riwayah} options={RIWAYAT.map((r) => ({ value: r.id, label: r.name }))} onChange={setRiwayah} />
+          </Section>
+          <Section title="القراءة">
+            <SwitchRow label="تمييز مقررات الأسابيع" checked={weeks} onChange={toggleWeeks} />
+            <SwitchRow label="التنبيه ببداية الربع" checked={rubAlert} onChange={toggleRubAlert} />
+          </Section>
+          <Section>
+            <LinkRow label="النسخة الاحتياطية" onClick={() => onPage('backup')} />
+          </Section>
+        </SubPage>
+        <SubPage title="وضع القراءة" shown={page === 'reading'} onBack={back} onClose={onClose}>
           <ReadingInfo onStart={onStartReading} />
         </SubPage>
-        <SubPage title="وضع التسميع" shown={page === 'recite'} onBack={() => onPage('main')} onClose={onClose}>
+        <SubPage title="وضع التسميع" shown={page === 'recite'} onBack={back} onClose={onClose}>
           <ReciteInfo onStart={onStartRecite} />
         </SubPage>
-        <SubPage title="النسخة الاحتياطية" shown={page === 'backup'} onBack={() => onPage('main')} onClose={onClose}>
+        <SubPage title="النسخة الاحتياطية" shown={page === 'backup'} onBack={back} onClose={onClose}>
           <BackupRows />
         </SubPage>
-        <SubPage title="عن التطبيق" shown={page === 'about'} onBack={() => onPage('main')} onClose={onClose}>
+        <SubPage title="عن التطبيق" shown={page === 'about'} onBack={back} onClose={onClose}>
           <AboutContent />
+        </SubPage>
+        <SubPage title="تواصل معنا" shown={page === 'contact'} onBack={back} onClose={onClose}>
+          <ContactPage riwayah={riwayah} />
         </SubPage>
       </section>
     </div>
@@ -130,9 +166,13 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
 }
 
 // صفحة فرعية تدخل من اليسار فوق الإعدادات، وسهم الرجوع في أولها (يمينًا)
-function SubPage({ title, shown, onBack, onClose, children }) {
+// behind: صفحة فرعية فُتحت فوقها صفحة من داخلها (النسخة الاحتياطية فوق الإعدادات التخصيصية)
+function SubPage({ title, shown, behind = false, onBack, onClose, children }) {
   return (
-    <div className={`settings__page settings__page--sub${shown ? ' settings__page--in' : ''}`} inert={shown ? undefined : ''}>
+    <div
+      className={`settings__page settings__page--sub${shown ? ' settings__page--in' : ''}${behind ? ' settings__page--behind' : ''}`}
+      inert={shown && !behind ? undefined : ''}
+    >
       <header className="settings__head">
         <button className="settings__back" type="button" onClick={onBack} aria-label="رجوع">
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -149,9 +189,10 @@ function SubPage({ title, shown, onBack, onClose, children }) {
 
 // ---------- لبنات الأقسام والأسطر ----------
 
-function Section({ title, children }) {
+// foot: الأسطر الأخيرة بلا عنوان، ملتصقة بأسفل اللوحة (وفي الشاشة القصيرة تحت ما قبلها مباشرة)
+function Section({ title, foot = false, children }) {
   return (
-    <section className="settings__section">
+    <section className={`settings__section${foot ? ' settings__section--foot' : ''}`}>
       {title && <h3 className="settings__sectionTitle">{title}</h3>}
       <div className="settings__group">{children}</div>
     </section>
@@ -227,6 +268,40 @@ function LinkRow({ label, onClick }) {
         <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </button>
+  );
+}
+
+// سطر يفعل شيئًا مباشرة (قيّم التطبيق، شارك التطبيق): أيقونته مكان سهم الفتح
+function ActionRow({ label, icon, onClick }) {
+  return (
+    <button type="button" className="settings__row settings__link" onClick={onClick}>
+      <span className="settings__label">{label}</span>
+      {icon}
+    </button>
+  );
+}
+
+function StarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="settings__icon">
+      <path
+        d="m12 3.6 2.5 5.2 5.6.7-4.1 3.9 1 5.6-5-2.7-5 2.7 1-5.6-4.1-3.9 5.6-.7L12 3.6Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="settings__icon">
+      <circle cx="17.5" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="6.5" cy="12" r="2.5" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="17.5" cy="18.5" r="2.5" stroke="currentColor" strokeWidth="1.6" />
+      <path d="m8.7 10.7 6.6-3.9M8.7 13.3l6.6 3.9" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
   );
 }
 

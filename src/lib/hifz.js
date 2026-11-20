@@ -10,7 +10,7 @@
 // • ما قبل البداية في اتجاه الخطة يُعدّ محفوظًا (للمراجعة البعيدة وحساب النصف)، إلا أن يختار المستخدم
 //   «لا أراجع ما قبل البداية».
 // • الورد يتبع الإنجاز لا التاريخ كختمة الورد (src/lib/khatma.js)، والمراجعة لا توقف الخطة.
-import { addDays, dayKey, daysBetween, readKhatmas, saveKhatma, bumpDoneCount } from './khatma.js';
+import { addDays, announceTaskDone, dayKey, daysBetween, readKhatmas, saveKhatma, bumpDoneCount } from './khatma.js';
 import { toArabicDigits } from '../data/quran.js';
 import { rubName } from './rubs.js';
 import { countText } from './count.js';
@@ -337,6 +337,7 @@ export function completeHifz(quran, today = dayKey()) {
     finished: finished ? today : null,
   });
   if (finished) bumpDoneCount('hifz');
+  announceTaskDone();
   return finished ? 'finished' : 'next';
 }
 
@@ -356,6 +357,7 @@ export function completeReview(quran, kind, today = dayKey()) {
     patch.lastFar = today;
   }
   save({ ...k, ...patch });
+  announceTaskDone();
   return 'done';
 }
 

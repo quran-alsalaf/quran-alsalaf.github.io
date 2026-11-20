@@ -56,6 +56,8 @@ dependencies {
     implementation "androidx.media3:media3-session:$media3Version"
     // خدمة التحميل في الخلفية (audio/QuranDownloadService): الإشعار والخدمة الأمامية بأحدث واجهاتها (ServiceCompat)
     implementation "androidx.core:core:$androidxCoreVersion"
+    // نافذة تقييم جوجل بلاي داخل التطبيق (feedback/QuranFeedbackPlugin)
+    implementation "com.google.android.play:review:$playReviewVersion"
     testImplementation "junit:junit:$junitVersion"
     // اختبار ترتيب التلاوة (SequencerTest) يقرأ حالاته من tests/fixtures/sequence.json
     testImplementation "org.json:json:$orgJsonVersion"

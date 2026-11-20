@@ -5,7 +5,7 @@ import ReadingMode from './components/ReadingMode.jsx';
 import { loadQuran, loadWarsh } from './data/quran.js';
 import { loadPageFont } from './lib/qcfFonts.js';
 import { readLastPage, saveLastPage } from './lib/position.js';
-import SettingsSheet from './components/SettingsSheet.jsx';
+import SettingsSheet, { settingsParent } from './components/SettingsSheet.jsx';
 import StudySheet from './components/StudySheet.jsx';
 import VerseMenu from './components/VerseMenu.jsx';
 import RangePicker from './components/RangePicker.jsx';
@@ -33,6 +33,7 @@ import { hideFrom, reveal } from './lib/recite.js';
 import { closeTopLayer, hasMouse, hasOpenLayer } from './lib/layers.js';
 import { createBackHandler, exitApp, followSystemBars, leaveBackMode, listenBackButton } from './lib/native.js';
 import { listenReminderOpen, remindersAvailable, syncReminders } from './lib/reminders.js';
+import { useRatePrompt } from './lib/feedback.js';
 import { hafsList, hafsRange, shownBookmarks, shownNotes, shownRange } from './lib/verseMap.js';
 import './App.css';
 
@@ -379,7 +380,7 @@ export default function App() {
     setSettingsPage('main');
     setSettingsOpen(true);
     try {
-      if (!window.history.state?.hqSettings) window.history.pushState({ hqSettings: 1 }, '');
+      if (!window.history.state?.hqSettings) window.history.pushState({ hqSettings: 1, hqPage: 'main' }, '');
     } catch {
       // بلا سجل (نادر): تُغلق بأزرارها وحدها
     }
@@ -392,16 +393,20 @@ export default function App() {
       setSettingsPage('main');
     }
   }, []);
+  // كل صفحة فرعية خطوة في السجل فوق أبيها (والنسخة الاحتياطية فوق «الإعدادات التخصيصية»)، فالرجوع إلى الأب
+  // رجوع في السجل، وفتح صفحة من داخل أخرى خطوة جديدة
   const showSettingsPage = useCallback((next) => {
-    const depth = window.history.state?.hqSettings;
-    if (next === 'main') {
-      if (depth === 2) window.history.back();
-      else setSettingsPage('main');
+    const state = window.history.state;
+    const depth = state?.hqSettings;
+    const current = state?.hqPage ?? 'main';
+    if (next === current) return;
+    if (depth > 1 && next === settingsParent(current)) {
+      window.history.back();
       return;
     }
     setSettingsPage(next);
     try {
-      if (depth === 1) window.history.pushState({ hqSettings: 2 }, '');
+      if (depth && next !== 'main') window.history.pushState({ hqSettings: depth + 1, hqPage: next }, '');
     } catch {
       // بلا سجل: سهم الرجوع وحده
     }
@@ -530,8 +535,8 @@ export default function App() {
     if (window.history.state?.hqSettings) window.history.replaceState(null, '');
     const onPop = () => {
       const depth = window.history.state?.hqSettings;
-      if (depth === 1) setSettingsPage('main');
-      else if (!depth) {
+      if (depth) setSettingsPage(window.history.state.hqPage ?? 'main');
+      else {
         setSettingsOpen(false);
         setSettingsPage('main');
       }
@@ -735,6 +740,12 @@ export default function App() {
   // ما دامت فوق المصحف صفحة أو قائمة أو بطاقة، فهو خارج التركيز ولوحة المفاتيح (inert)
   // شاشة اختيار الرواية عند أول فتح (بعد الافتتاح، وما لم تُختر رواية)
   const choosing = splashDone && !!hafs && riwayah === null;
+  // نافذة تقييم جوجل بلاي التلقائية (التطبيق الأصلي وحده): مرة واحدة، بعد إتمام مهمة ختمة أو بعد ٧ أيام من أول
+  // استعمال؛ لا أثناء التلاوة ولا وضع القراءة أو التسميع — src/lib/feedback.js
+  useRatePrompt({
+    ready: splashDone && !!quran && !choosing,
+    busy: player.status === 'playing' || player.status === 'loading' || reading || reciting,
+  });
   const covered =
     studyOpen || settingsOpen || sideMenuOpen || searchOpen || !!pressed || !!picking || listenOpen || khatmaOpen || !!hifzOpen || choosing || mistakesOpen;
   const chromeShown = chromeOpen && !covered;
@@ -887,6 +898,7 @@ export default function App() {
         onClose={closeSettings}
         onStartReading={startReading}
         onStartRecite={startRecite}
+        onToast={showToast}
       />
       {choosing && <RiwayahChooser />}
       {quran && (

@@ -154,10 +154,17 @@ export function completeWird(today = dayKey()) {
   const finished = done >= wirds.length;
   saveWird({ ...k, done, lastDone: today, finished: finished ? today : null });
   if (finished) bumpDoneCount('wird');
+  announceTaskDone();
   return finished ? 'finished' : 'next';
 }
 
 export const removeWird = () => saveWird(null);
+
+// إتمام مهمة ختمة (ورد، حفظ، مراجعة): يُعلَن بحدث، فتُطلب نافذة التقييم أول مرة (src/lib/feedback.js)
+export const TASK_DONE = 'hq:task-done';
+export function announceTaskDone() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(TASK_DONE));
+}
 
 // «تراجع» بعد تسجيل مهمة من بطاقة الختمة (٢٠٢٦-١١-٢٠): صورة الختمات وعدد المتمّ قبل التسجيل، ثم إعادتها كما كانت
 export const snapshotKhatmas = () => ({ list: readKhatmas(), done: read(DONE_KEY, {}) });

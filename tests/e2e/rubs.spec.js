@@ -1,7 +1,7 @@
 // أرباع الأحزاب (٢٠٢٦-١١-١٣): التنبيه عند الوصول إلى صفحة فيها بداية ربع (رسالة بنوعه ووميض علامة ۞
 // أو إطار السورة)، وفهرس «السور · الأجزاء · الأرباع» في تبويب السور بالقائمة اليمنى
 import { expect, test } from '@playwright/test';
-import { QURAN, clickTopbar, isLaptop, openApp, shownPages, waitMushaf } from './helpers.js';
+import { QURAN, clickTopbar, closeSettingsPanel, isLaptop, openApp, openCustomSettings, shownPages, waitMushaf } from './helpers.js';
 
 const idx = (s, a) => QURAN.verses.findIndex((v) => v.s === s && v.a === a);
 const toast = (page) => page.locator('.toast');
@@ -80,19 +80,18 @@ test('التنبيه ببداية الربع ملغى افتراضيًّا: لا
   await page.waitForTimeout(500);
   await expect(toast(page)).toHaveCount(0);
   await expect(page.locator('.w__rub--flash, .line--rubflash')).toHaveCount(0);
-  await clickTopbar(page, 'الإعدادات');
+  await openCustomSettings(page);
   await expect(page.locator('.settings').getByRole('switch', { name: 'التنبيه ببداية الربع' })).toHaveAttribute('aria-checked', 'false');
 });
 
 test('إلغاء التنبيه ببداية الربع من الإعدادات بعد تفعيله: لا رسالة ولا وميض، ويُحفظ، وإعادة تفعيله تعيده', async ({ page }, testInfo) => {
   await openApp(page, { 'hq.rubAlert': 'on', 'hq.page': isLaptop(testInfo) ? '9' : '10' });
-  await clickTopbar(page, 'الإعدادات');
+  await openCustomSettings(page);
   const sw = () => page.locator('.settings').getByRole('switch', { name: 'التنبيه ببداية الربع' });
   await expect(sw()).toHaveAttribute('aria-checked', 'true');
   await sw().click();
   await expect(sw()).toHaveAttribute('aria-checked', 'false');
-  await page.keyboard.press('Escape');
-  await expect(page.locator('.settings')).not.toHaveClass(/settings--open/);
+  await closeSettingsPanel(page);
 
   // الحزب ٢ في صفحة ١١: لا تنبيه
   await flipTo(page, 11);
@@ -103,13 +102,13 @@ test('إلغاء التنبيه ببداية الربع من الإعدادات 
   // يبقى ملغى بعد إعادة الفتح
   await page.reload();
   await waitMushaf(page);
-  await clickTopbar(page, 'الإعدادات');
+  await openCustomSettings(page);
   await expect(sw()).toHaveAttribute('aria-checked', 'false');
 
   // إعادة تفعيله: لا تنبيه بالصفحة الظاهرة، ثم ينبّه بالوصول إلى ربع جديد (البقرة ٧٥ ← ٩٢ ربع الحزب ٢، صفحة ١٤)
   await sw().click();
   await expect(sw()).toHaveAttribute('aria-checked', 'true');
-  await page.keyboard.press('Escape');
+  await closeSettingsPanel(page);
   await page.waitForTimeout(500);
   await expect(toast(page)).toHaveCount(0);
   await flipTo(page, 14);
