@@ -9,7 +9,9 @@
 //   • التشغيل (player.js) يقرأ من هنا كل آية موجودة لقارئها — ولو كان تحميله ناقصًا — ويبثّ الباقي.
 // الحالة المحفوظة (localStorage «hq.offline»): { [id]: { status: 'paused' | 'done', count, total } }
 import { allFiles, reciterById, reciterTitle } from './reciters.js';
-import { createDownloader, freeSpaceMB, onDownloadNotice, supported } from './downloader.js';
+import { createDownloader, freeSpaceMB as webFreeSpaceMB, notify, onDownloadNotice, supported as webSupported } from './downloader.js';
+import { isNative } from './native.js';
+import { createNativeDownloads, freeSpace } from './nativeFiles.js';
 
 const CACHE_PREFIX = 'reciter-audio-';
 
@@ -17,26 +19,42 @@ const CACHE_PREFIX = 'reciter-audio-';
 export { HAFS_COUNTS as AYAH_COUNTS } from './reciters.js';
 
 export const cacheName = (id) => CACHE_PREFIX + id;
-export { supported, freeSpaceMB };
+
+// داخل تطبيق أندرويد (الجلسة ٢ ب، ٢٠٢٦-١١-٢٠): يحمّل أندرويد نفسه إلى ملفات الجهاز (src/lib/nativeFiles.js)، فيقرؤها
+// مشغّل التلاوة الأصلي بلا إنترنت، ويستمر التحميل والشاشة مقفلة والتطبيق مغلق؛ وما يُطلب أثناءه ينتظر دوره
+export const nativeSaving = () => isNative();
+export const supported = () => nativeSaving() || webSupported();
+// المساحة المتاحة بالميغابايت: في التطبيق الفارغ على الجهاز، وفي الموقع ما يتيحه المتصفح
+export const freeSpaceMB = () => (nativeSaving() ? freeSpace() : webFreeSpaceMB());
 
 // روابط ملفات القارئ كلها بترتيب المصحف (بلا السور التي لا يشملها تسجيله إن وُجدت)، ومنها البسملة؛
 // ولقرّاء ورش ملفاتهم كما يُقرأ بها مصحف ورش (allFiles في src/lib/reciters.js)
 export const reciterUrls = (r) => allFiles(r);
 
 const nameOf = (id) => reciterTitle(reciterById(id));
-const D = createDownloader({
-  metaKey: 'hq.offline',
-  cacheName,
-  urlsOf: (id) => reciterUrls(reciterById(id)),
-  messages: {
-    done: (id) => `اكتمل تحميل تلاوة ${nameOf(id)} — تعمل الآن بلا إنترنت`,
-    nospace: (id) => `توقّف تحميل ${nameOf(id)}: لا تكفي المساحة المتاحة على الجهاز`,
-    offline: (id) => `توقّف تحميل ${nameOf(id)} لانقطاع الاتصال، ويُستأنف وحده إذا رجع`,
-    failed: (id) => `توقّف تحميل ${nameOf(id)}: تعذّر الوصول إلى ملفات الصوت`,
-  },
-});
+const messages = {
+  done: (id) => `اكتمل تحميل تلاوة ${nameOf(id)} — تعمل الآن بلا إنترنت`,
+  nospace: (id) => `توقّف تحميل ${nameOf(id)}: لا تكفي المساحة المتاحة على الجهاز`,
+  offline: (id) => `توقّف تحميل ${nameOf(id)} لانقطاع الاتصال، ويُستأنف وحده إذا رجع`,
+  failed: (id) => `توقّف تحميل ${nameOf(id)}: تعذّر الوصول إلى ملفات الصوت`,
+};
+const urlsOf = (id) => reciterUrls(reciterById(id));
+const D = isNative()
+  ? createNativeDownloads({
+      urlsOf,
+      nameOf,
+      notify,
+      messages: {
+        ...messages,
+        // داخل التطبيق: لم يرجع الاتصال خلال نصف ساعة، أو بلغ حدّ أندرويد لمدة التحميل في الخلفية
+        offline: (id) => `توقّف تحميل ${nameOf(id)} لانقطاع الاتصال؛ أكمله بزرّ الاستئناف`,
+        timeout: (id) => `توقّف تحميل ${nameOf(id)}؛ أكمله بزرّ الاستئناف`,
+      },
+    })
+  : createDownloader({ metaKey: 'hq.offline', cacheName, urlsOf, messages });
 
 // items: { [id]: { status: 'downloading' | 'paused' | 'done', count, total } } · active: القارئ الجاري تحميله
+// وفي التطبيق أيضًا: status 'queued' (بالانتظار)، وwaiting (ينتظر رجوع الاتصال)، وqueue
 export const offlineState = D.getState;
 export const useOffline = D.useDownloads;
 // رسائل التحميل (القرّاء والتفاسير معًا) — يعرضها التطبيق رسالةً عابرة أينما كان
@@ -45,9 +63,9 @@ export const onOfflineNotice = onDownloadNotice;
 export const hasOfflineFiles = D.hasFiles;
 // هل حُمِّل القارئ كاملًا؟
 export const isOfflineComplete = D.isComplete;
-// يبدأ تحميل القارئ id أو يستأنفه (النتائج في src/lib/downloader.js)
+// يبدأ تحميل القارئ id أو يستأنفه (النتائج في src/lib/downloader.js؛ وفي التطبيق: started · queued · done · failed)
 export const startDownload = D.start;
-// إيقاف مؤقت: يبقى ما حُمِّل، ويُستأنف لاحقًا من حيث وقف
+// إيقاف مؤقت: يبقى ما حُمِّل، ويُستأنف لاحقًا من حيث وقف (وفي التطبيق pauseDownload(id): والمنتظر يخرج من الانتظار)
 export const pauseDownload = D.pause;
 // قارئ سُجِّل محمَّلًا ومسح المتصفح ملفاته يُعاد إلى «لم يُحمَّل»
 export const verifyDownloads = D.verify;

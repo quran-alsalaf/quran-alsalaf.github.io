@@ -4,7 +4,7 @@
 //     تحميل المقدار كاملًا قبل التشغيل يؤخره كثيرًا خصوصًا لقرّاء ملف السورة)
 //   • «تنزيل» منفصل واختياري: يُحمَّل صوت المقدار كاملًا (بشريط تقدّم)، وبعده يشغَّل من نسخة
 //     محلية بلا حاجة لاتصال، ولو قُفل الجهاز أو قُطع الإنترنت — لأن التشغيل يستعمل تلقائيًا
-//     أي ملف محمَّل سلفًا بدل بثّه من الشبكة
+//     أي ملف محمَّل سلفًا بدل بثّه من الشبكة. وداخل التطبيق يُحفظ في ملفات الجهاز حفظًا دائمًا (الجلسة ٢ ب)
 //   • كل قارئ ملف مستقل لكل آية (src/lib/reciters.js)
 //   • قبل الآية الأولى من كل سورة (عدا الفاتحة والتوبة) تُقرأ البسملة: وهي آية الفاتحة الأولى
 //     بصوت القارئ نفسه (ولقرّاء ورش ملف بسملة لكل سورة: basmalaFile في src/lib/reciters.js)
@@ -22,6 +22,7 @@ import { isWarsh } from './riwayah.js';
 import { hasOfflineFiles, isOfflineComplete, localAudioUrl } from './offline.js';
 import { toArabicDigits } from '../data/quran.js';
 import { adoptCmd, latestCmd, listenNative, nativeItems, send, useNativeAudio, verseTitle } from './nativeAudio.js';
+import { cancelFiles, missingFiles, saveFiles } from './nativeFiles.js';
 
 const KEY = 'hq.listen';
 // ١ (بدون تكرار) يُعرض بعبارته لا رقمه؛ فالقائمة العددية تبدأ من ٢ (بطلب صاحب المشروع)
@@ -173,6 +174,7 @@ async function fetchBlob(url, onProgress) {
 
 // ينزّل صوت verses بالقارئ الحالي، ليُشغَّل لاحقًا بلا إنترنت. النتيجة:
 // 'unsupported' (القارئ لا يشمل هذا الموضع) · 'failed' (تعذّر التنزيل) · 'cancelled' · 'ok'
+// وداخل التطبيق أيضًا 'nospace' (لا تكفي المساحة على الجهاز)
 export async function downloadRange(q, verses) {
   quran = q;
   const r = reciter();
@@ -180,6 +182,7 @@ export async function downloadRange(q, verses) {
   const myToken = ++dlToken;
   const files = resourcesFor(verses);
   set({ download: { active: true, done: false, fileIndex: 0, fileCount: files.length, pct: null } });
+  if (useNativeAudio()) return downloadNative(files, myToken);
   for (let i = 0; i < files.length; i++) {
     if (myToken !== dlToken) return 'cancelled';
     const url = files[i];
@@ -201,18 +204,37 @@ export async function downloadRange(q, verses) {
   return 'ok';
 }
 
+// داخل تطبيق أندرويد (الجلسة ٢ ب، ٢٠٢٦-١١-٢٠): يُحفظ المقدار في ملفات الجهاز حفظًا دائمًا، في مجلد القارئ نفسه
+// (src/lib/nativeFiles.js)، فيقرؤه مشغّل أندرويد بلا إنترنت ولو أُغلق التطبيق، ولا يُعاد تحميل ما حُفظ.
+// النتيجة كما في downloadRange، ومعها 'nospace'
+async function downloadNative(files, myToken) {
+  const result = await saveFiles(files, (saved, total) => {
+    if (myToken === dlToken) set({ download: { active: true, done: false, fileIndex: Math.min(saved + 1, total), fileCount: total, pct: null } });
+  });
+  if (myToken !== dlToken) return 'cancelled';
+  if (result !== 'ok') {
+    set({ download: null });
+    return result;
+  }
+  set({ download: { active: false, done: true, fileIndex: files.length, fileCount: files.length, pct: 100 } });
+  return 'ok';
+}
+
 export function cancelDownload() {
   dlToken++;
   set({ download: null });
+  if (useNativeAudio()) cancelFiles();
 }
 
 // هل مقدار verses منزَّل كاملًا بالقارئ الحالي؟ (لعرض «تم التنزيل» بدل زرّه)
+// وداخل التطبيق وعدٌ (Promise): يُسأل أندرويد هل ملفاته كلها محفوظة على الجهاز
 export function isDownloaded(q, verses) {
   quran = q;
   const r = reciter();
   if (!covers(r, suraList(verses))) return false;
   // القارئ محمَّل كاملًا على الجهاز: كل مقدار يعمل بلا إنترنت
   if (isOfflineComplete(r.id)) return true;
+  if (useNativeAudio()) return missingFiles(resourcesFor(verses)).then((n) => n === 0);
   return resourcesFor(verses).every((f) => blobUrls.has(f));
 }
 

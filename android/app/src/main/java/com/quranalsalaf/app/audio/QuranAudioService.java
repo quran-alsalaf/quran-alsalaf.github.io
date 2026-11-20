@@ -44,6 +44,8 @@ public class QuranAudioService extends MediaSessionService {
     @Override
     public void onCreate() {
         super.onCreate();
+        // الآيات المحفوظة على الجهاز تُقرأ من ملفاتها بلا إنترنت (AudioEngine.uri)
+        AudioEngine.filesRoot = QuranDownloads.root(this);
         ExoPlayer player = new ExoPlayer.Builder(this)
             .setAudioAttributes(
                 new AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_SPEECH).build(),

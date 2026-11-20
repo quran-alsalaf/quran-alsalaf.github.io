@@ -34,6 +34,12 @@
             </intent-filter>
         </service>
 
+        <!-- تحميل صوت القرّاء لكامل القرآن (audio/QuranDownloadService.java): يستمر والشاشة مقفلة والتطبيق مغلق، بإشعار تقدّم -->
+        <service
+            android:name=".audio.QuranDownloadService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -52,4 +58,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- تحميل صوت القرّاء في الخلفية: خدمة أمامية للتحميل، وإشعار تقدّمه (يُطلب إذنه عند أول تحميل)، ومعرفة رجوع الاتصال -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 </manifest>

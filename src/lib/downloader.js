@@ -24,7 +24,7 @@ export function onDownloadNotice(fn) {
   notices.add(fn);
   return () => notices.delete(fn);
 }
-const notify = (text) => notices.forEach((fn) => fn(text));
+export const notify = (text) => notices.forEach((fn) => fn(text));
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const isQuota = (e) => e?.name === 'QuotaExceededError' || /quota/i.test(e?.message ?? '');
