@@ -271,8 +271,9 @@ const save = (k) => saveKhatma('hifz', k);
     lastDone آخر يوم حُفظ فيه ورد · farNext آية تبدأ منها وحدة المراجعة البعيدة التالية
     reviewed { day, near, far }: ما أُتمّ من المراجعتين في يومه · lastFar آخر يوم أُتمّت فيه المراجعة البعيدة
     hintDismissed اقتراح زيادة المراجعة الذي أغلقه المستخدم ('juz') · finished يوم الختم
+    reminder وقت التذكير اليومي «HH:MM» أو null (داخل التطبيق الأصلي وحده، src/lib/reminders.js)
 */
-export function startHifz({ dir, start, end, known, lines, near, far }, today = dayKey()) {
+export function startHifz({ dir, start, end, known, lines, near, far, reminder = null }, today = dayKey()) {
   const k = {
     type: 'hifz',
     created: today,
@@ -294,6 +295,7 @@ export function startHifz({ dir, start, end, known, lines, near, far }, today = 
     lastFar: null,
     hintDismissed: null,
     finished: null,
+    reminder,
   };
   save(k);
   return k;

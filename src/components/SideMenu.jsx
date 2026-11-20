@@ -44,7 +44,7 @@ const readTab = () => {
   }
 };
 
-export default function SideMenu({ quran, hafs, open, onGoto, onClose, onReadWird, onHifz, onEditNote, onToast }) {
+export default function SideMenu({ quran, hafs, open, onGoto, onClose, onReadWird, onHifz, onEditNote, onToast, tabRequest }) {
   const [tab, setTabState] = useState(readTab);
   const setTab = (t) => {
     setTabState(t);
@@ -54,6 +54,10 @@ export default function SideMenu({ quran, hafs, open, onGoto, onClose, onReadWir
       // بلا تخزين: يبقى في هذه الجلسة
     }
   };
+  // فتح تبويب بعينه من خارج القائمة (الضغط على إشعار تذكير ختمة الحفظ): { tab, at }
+  useEffect(() => {
+    if (tabRequest) setTab(tabRequest.tab);
+  }, [tabRequest]);
   useLayer(onClose, open);
   // فهرس تبويب السور: السور أو الأجزاء أو الأرباع، ويرجع إلى السور كلما فُتحت القائمة
   const [index, setIndex] = useState('suras');

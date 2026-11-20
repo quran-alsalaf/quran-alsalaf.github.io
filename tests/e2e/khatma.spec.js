@@ -274,3 +274,22 @@ test('إتمام آخر ورد يختم المصحف: تهنئة وعدد الخ
   await expect(side(page).getByRole('button', { name: 'ابدأ الختمة' })).toBeVisible();
   expect(await stored(page, 'hq.khatmasDone')).toEqual({ wird: 3 });
 });
+
+// تذكير الختمة اليومي (الجلسة ٣ أ): داخل تطبيق أندرويد وحده، فلا يظهر في الموقع — لا في نموذج الإنشاء، ولا في
+// بطاقة ختمة لها تذكير (من نسخة احتياطية من التطبيق). وسلوكه داخل التطبيق في tests/unit/reminders-native.test.js
+test('في الموقع لا «تذكير يومي» في نموذجي الختمتين', async ({ page }) => {
+  await open(page);
+  await openKhatmaTab(page);
+  await expect(side(page).getByRole('button', { name: 'ابدأ الختمة' })).toBeVisible();
+  await expect(side(page).getByText('التذكير اليومي')).toHaveCount(0);
+  await side(page).getByRole('radio', { name: 'ختمة الحفظ' }).click();
+  await expect(side(page).getByRole('button', { name: 'ابدأ ختمة الحفظ' })).toBeVisible();
+  await expect(side(page).getByText('التذكير اليومي')).toHaveCount(0);
+});
+
+test('في الموقع لا سطر تذكير في بطاقة ختمة لها تذكير', async ({ page }) => {
+  await open(page, { 'hq.khatmas': JSON.stringify(wird({ reminder: '20:00' })) });
+  await openKhatmaTab(page);
+  await expect(side(page).getByRole('button', { name: 'اقرأ الورد' })).toBeVisible();
+  await expect(side(page).getByText('التذكير اليومي')).toHaveCount(0);
+});

@@ -118,9 +118,10 @@ const saveWird = (k) => saveKhatma('wird', k);
     planStart يوم بداية الخطة الحالية · done الأوراد المتمة في الخطة الحالية
     doneBefore الأوراد المتمة قبل آخر تعديل للخطة · lastDone آخر يوم أتم فيه ورد
     finished يوم الختم (إن ختمت، وتبقى حتى «ابدأ ختمة جديدة» أو الحذف)
+    reminder وقت التذكير اليومي «HH:MM» أو null (داخل التطبيق الأصلي وحده، src/lib/reminders.js)
 */
-export function startWird(mode, value, today = dayKey()) {
-  const k = { type: 'wird', created: today, mode, value, from: FIRST_PAGE, planStart: today, done: 0, doneBefore: 0, lastDone: null, finished: null };
+export function startWird(mode, value, today = dayKey(), reminder = null) {
+  const k = { type: 'wird', created: today, mode, value, from: FIRST_PAGE, planStart: today, done: 0, doneBefore: 0, lastDone: null, finished: null, reminder };
   saveWird(k);
   return k;
 }
@@ -157,6 +158,12 @@ export function completeWird(today = dayKey()) {
 }
 
 export const removeWird = () => saveWird(null);
+
+// وقت التذكير اليومي لختمة من نوع (wird أو hifz): «HH:MM» أو null، دون مساس بخطتها
+export function setReminder(type, reminder) {
+  const k = readKhatmas().find((x) => x.type === type);
+  if (k && (k.reminder ?? null) !== reminder) saveKhatma(type, { ...k, reminder });
+}
 
 // ---------- حال الختمة ----------
 // كل ما تعرضه الواجهة عن الختمة في يوم معين
