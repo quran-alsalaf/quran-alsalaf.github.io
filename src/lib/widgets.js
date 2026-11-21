@@ -9,6 +9,7 @@
 //   يظهر له «افتح التطبيق لتحديث ختمتك».
 // • ألوانه ألوان التطبيق: خلفية القراءة ولون نص المصحف ولون التطبيق.
 // • وفي الموقع لا شيء: المتصفح لا يضع ويدجت على الشاشة الرئيسية.
+// • وفي آخره صلة ويدجت «آية اليوم» (الجلسة ٣ ج ٢، src/lib/ayahOfDay.js): ألوان التطبيق وروايته وحدها.
 import { registerPlugin } from '@capacitor/core';
 import { toArabicDigits } from '../data/quran.js';
 import { addDays, dayKey, splitWirds, wirdState } from './khatma.js';
@@ -110,4 +111,25 @@ export function syncWidgets({ wird, hifz, hafs, now = new Date(), theme }) {
 // للاختبارات: يُنسي ما أُرسل
 export const resetWidgetsSent = () => {
   sent = null;
+};
+
+// ---------- ويدجت «آية اليوم» (الجلسة ٣ ج ٢) ----------
+/*
+  آياته ونصوصها مبنية مع التطبيق (src/lib/ayahOfDay.js)، فلا يُرسل إليه إلا ألوان التطبيق وروايته:
+    setAyah({ data: { theme, riwayah } }) — riwayah: 'hafs' أو 'warsh' (وما لم تُختر رواية: حفص)
+  كلما تغيّرت الرواية أو المظهر وكلما رجع المستخدم إلى التطبيق، ولا يُعاد إرسال الحال نفسها.
+*/
+let sentAyah = null;
+export function syncAyahWidget({ riwayah, theme }) {
+  if (!widgetsAvailable()) return;
+  const data = { theme: theme ?? widgetTheme(), riwayah: riwayah === 'warsh' ? 'warsh' : 'hafs' };
+  const key = JSON.stringify(data);
+  if (sentAyah === key) return;
+  sentAyah = key;
+  Promise.resolve(P().setAyah({ data })).catch(() => {
+    sentAyah = null;
+  });
+}
+export const resetAyahSent = () => {
+  sentAyah = null;
 };

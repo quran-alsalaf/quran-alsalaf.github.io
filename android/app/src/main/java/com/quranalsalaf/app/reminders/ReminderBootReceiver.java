@@ -4,11 +4,12 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
+import com.quranalsalaf.app.widgets.AyahWidget;
 import com.quranalsalaf.app.widgets.KhatmaWidget;
 
 /**
  * إعادة جدولة تذكير الختمة والتطبيق مغلق: أندرويد يمحو المواعيد عند إعادة تشغيل الجوال وعند تحديث التطبيق،
- * وتغيّر المنطقة الزمنية أو ساعة الجهاز يغيّر لحظة الوقت المحلي نفسه. ومعه ويدجت «ختمتي اليوم» (widgets/).
+ * وتغيّر المنطقة الزمنية أو ساعة الجهاز يغيّر لحظة الوقت المحلي نفسه. ومعه ويدجتا «ختمتي اليوم» و«آية اليوم» (widgets/).
  */
 public class ReminderBootReceiver extends BroadcastReceiver {
 
@@ -22,6 +23,8 @@ public class ReminderBootReceiver extends BroadcastReceiver {
             ReminderAlarms.scheduleAll(context);
             // وويدجت «ختمتي اليوم»: يومه بالمنطقة الجديدة، وموعد تبدّله عند منتصف الليل
             KhatmaWidget.updateAll(context);
+            // و«آية اليوم»: آية يومه، وموعد تبدّلها
+            AyahWidget.updateAll(context);
         }
     }
 }

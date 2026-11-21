@@ -33,9 +33,10 @@ import { hideFrom, reveal } from './lib/recite.js';
 import { closeTopLayer, hasMouse, hasOpenLayer } from './lib/layers.js';
 import { createBackHandler, exitApp, followSystemBars, leaveBackMode, listenBackButton } from './lib/native.js';
 import { listenReminderOpen, remindersAvailable, syncReminders } from './lib/reminders.js';
-import { syncWidgets } from './lib/widgets.js';
+import { syncAyahWidget, syncWidgets } from './lib/widgets.js';
+import { parseAyahOpen } from './lib/ayahOfDay.js';
 import { useRatePrompt } from './lib/feedback.js';
-import { hafsList, hafsRange, shownBookmarks, shownNotes, shownRange } from './lib/verseMap.js';
+import { hafsList, hafsRange, shownBookmarks, shownNotes, shownOf, shownRange } from './lib/verseMap.js';
 import './App.css';
 
 // أقصر مدّة تبقى فيها شاشة الافتتاح ولو كانت البيانات جاهزة فورًا من ذاكرة
@@ -501,16 +502,25 @@ export default function App() {
   // أندرويد كلما تغيّرت الختمتان، وكلما رجع المستخدم إلى التطبيق (فقد يكون اليوم تغيّر). والضغط على الإشعار
   // يفتح صفحة الورد، أو تبويب «الختمة» لختمة الحفظ (فيها خطوات اليوم الثلاث)
   const [sideTabRequest, setSideTabRequest] = useState(null);
+  // والضغط على ويدجت «آية اليوم» (الجلسة ٣ ج ٢ — src/lib/ayahOfDay.js): { h: آية حفص، n } حتى تُفتح صفحتها
+  const [ayahOpen, setAyahOpen] = useState(null);
   const remindRef = useRef(null);
-  remindRef.current = { wird: khatma.wird, hifz: khatma.hifz, hafs, active: !!wird, khatmaOpen, hifzOpen };
+  remindRef.current = { wird: khatma.wird, hifz: khatma.hifz, hafs, active: !!wird, khatmaOpen, hifzOpen, riwayah };
   useEffect(() => {
     syncReminders({ wird: khatma.wird, hifz: khatma.hifz, hafs });
     // وويدجت «ختمتي اليوم» (الجلسة ٣ ج ١ — src/lib/widgets.js) بالطريقة نفسها
     syncWidgets({ wird: khatma.wird, hifz: khatma.hifz, hafs });
   }, [khatma.wird, khatma.hifz, hafs]);
-  // وتغيير المظهر (الخلفية أو لون التطبيق) يتبعه الويدجت
+  // وويدجت «آية اليوم» (الجلسة ٣ ج ٢) يتبع رواية التطبيق
   useEffect(() => {
-    const onAppearance = () => syncWidgets(remindRef.current);
+    syncAyahWidget({ riwayah });
+  }, [riwayah]);
+  // وتغيير المظهر (الخلفية أو لون التطبيق) يتبعه الويدجتان
+  useEffect(() => {
+    const onAppearance = () => {
+      syncWidgets(remindRef.current);
+      syncAyahWidget(remindRef.current);
+    };
     window.addEventListener('hq:appearance', onAppearance);
     return () => window.removeEventListener('hq:appearance', onAppearance);
   }, []);
@@ -523,6 +533,7 @@ export default function App() {
         NativeApp.addListener('resume', () => {
           syncReminders(remindRef.current);
           syncWidgets(remindRef.current);
+          syncAyahWidget(remindRef.current);
         }),
       )
       .then((h) => {
@@ -531,6 +542,11 @@ export default function App() {
       })
       .catch(() => {});
     const unlisten = listenReminderOpen((type) => {
+      const h = parseAyahOpen(type);
+      if (h != null) {
+        setAyahOpen({ h, n: Date.now() });
+        return;
+      }
       const r = remindRef.current;
       if (r.khatmaOpen || r.hifzOpen) return;
       if (type === 'wird' && r.active) openKhatma();
@@ -736,6 +752,24 @@ export default function App() {
     setGotoPage({ page: p, n: Date.now() });
     setFlash(verse == null ? null : { v: verse, n: Date.now() });
   }, []);
+
+  // الضغط على ويدجت «آية اليوم»: صفحة الآية في المصحف المعروض وتمييزها المؤقت، بعد أن يُحمَّل مصحف الرواية،
+  // وتُغلق قبلها اللوحات والصفحات المفتوحة؛ إلا صفحة الورد أو الحفظ فيبقى فيها (كالضغط على إشعار التذكير)
+  useEffect(() => {
+    if (!ayahOpen || !quran || (riwayah === 'warsh' && !warsh)) return;
+    setAyahOpen(null);
+    if (khatmaOpen || hifzOpen) return;
+    const v = shownOf(quran, ayahOpen.h)[0];
+    if (v == null || !quran.verses[v]) return;
+    if (settingsOpen) closeSettings();
+    setSideMenuOpen(false);
+    setSearchOpen(false);
+    if (studyOpen) closeStudy();
+    setPressed(null);
+    if (reading) setReading(false);
+    if (recite) exitRecite();
+    gotoPageNumber(quran.verses[v].p, v);
+  }, [ayahOpen, quran, riwayah, warsh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // التمييز المؤقت (٢٠٢٦-١١-١٢): يبدأ حين تُرسم الآية في صفحتها (ولو تأخر خط الصفحة)، ويتلاشى
   // بعد نحو ٣ ثوانٍ (MushafPage.css)، فيزول بنهاية تلاشيه، وإلا بعد مهلة احتياطية إن لم تُرسم

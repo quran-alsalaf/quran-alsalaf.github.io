@@ -18,6 +18,11 @@ public final class WidgetDays {
     /** ما يُعرض: لا ختمة (ابدأ ختمة)، أو انتهت الأيام المرسلة (افتح التطبيق)، أو يوم. */
     public enum Kind { EMPTY, STALE, DAY }
 
+    // ألوان المظهر الافتراضي (بيج وذهبي عنبري) قبل أن يرسل التطبيق ألوانه — للويدجتين
+    public static final int DEFAULT_BG = 0xFFF5EDDC;
+    public static final int DEFAULT_INK = 0xFF2E2A24;
+    public static final int DEFAULT_ACCENT = 0xFF8A6110;
+
     private WidgetDays() {}
 
     /** «YYYY-MM-DD» ليوم اللحظة now في منطقة tz. */

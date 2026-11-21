@@ -42,11 +42,6 @@ public class KhatmaWidget extends AppWidgetProvider {
     private static final int REQ_MIDNIGHT = 300;
     private static final int REQ_OPEN = 310;
 
-    // ألوان المظهر الافتراضي (بيج وذهبي عنبري) قبل أن يرسل التطبيق ألوانه
-    private static final int DEFAULT_BG = 0xFFF5EDDC;
-    private static final int DEFAULT_INK = 0xFF2E2A24;
-    private static final int DEFAULT_ACCENT = 0xFF8A6110;
-
     private static final int[] STEP_IDS = { R.id.widget_step1, R.id.widget_step2, R.id.widget_step3 };
 
     // ---------- الحفظ والتحديث ----------
@@ -143,9 +138,9 @@ public class KhatmaWidget extends AppWidgetProvider {
     private static void render(Context c, AppWidgetManager m, int id) {
         JSONObject data = data(c);
         JSONObject theme = data == null ? null : data.optJSONObject("theme");
-        int bg = color(theme, "bg", DEFAULT_BG);
-        int ink = color(theme, "ink", DEFAULT_INK);
-        int accent = color(theme, "accent", DEFAULT_ACCENT);
+        int bg = color(theme, "bg", WidgetDays.DEFAULT_BG);
+        int ink = color(theme, "ink", WidgetDays.DEFAULT_INK);
+        int accent = color(theme, "accent", WidgetDays.DEFAULT_ACCENT);
         int accentText = color(theme, "accentText", accent);
         int muted = WidgetDays.withAlpha(ink, 0xB8);
 
@@ -257,7 +252,7 @@ public class KhatmaWidget extends AppWidgetProvider {
         v.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, sp);
     }
 
-    private static int color(JSONObject theme, String key, int fallback) {
+    static int color(JSONObject theme, String key, int fallback) {
         return theme == null ? fallback : WidgetDays.parseColor(theme.optString(key, null), fallback);
     }
 }

@@ -70,6 +70,19 @@
                 android:resource="@xml/widget_khatma_info" />
         </receiver>
 
+        <!-- ويدجت «آية اليوم» (widgets/AyahWidget.java): آية كل يوم، ويتبدّل عند منتصف الليل (منبّه داخلي باسمه الصريح) -->
+        <receiver
+            android:name=".widgets.AyahWidget"
+            android:exported="true"
+            android:label="@string/widget_ayah_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_ayah_info" />
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
