@@ -7,4 +7,7 @@
     <!-- مشغّل التلاوة (audio/QuranAudioService.java): اسم قناة الإشعار في إعدادات الجهاز، وزرّ «إنهاء» -->
     <string name="audio_channel">التلاوة</string>
     <string name="audio_end">إنهاء</string>
+    <!-- ويدجت «ختمتي اليوم» (widgets/KhatmaWidget.java): اسمه ووصفه في قائمة الويدجتات -->
+    <string name="widget_khatma_label">ختمتي اليوم</string>
+    <string name="widget_khatma_desc">وردك اليوم وخطوات ختمة الحفظ</string>
 </resources>

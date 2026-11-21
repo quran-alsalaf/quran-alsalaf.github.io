@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- خلفية ويدجت «ختمتي اليوم» (widgets/KhatmaWidget): بيضاء تُلوَّن بخلفية القراءة المختارة في التطبيق -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#FFFFFFFF" />
+    <corners android:radius="20dp" />
+</shape>
