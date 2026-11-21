@@ -24,7 +24,7 @@ test('الإعدادات: أربعة أسطر ثابتة، ثم «الإعداد
     'للشكاوى والاقتراحات',
     'شارك التطبيق',
   ]);
-  await expect(main.getByRole('button', { name: 'للشكاوى والاقتراحات' })).toHaveCount(0);
+  await expect(main.getByRole('button', { name: 'تواصل معنا' })).toHaveCount(0);
   // في الموقع لا متجر: لا «قيّم التطبيق»
   await expect(page.getByRole('button', { name: 'قيّم التطبيق' })).toHaveCount(0);
   // ما نُقل ليس في الإعدادات نفسها
