@@ -65,6 +65,22 @@ test('لوحة الإعدادات من اليسار، تُغلق بـ✕ وEsc �
   }
 });
 
+// نصّ «عن التطبيق» (٢٠٢٦-١١-٢١، بقرار صاحب المشروع): عامّ لا يعدّد المواد، وبلا قناة تليجرام
+test('«عن التطبيق»: النص المعتمد وبطاقة المصدر، ولا تليجرام', async ({ page }) => {
+  await clickTopbar(page, 'الإعدادات');
+  await settings(page).getByRole('button', { name: 'عن التطبيق' }).click();
+  const about = settings(page).locator('.about__body');
+  await expect(about.locator(':scope > p')).toHaveText([
+    'تطبيق قرآن السلف يعين على تلقّي القرآن على نهج الصحابة رضي الله عنهم؛ فقد كانوا يتعلمون العشر آيات، فلا يتجاوزونها حتى يتعلموا ما فيها من العلم والعمل.',
+    'يقدّم التطبيق المصحف كاملًا للقراءة والاستماع، مع ما يعين على تدبّر القرآن من مواد علمية.',
+  ]);
+  await expect(about.locator('.about__source')).toHaveText(
+    'نص المصحف وخط الرسم العثماني (رواية حفص عن عاصم) من مجمع الملك فهد لطباعة المصحف الشريف.'
+  );
+  await expect(about).not.toContainText('تليجرام');
+  await expect(about.locator('a[href*="t.me"]')).toHaveCount(0);
+});
+
 test('«عن التطبيق» صفحة فرعية: الرجوع وEsc يعودان إلى الإعدادات', async ({ page }) => {
   await clickTopbar(page, 'الإعدادات');
   await settings(page).getByRole('button', { name: 'عن التطبيق' }).click();

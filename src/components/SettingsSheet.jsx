@@ -24,8 +24,9 @@ import { RIWAYAT, setRiwayah, useRiwayah } from '../lib/riwayah.js';
 
   ترتيب الإعدادات (٢٠٢٦-١١-٢٠، الجلسة ٣ ب، بقرار صاحب المشروع): المظهر والقراءة ثابتان في أولها، ثم سطر
   «الإعدادات التخصيصية» يفتح صفحة فيها الرواية ومفتاحا القراءة والنسخة الاحتياطية (وهذه صفحة داخلها، سهمها
-  يرجع إليها)، ثم فراغ، وفي أسفل اللوحة أربعة أسطر بلا عنوان: عن التطبيق، وقيّم التطبيق (في التطبيق الأصلي
-  وحده)، وشارك التطبيق، وتواصل معنا (src/lib/feedback.js).
+  يرجع إليها)، ثم فراغ، وفي أسفل اللوحة أربعة أسطر بلا عنوان: عن التطبيق، وللشكاوى والاقتراحات، وقيّم التطبيق
+  (في التطبيق الأصلي وحده)، وشارك التطبيق (src/lib/feedback.js). (الاسم والترتيب ٢٠٢٦-١١-٢١ بقرار صاحب المشروع؛
+  كان «تواصل معنا» آخرها)
   الصفحات الفرعية وآباؤها في PARENT: سهم الرجوع وEsc وزرّ الرجوع في أندرويد ترجع من كل صفحة إلى أبيها.
 
   إضافة إعداد أو ميزة جديدة: سطر في قسمه بأحد الأسطر الجاهزة أدناه
@@ -126,9 +127,9 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
 
             <Section foot>
               <LinkRow label="عن التطبيق" onClick={() => onPage('about')} />
+              <LinkRow label="للشكاوى والاقتراحات" onClick={() => onPage('contact')} />
               {ratingAvailable() && <ActionRow label="قيّم التطبيق" icon={<StarIcon />} onClick={openStore} />}
               <ActionRow label="شارك التطبيق" icon={<ShareIcon />} onClick={share} />
-              <LinkRow label="تواصل معنا" onClick={() => onPage('contact')} />
             </Section>
           </div>
         </div>
@@ -157,7 +158,7 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
         <SubPage title="عن التطبيق" shown={page === 'about'} onBack={back} onClose={onClose}>
           <AboutContent />
         </SubPage>
-        <SubPage title="تواصل معنا" shown={page === 'contact'} onBack={back} onClose={onClose}>
+        <SubPage title="للشكاوى والاقتراحات" shown={page === 'contact'} onBack={back} onClose={onClose}>
           <ContactPage riwayah={riwayah} />
         </SubPage>
       </section>
