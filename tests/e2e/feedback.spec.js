@@ -1,5 +1,6 @@
 // ترتيب الإعدادات و«رأيك يهمنا» (الجلسة ٣ ب، ٢٠٢٦-١١-٢٠): المظهر والقراءة ثابتان، ثم «الإعدادات التخصيصية»،
-// وفي أسفل اللوحة: عن التطبيق، وقيّم التطبيق (في التطبيق الأصلي وحده)، وشارك التطبيق، وتواصل معنا
+// وفي أسفل اللوحة: عن التطبيق، وللشكاوى والاقتراحات (كان «تواصل معنا»، ٢٠٢٦-١١-٢١)، وقيّم التطبيق (في التطبيق
+// الأصلي وحده)، وشارك التطبيق
 import { test, expect } from '@playwright/test';
 import { clickTopbar, copied, isLaptop, openApp, openCustomSettings } from './helpers.js';
 
@@ -20,9 +21,10 @@ test('الإعدادات: أربعة أسطر ثابتة، ثم «الإعداد
     'وضع التسميع',
     'الإعدادات التخصيصية',
     'عن التطبيق',
+    'للشكاوى والاقتراحات',
     'شارك التطبيق',
-    'تواصل معنا',
   ]);
+  await expect(main.getByRole('button', { name: 'تواصل معنا' })).toHaveCount(0);
   // في الموقع لا متجر: لا «قيّم التطبيق»
   await expect(page.getByRole('button', { name: 'قيّم التطبيق' })).toHaveCount(0);
   // ما نُقل ليس في الإعدادات نفسها
@@ -97,12 +99,12 @@ test('شارك التطبيق حيث لا قائمة مشاركة: يُنسخ ا
   expect(await copied(page)).toBe('قرآن السلف — المصحف على نهج السلف في تلقّي القرآن.\nhttps://quran-alsalaf.github.io/');
 });
 
-test('تواصل معنا: الرسالة والرقم وزرّ واتساب برسالة جاهزة، والرجوع إلى الإعدادات', async ({ page }) => {
+test('للشكاوى والاقتراحات: الرسالة والرقم وزرّ واتساب برسالة جاهزة، والرجوع إلى الإعدادات', async ({ page }) => {
   await openApp(page);
   await clickTopbar(page, 'الإعدادات');
-  await mainPage(page).getByRole('button', { name: 'تواصل معنا' }).click();
+  await mainPage(page).getByRole('button', { name: 'للشكاوى والاقتراحات' }).click();
   const sub = shown(page);
-  await expect(sub.getByRole('heading', { name: 'تواصل معنا' })).toBeVisible();
+  await expect(sub.getByRole('heading', { name: 'للشكاوى والاقتراحات' })).toBeVisible();
   await expect(sub.locator('.contact__note')).toHaveText(
     'هذا التطبيق تم إنشاؤه بمساعدة الذكاء الاصطناعي، فإذا وجدت أي أخطاء أو كانت لديك اقتراحات فتواصل معنا من فضلك.'
   );
@@ -121,10 +123,10 @@ test('تواصل معنا: الرسالة والرقم وزرّ واتساب ب�
   await expect(settings(page)).toHaveClass(/settings--open/);
 });
 
-test('تواصل معنا في مصحف ورش: الرواية في الرسالة', async ({ page }) => {
+test('للشكاوى والاقتراحات في مصحف ورش: الرواية في الرسالة', async ({ page }) => {
   await openApp(page, { 'hq.riwayah': 'warsh' });
   await clickTopbar(page, 'الإعدادات');
-  await mainPage(page).getByRole('button', { name: 'تواصل معنا' }).click();
+  await mainPage(page).getByRole('button', { name: 'للشكاوى والاقتراحات' }).click();
   const href = await shown(page).getByRole('link', { name: 'مراسلة على واتساب' }).getAttribute('href');
   expect(new URL(href).searchParams.get('text')).toContain('رواية ورش');
 });
@@ -135,9 +137,9 @@ test('الشاشة القصيرة: الأسطر الأخيرة تحت ما قب�
   await openApp(page);
   await clickTopbar(page, 'الإعدادات');
   const main = mainPage(page);
-  const contact = main.getByRole('button', { name: 'تواصل معنا' });
-  await contact.scrollIntoViewIfNeeded();
-  await expect(contact).toBeInViewport();
+  const last = main.getByRole('button', { name: 'شارك التطبيق' });
+  await last.scrollIntoViewIfNeeded();
+  await expect(last).toBeInViewport();
   const foot = await main.locator('.settings__section--foot').boundingBox();
   const above = await main.getByRole('button', { name: 'الإعدادات التخصيصية' }).boundingBox();
   expect(foot.y - (above.y + above.height)).toBeLessThan(30);
