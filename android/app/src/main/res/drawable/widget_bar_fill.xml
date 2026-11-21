@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- الجزء المنجز من الشريط: يظهر منه بقدر مستواه (٠–١٠٠٠٠ = ٠–١٠٠٪)، من اليمين لأن الويدجت عربي -->
+<clip xmlns:android="http://schemas.android.com/apk/res/android"
+    android:clipOrientation="horizontal"
+    android:drawable="@drawable/widget_bar"
+    android:gravity="right" />

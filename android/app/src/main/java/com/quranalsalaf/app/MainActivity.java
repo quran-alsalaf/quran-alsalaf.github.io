@@ -7,6 +7,7 @@ import com.quranalsalaf.app.audio.QuranAudioPlugin;
 import com.quranalsalaf.app.audio.QuranDownloadsPlugin;
 import com.quranalsalaf.app.feedback.QuranFeedbackPlugin;
 import com.quranalsalaf.app.reminders.QuranRemindersPlugin;
+import com.quranalsalaf.app.widgets.QuranWidgetsPlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -19,6 +20,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(QuranRemindersPlugin.class);
         // «رأيك يهمنا»: نافذة التقييم، وصفحة المتجر، وفتح واتساب (src/lib/feedback.js)
         registerPlugin(QuranFeedbackPlugin.class);
+        // ويدجتات الشاشة الرئيسية: «ختمتي اليوم» (src/lib/widgets.js)
+        registerPlugin(QuranWidgetsPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

@@ -56,6 +56,20 @@
             </intent-filter>
         </receiver>
 
+        <!-- ويدجت «ختمتي اليوم» على الشاشة الرئيسية (widgets/KhatmaWidget.java): رسائل الويدجت من النظام، وتبدّله عند
+             منتصف الليل (منبّه داخلي باسمه الصريح) -->
+        <receiver
+            android:name=".widgets.KhatmaWidget"
+            android:exported="true"
+            android:label="@string/widget_khatma_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_khatma_info" />
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

@@ -37,7 +37,7 @@ public final class ReminderAlarms {
     static final String EXTRA_TITLE = "title";
     static final String EXTRA_BODY = "body";
     /** في نيّة فتح التطبيق من الإشعار: نوع الختمة. */
-    static final String EXTRA_OPEN = "quranReminder";
+    public static final String EXTRA_OPEN = "quranReminder";
 
     private static final String PREFS = "quran-reminders";
     private static final String CHANNEL = "reminders";

@@ -46,15 +46,16 @@ export function wirdText(k, today = dayKey()) {
   return { title: 'حان وقت وردك', body: `الورد ${n(s.index)} من ${n(s.total)}، ${pages}` };
 }
 
-// خطوات ختمة الحفظ في يوم: ما عليه منها، وما بقي (لم يُتمّ). quran: مصحف حفص (الخطة بترقيمه)
+// خطوات ختمة الحفظ في يوم: ما عليه منها، وما بقي (لم يُتمّ)، وsteps بترتيبها مع إتمام كلٍّ (لويدجت الختمة).
+// quran: مصحف حفص (الخطة بترقيمه)
 export function hifzSteps(quran, k, today = dayKey()) {
   const s = hifzState(quran, k, today);
-  if (!s.current) return { all: [], left: [] };
+  if (!s.current) return { all: [], left: [], steps: [] };
   const steps = [];
   if (s.far) steps.push({ name: 'المراجعة البعيدة', done: s.farDone });
   if (k.near > 0 && s.near.length) steps.push({ name: 'المراجعة القريبة', done: s.nearDone });
   steps.push({ name: 'حفظ الورد', done: s.doneToday });
-  return { all: steps.map((x) => x.name), left: steps.filter((x) => !x.done).map((x) => x.name) };
+  return { all: steps.map((x) => x.name), left: steps.filter((x) => !x.done).map((x) => x.name), steps };
 }
 
 // ختمة الحفظ: «بقي عليك اليوم: المراجعة القريبة وحفظ الورد» (وفي يوم لم يُبدأ: «عليك اليوم: …»)

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ويدجت «ختمتي اليوم» (widgets/KhatmaWidget.java): مقاسه الافتراضي ٤×٢ خانات، ويُكبَّر ويُصغَّر.
+     لا تحديث دوري (updatePeriodMillis = 0): يتبدّل عند منتصف الليل بمنبّه، وكلما أرسل التطبيق حاله -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_khatma_desc"
+    android:initialLayout="@layout/widget_khatma"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="70dp"
+    android:previewLayout="@layout/widget_khatma"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

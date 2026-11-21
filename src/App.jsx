@@ -33,6 +33,7 @@ import { hideFrom, reveal } from './lib/recite.js';
 import { closeTopLayer, hasMouse, hasOpenLayer } from './lib/layers.js';
 import { createBackHandler, exitApp, followSystemBars, leaveBackMode, listenBackButton } from './lib/native.js';
 import { listenReminderOpen, remindersAvailable, syncReminders } from './lib/reminders.js';
+import { syncWidgets } from './lib/widgets.js';
 import { useRatePrompt } from './lib/feedback.js';
 import { hafsList, hafsRange, shownBookmarks, shownNotes, shownRange } from './lib/verseMap.js';
 import './App.css';
@@ -504,13 +505,26 @@ export default function App() {
   remindRef.current = { wird: khatma.wird, hifz: khatma.hifz, hafs, active: !!wird, khatmaOpen, hifzOpen };
   useEffect(() => {
     syncReminders({ wird: khatma.wird, hifz: khatma.hifz, hafs });
+    // وويدجت «ختمتي اليوم» (الجلسة ٣ ج ١ — src/lib/widgets.js) بالطريقة نفسها
+    syncWidgets({ wird: khatma.wird, hifz: khatma.hifz, hafs });
   }, [khatma.wird, khatma.hifz, hafs]);
+  // وتغيير المظهر (الخلفية أو لون التطبيق) يتبعه الويدجت
+  useEffect(() => {
+    const onAppearance = () => syncWidgets(remindRef.current);
+    window.addEventListener('hq:appearance', onAppearance);
+    return () => window.removeEventListener('hq:appearance', onAppearance);
+  }, []);
   useEffect(() => {
     if (!remindersAvailable()) return undefined;
     let handle = null;
     let cancelled = false;
     import('@capacitor/app')
-      .then(({ App: NativeApp }) => NativeApp.addListener('resume', () => syncReminders(remindRef.current)))
+      .then(({ App: NativeApp }) =>
+        NativeApp.addListener('resume', () => {
+          syncReminders(remindRef.current);
+          syncWidgets(remindRef.current);
+        }),
+      )
       .then((h) => {
         if (cancelled) h?.remove?.();
         else handle = h;
