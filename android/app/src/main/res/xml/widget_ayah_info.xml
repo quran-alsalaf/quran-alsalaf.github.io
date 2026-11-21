@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ويدجت «آية اليوم» (widgets/AyahWidget.java): مقاسه الافتراضي ٤×٢ خانات كـ «ختمتي اليوم»، ويُكبَّر ويُصغَّر.
+     لا تحديث دوري (updatePeriodMillis = 0): يتبدّل عند منتصف الليل بمنبّه، وكلما أرسل التطبيق ألوانه وروايته -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_ayah_desc"
+    android:initialLayout="@layout/widget_ayah"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="70dp"
+    android:previewImage="@drawable/widget_ayah_preview"
+    android:previewLayout="@layout/widget_ayah"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

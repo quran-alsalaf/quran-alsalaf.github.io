@@ -10,4 +10,7 @@
     <!-- ويدجت «ختمتي اليوم» (widgets/KhatmaWidget.java): اسمه ووصفه في قائمة الويدجتات -->
     <string name="widget_khatma_label">ختمتي اليوم</string>
     <string name="widget_khatma_desc">وردك اليوم وخطوات ختمة الحفظ</string>
+    <!-- ويدجت «آية اليوم» (widgets/AyahWidget.java) -->
+    <string name="widget_ayah_label">آية اليوم</string>
+    <string name="widget_ayah_desc">آية كل يوم بخط المصحف</string>
 </resources>
