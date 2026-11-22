@@ -165,6 +165,17 @@ describe('الختمة الأولى (صور، الجلسة ٢)', () => {
     expect(byId(1117)).toBeUndefined();
     expect(byId(38)).toBeUndefined();
     expect(FIXES[38]).toEqual({ skip: true });
+    // عبارة ليست في الكتاب ومعناها مضطرب (بقرار صاحب المشروع)
+    expect(byId(132)).toBeUndefined();
+  });
+
+  it('قرارات صاحب المشروع في الربط: آية الصورة الخاطئة، والآيات المتفرقة على أولاها', () => {
+    // آية الصورة محمد ١٩ ونصها عن الآية ٣٣: على ٣٣ بلا آية الصورة
+    expect(byId(1504)).toMatchObject({ v: [h(47, 33), h(47, 33)] });
+    expect(byId(1504).q).toBeUndefined();
+    expect(byId(148).v).toEqual([h(3, 120), h(3, 120)]);
+    expect(byId(430).v).toEqual([h(7, 205), h(7, 205)]);
+    expect(byId(1857)).toMatchObject({ all: 1, v: [h(81, 1), h(81, 29)] });
   });
 
   it('الصور التي عنوانها اسم سورة: فائدة عامة عن السورة كلها، بلا تكرار اسمها عنوانًا', () => {
