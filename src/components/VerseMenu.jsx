@@ -31,6 +31,9 @@ import BookmarkForm, { bookmarkMeta, typeName } from './BookmarkForm.jsx';
 import { CopyIcon, FaidaBody, NO_ACTIONS, ShareIcon, NO_MEANINGS, QuotedText, TafsirBody, UNAVAILABLE, useFawaid } from './StudySheet.jsx';
 import { NO_FAWAID_VERSE, faidaPlain, fawaidIn } from '../lib/fawaid.js';
 import TafsirPicker from './TafsirPicker.jsx';
+import ShareImages from './ShareImages.jsx';
+import { actionUnits, cardSpec, fawaidUnits, meaningUnits, tafsirUnits } from '../lib/shareContent.js';
+import { isWarsh } from '../lib/riwayah.js';
 import './VerseMenu.css';
 import { useLayer } from '../lib/layers.js';
 import { hafsKey, hafsOf, shownBookmarks } from '../lib/verseMap.js';
@@ -50,6 +53,9 @@ import { hafsKey, hafsOf, shownBookmarks } from '../lib/verseMap.js';
     والتفسير (٢٠٢٦-١١-١٤) تفسير واحد هو المختار، وفي أعلاه قائمة التبديل (TafsirPicker) وأزرار نسخه ومشاركته.
   • ملاحظة ⇐ كتابة ملاحظة الآية أو تعديلها (واحدة لكل آية)، و«إدراج الآية» فيها، ومشاركتها (NoteCard).
   • فوائد ⇐ (٢٠٢٦-١١-٢٢) فوائد الآية (ومنها ما كُتب على آيتين معها)، بلا الفوائد العامة عن السورة، وزرّ نسخها (src/lib/fawaid.js).
+  • في البطاقات الأربع (تفسير/معاني/عمل/فوائد) زرّ «مشاركة» بجانب النسخ (٢٠٢٦-١١-٢٢، «المشاركة» الجلسة ١): صور فيها
+    الآية ومحتوى البطاقة (src/lib/shareContent.js ← shareImage.js)، بمعاينة قبل المشاركة والحفظ (ShareImages.jsx).
+    والنسخ كما كان: المحتوى وحده.
   • نسخ ⇐ ينسخ الآية فورًا ﴿…﴾ [السورة: رقم] ويغلق المربع.
   • علامة ⇐ (٢٠٢٦-١١-١٤) تختفي المربعات ويظهر في المربع نفسه (بزرّ رجوع): «علامة جديدة» (اسم ولون
     ونوع، فتُنشأ وتوضع على الآية)، ثم العلامات التي على الآية ولكلٍّ زرّ إزالة، ثم بقية العلامات:
@@ -357,6 +363,18 @@ function CopyButton({ onCopy }) {
   );
 }
 
+// «مشاركة» (٢٠٢٦-١١-٢٢، «المشاركة» الجلسة ١): صور فيها الآية ومحتوى البطاقة، بمعاينة قبل المشاركة
+function ShareButton({ onShare }) {
+  return (
+    <button type="button" className="vcard__btn" onClick={onShare} aria-label="مشاركة">
+      <ShareIcon />
+    </button>
+  );
+}
+
+// يُحمَّل الرسم عند أول مشاركة وحدها
+const buildImages = (spec, warsh) => import('../lib/shareImage.js').then((m) => m.buildShareImages(spec, { warsh }));
+
 // بطاقة التفسير/المعاني/العمل للآية وحدها، أعلى الشاشة
 function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
   const idx = memoIndex(quran);
@@ -383,6 +401,9 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
   let title;
   let body;
   let plain = '';
+  // محتوى صور المشاركة (shareContent.js): مع كل محتوى يُنسخ
+  let share = null;
+  const [sharing, setSharing] = useState(false);
 
   if (kind === 'tafsir') {
     title = 'التفسير';
@@ -392,6 +413,7 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
     // نسخ التفسير وحده بفقراته، بلا الآية ولا اسم كتابه (٢٠٢٦-١١-١٤، بطلب صاحب المشروع: للآية مربع
     // «نسخ» خاص بها، والمشاركة مؤجلة إلى الملاحظات) — بزرّ النسخ في رأس البطاقة كالمعاني والعمل
     plain = text ? paragraphs(text).join('\n') : '';
+    if (text) share = { units: tafsirUnits(text), credit: name };
     let content;
     if (failed) content = <p className="study__note">تعذّر تحميل التفسير. يُحمَّل مرة واحدة، ويحتاج لذلك اتصالًا بالإنترنت.</p>;
     else if (!t) content = <p className="study__note">جارٍ تحميل التفسير…</p>;
@@ -425,6 +447,7 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
         </table>
       );
       plain = words.map((w) => `${w.mushaf ?? w.word}: ${w.meaning}`).join('\n');
+      share = { units: meaningUnits(words) };
     }
   } else if (kind === 'fawaid') {
     // فوائد الآية وحدها بلا نص الآية، ونسخها كلها بزرّ النسخ في رأس البطاقة
@@ -443,6 +466,7 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
         </div>
       );
       plain = list.map(faidaPlain).join('\n\n');
+      share = { units: fawaidUnits(list) };
     }
   } else {
     title = 'العمل بالآيات';
@@ -459,6 +483,7 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
         </div>
       ));
       plain = list.map((i) => `• ${idx.actions[i].t}`).join('\n');
+      share = { units: actionUnits(quran, list.map((i) => idx.actions[i])) };
     }
   }
 
@@ -466,14 +491,26 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
   const copy = async () => onToast((await copyText(plain)) ? 'نُسخ النص' : 'تعذّر النسخ');
 
   return (
+    <>
     <section className="vcard" role="dialog" aria-label={title}>
       <CardHead quran={quran} v={v} title={title} onClose={onClose} onBack={onBack}>
+        {plain && share && <ShareButton onShare={() => setSharing(true)} />}
         {plain && <CopyButton onCopy={copy} />}
       </CardHead>
       <div className="vcard__body">
         <div className="vcard__content">{body}</div>
       </div>
     </section>
+      {/* خارج البطاقة: حركة ظهورها (transform) تجعل الموضع الثابت نسبةً إليها */}
+      {sharing && share && (
+        <ShareImages
+          build={() => buildImages(cardSpec(quran, v, kind, share), isWarsh(quran))}
+          name={`quran-alsalaf-${kind}-${quran.verses[v].s}-${quran.verses[v].a}`}
+          onClose={() => setSharing(false)}
+          onToast={onToast}
+        />
+      )}
+    </>
   );
 }
 
