@@ -113,7 +113,7 @@ describe('البيانات المبنية', () => {
     expect(byId(3443).v).toEqual([h(18, 9), h(18, 26)]);
     expect(byId(3443).title).toBe('قصة أصحاب الكهف');
     // فوائد عامة عن السورة أو مقطع منها
-    expect(F.items.filter((f) => f.all).map((f) => f.id)).toEqual([3093, 3094, 3443]);
+    expect(F.items.filter((f) => f.all && f.k === 3).map((f) => f.id)).toEqual([3093, 3094, 3443]);
     expect(byId(3634).v).toEqual([h(36, 38), h(36, 38)]);
     // كل تصحيح يخصّ فائدة ظاهرة، إلا المتروكة (skip)
     for (const [id, fix] of Object.entries(FIXES)) if (!fix.skip) expect(byId(Number(id))).toBeTruthy();
@@ -167,6 +167,22 @@ describe('الختمة الأولى (صور، الجلسة ٢)', () => {
     expect(FIXES[38]).toEqual({ skip: true });
   });
 
+  it('الصور التي عنوانها اسم سورة: فائدة عامة عن السورة كلها، بلا تكرار اسمها عنوانًا', () => {
+    const anfal = byId(455);
+    expect(anfal).toMatchObject({ k: 1, all: 1, v: [h(8, 1), h(8, 75)] });
+    expect(anfal.title).toBeUndefined();
+    expect(byId(486)).toMatchObject({ all: 1, title: 'من أسماء سورة التوبة' });
+    expect(byId(799)).toMatchObject({ all: 1, title: 'قصة أصحاب الكهف', v: [h(18, 9), h(18, 26)] });
+  });
+
+  it('الآية في أعلى الصورة بلا عزو تُعرف من نصها، والعزو الخاطئ يُصحَّح بها', () => {
+    const img = K1.images.find((x) => x.id === 189);
+    expect(img.text.split('\n')[0]).toMatch(/^﴿[^﴿]/);
+    expect(byId(189).v).toEqual([h(4, 19), h(4, 19)]);
+    // العزو «مريم: ٢٤» والآية ٢٥
+    expect(byId(836).v).toEqual([h(19, 25), h(19, 25)]);
+  });
+
   it('الصور التي ليست فوائد لا تظهر', () => {
     for (const x of K1.images.filter((i) => i.skip)) expect(byId(x.id)).toBeUndefined();
   });
@@ -175,9 +191,12 @@ describe('الختمة الأولى (صور، الجلسة ٢)', () => {
 describe('العرض', () => {
   it('فوائد الآيات (في صفحات المحتوى) ومعها العامة عن السورة، وفي مربع الآية ما يخصّها وحده', () => {
     const ids = fawaidIn(H, F, [h(1, 3)]).map((f) => f.id);
-    expect(ids).toEqual([3093, 3094]);
-    expect(fawaidIn(H, F, [h(1, 3)], { own: true })).toEqual([]);
-    expect(fawaidIn(H, F, [h(1, 5)], { own: true }).map((f) => f.id)).toEqual([3096, 3097]);
+    expect(ids).toEqual([3093, 3094, 16]);
+    // البسملة: لا فائدة تخصّها
+    expect(fawaidIn(H, F, [h(1, 1)], { own: true })).toEqual([]);
+    expect(fawaidIn(H, F, [h(1, 3)], { own: true }).map((f) => f.id)).toEqual([16]);
+    // الختمة الأولى ثم الثالثة
+    expect(fawaidIn(H, F, [h(1, 5)], { own: true }).map((f) => f.id)).toEqual([15, 3096, 3097]);
     expect(fawaidIn(H, F, [h(18, 10)], { own: true }).map((f) => f.id)).not.toContain(3443);
     expect(fawaidIn(H, F, [h(2, 255)], { own: true }).map((f) => f.id)).toContain(3141);
     // الفائدة المكتوبة على آيتين تظهر في مربع كلٍّ منهما
@@ -191,11 +210,13 @@ describe('العرض', () => {
     expect(blocks[0].items.map((f) => f.id)).toEqual([3093, 3094]);
     expect(wholeHeading(H, blocks[0].verses)).toBe('سورة الفاتحة');
     expect(blocks[1]).toEqual({ verses: [h(1, 2)], items: [byId(3095)] });
-    expect(blocks[2].verses).toEqual([h(1, 5)]);
-    expect(blocks[2].items.map((f) => f.id)).toEqual([3096, 3097]);
+    expect(blocks[2]).toEqual({ verses: [h(1, 2), h(1, 3), h(1, 4)], items: [byId(16)] });
+    expect(blocks[3].verses).toEqual([h(1, 5)]);
+    expect(blocks[3].items.map((f) => f.id)).toEqual([15, 3096, 3097]);
     // فائدة المقطع تحت عنوانه
-    const kahf = fawaidBlocks(H, F, [h(18, 12)]).find((b) => b.all);
-    expect(wholeHeading(H, kahf.verses)).toBe('الكهف ٩–٢٦');
+    // (وقبلها فائدة الختمة الأولى عن سورة الكهف كلها)
+    const kahf = fawaidBlocks(H, F, [h(18, 12)]).filter((b) => b.all);
+    expect(kahf.map((b) => wholeHeading(H, b.verses))).toEqual(['سورة الكهف', 'الكهف ٩–٢٦']);
   });
 
   it('النسخ: جزء الآية، والقائل، والنص، والمصدر، وفي صفحات المحتوى الآيات قبلها', () => {
