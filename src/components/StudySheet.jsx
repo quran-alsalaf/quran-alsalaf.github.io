@@ -473,6 +473,20 @@ function FaidaLine({ text }) {
   );
 }
 
+// ---------- أجزاء مشتركة ----------
+function SuraTitle({ quran, sura }) {
+  return <h3 className="study__sura">سورة {quran.suras[sura - 1].name}</h3>;
+}
+
+export function VerseCard({ quran, v }) {
+  return (
+    <div className="study__box study__box--verse" lang="ar">
+      {verseText(quran, v)}
+    </div>
+  );
+}
+
+// نصّ فيه اقتباسات قرآنية بين علامتين (العمل بالآيات): يُكتب المقتبس بخط المصحف
 export function QuotedText({ text, open, close, keepMarks, className = 'study__quote' }) {
   const parts = [];
   let rest = text;
