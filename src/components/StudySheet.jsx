@@ -16,6 +16,7 @@ import {
   verseText,
 } from '../lib/study.js';
 import { copyText } from '../lib/userdata.js';
+import { NO_FAWAID, faidaPlain, fawaidBlocks, loadFawaid, wholeHeading } from '../lib/fawaid.js';
 import { useLayer } from '../lib/layers.js';
 import RangeBar from './RangeBar.jsx';
 import TafsirPicker from './TafsirPicker.jsx';
@@ -32,11 +33,13 @@ import './StudySheet.css';
   والتبويبات ثلاثة ثابتة من اليمين، يُنتقل بينها باللمس أو بالسحب يمينًا ويسارًا (كتقليب
   المصحف: السحب نحو اليمين إلى التبويب الذي على اليسار). و«من فوائد الآيات» لصفحات النطاق،
   وفي كل تبويب زرّ «نسخ المحتوى» (٢٠٢٦-١١-١٤): الآية ثم محتواها، ثم التالية ثم محتواها، في المقدار كله.
+  والتبويب الرابع «الفوائد» (٢٠٢٦-١١-٢٢): فوائد ختمات «التفسير والتدبر» لآيات المقدار (src/lib/fawaid.js).
 */
 const TABS = [
   { id: 'tafsir', name: 'تفسير' },
   { id: 'meanings', name: 'معاني الكلمات' },
   { id: 'actions', name: 'العمل بالآيات' },
+  { id: 'fawaid', name: 'الفوائد' },
 ];
 const ACTIVE_TABS = TABS.map((t) => t.id);
 const TAB_SWIPE_PX = 60;
@@ -169,6 +172,7 @@ const StudySheet = forwardRef(function StudySheet(
           {tab === 'tafsir' && <TafsirTab quran={quran} verses={verses} pages={pages} onToast={onToast} />}
           {tab === 'meanings' && <MeaningsTab quran={quran} verses={verses} onToast={onToast} />}
           {tab === 'actions' && <ActionsTab quran={quran} verses={verses} onToast={onToast} />}
+          {tab === 'fawaid' && <FawaidTab quran={quran} verses={verses} onToast={onToast} />}
         </div>
       </div>
     </section>
@@ -363,6 +367,96 @@ function ActionsTab({ quran, verses, onToast }) {
       })}
       <Links quran={quran} kind="a" verses={verses} />
     </>
+  );
+}
+
+// ---------- الفوائد (٢٠٢٦-١١-٢٢): آيات كل فائدة ثم الفائدة، وآيات المقدار التي لا فوائد لها لا تظهر ----------
+export function useFawaid() {
+  const [data, setData] = useState(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    loadFawaid().then(
+      (d) => alive && setData(d),
+      () => alive && setFailed(true)
+    );
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return [data, failed];
+}
+
+function FawaidTab({ quran, verses, onToast }) {
+  const [data, failed] = useFawaid();
+  const blocks = useMemo(() => (data ? fawaidBlocks(quran, data, verses) : []), [data, quran, verses]);
+  // آيات كل فائدة ثم الفائدة، والفوائد المتتالية على الآيات نفسها تحت آياتها مرة واحدة
+  const fawaidText = () =>
+    copyContent(
+      quran,
+      'الفوائد',
+      blocks.map((b) => ({
+        verses: b.verses,
+        head: b.all ? wholeHeading(quran, b.verses) : undefined,
+        text: b.items.map(faidaPlain).join('\n\n'),
+      }))
+    );
+  // عنوان كل كتلة: اسم السورة مرة واحدة فوق أول ما يُعرض منها (فوائدها العامة أو آيتها الأولى)، والفوائد
+  // العامة عن مقطع من السورة تحت عنوانه («الكهف ٩–٢٦»)
+  const suraShown = new Set();
+  const headingOf = (b) => {
+    const v = quran.verses[b.verses[0]];
+    const head = b.all ? wholeHeading(quran, b.verses) : null;
+    if (head && !head.startsWith('سورة ')) return <h3 className="study__sura">{head}</h3>;
+    if (suraShown.has(v.s) || (!head && v.a !== 1)) return null;
+    suraShown.add(v.s);
+    return <SuraTitle quran={quran} sura={v.s} />;
+  };
+  return (
+    <>
+      <CopyBar getText={blocks.length ? fawaidText : null} onToast={onToast} />
+      {!data && !failed && <p className="study__note">جارٍ تحميل الفوائد…</p>}
+      {failed && <p className="study__note">تعذّر تحميل الفوائد.</p>}
+      {data && !blocks.length && <p className="study__note">{NO_FAWAID}</p>}
+      {data &&
+        blocks.map((b) => (
+          <div key={b.items[0].id} className="study__item">
+            {headingOf(b)}
+            {/* الفوائد العامة بلا سرد آياتها (٢٠٢٦-١١-٢٢، بطلب صاحب المشروع)، وغيرها تحت آياتها */}
+            {!b.all && b.verses.map((v) => <VerseCard key={v} quran={quran} v={v} />)}
+            <div className="study__box study__box--explain study__fawaid">
+              {b.items.map((f) => (
+                <FaidaBody key={f.id} f={f} theme={data.themes[f.k]} />
+              ))}
+            </div>
+          </div>
+        ))}
+    </>
+  );
+}
+
+// فائدة واحدة: وسم موضوع ختمتها، وجزء الآية الذي تتكلم عنه، والعنوان، والقائل، والنص أسطرًا وبنودًا
+// (البنود بنقطة بلون التطبيق)، والآيات المقتبسة بلون التطبيق، والمصدر بخط أصغر
+export function FaidaBody({ f, theme }) {
+  return (
+    <article className="faida">
+      {theme && <span className="faida__theme">{theme}</span>}
+      {f.title && <h4 className="faida__title">{f.title}</h4>}
+      {f.q && <p className="faida__q study__ayah">﴿{f.q}﴾</p>}
+      {f.by && <p className="faida__by">{f.by}</p>}
+      {f.t.split('\n').map((line, i) =>
+        line.startsWith('• ') ? (
+          <p key={i} className="faida__item">
+            <QuotedText text={line.slice(2)} open="﴿" close="﴾" keepMarks className="study__ayah" />
+          </p>
+        ) : (
+          <p key={i}>
+            <QuotedText text={line} open="﴿" close="﴾" keepMarks className="study__ayah" />
+          </p>
+        )
+      )}
+      <p className="faida__src">{f.src}</p>
+    </article>
   );
 }
 

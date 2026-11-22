@@ -81,8 +81,10 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* عرض كل تبويب بحسب اسمه (٢٠٢٦-١١-٢٢، مع التبويب الرابع «الفوائد»): الأسماء الطويلة لا تتلاصق بعرض ٣٦٠ */
 .study__tab {
-  flex: 1;
+  flex: 1 1 auto;
+  white-space: nowrap;
   padding: 10px 4px 11px;
   font-size: var(--text-sm);
   font-weight: 500;
@@ -444,4 +446,76 @@
 
 .study--panel .study__range {
   padding-inline: 16px;
+}
+
+/* ---------- الفوائد (٢٠٢٦-١١-٢٢) ----------
+   تحت آياتها في صفحات المحتوى، وفي بطاقة «فوائد» من مربع الآية (vcard__fawaid): بخط المحتوى، وبين الفوائد
+   خط فاصل كفقرات التفسير، وأسطر الفائدة الواحدة بلا خط */
+.vcard__fawaid {
+  font-family: var(--font-content);
+  font-size: var(--text-base);
+  line-height: 2;
+}
+
+.study__box--explain .faida p + p,
+.vcard__content .faida p + p {
+  margin-top: 0.35em;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.faida + .faida {
+  margin-top: 0.9em;
+  padding-top: 0.9em;
+  border-top: 1px solid var(--border);
+}
+
+/* وسم موضوع الختمة («الإيمان بالله») */
+.faida__theme {
+  display: inline-block;
+  margin-bottom: 4px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  line-height: 1.9;
+}
+
+.faida__title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 700;
+}
+
+.faida__by {
+  font-weight: 700;
+}
+
+/* البند: نقطة بلون التطبيق في أول السطر */
+.faida__item {
+  position: relative;
+  padding-inline-start: 1.1em;
+}
+
+.faida__item::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0.2em;
+  top: 0.85em;
+  width: 0.36em;
+  height: 0.36em;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.faida__src {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.study__box--explain .faida .faida__src,
+.vcard__content .faida .faida__src {
+  margin-top: 0.5em;
 }

@@ -55,10 +55,10 @@ test('الإغلاق بالنقر خارجها (اللابتوب)', async ({ pag
   await closed(page);
 });
 
-test('التبديل بين التبويبات الثلاثة ومصادر التفسير', async ({ page }) => {
+test('التبديل بين التبويبات الأربعة ومصادر التفسير', async ({ page }) => {
   await open(page);
   const tabs = study(page).getByRole('tab');
-  await expect(tabs).toHaveText(['تفسير', 'معاني الكلمات', 'العمل بالآيات']);
+  await expect(tabs).toHaveText(['تفسير', 'معاني الكلمات', 'العمل بالآيات', 'الفوائد']);
   await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
   await expect(study(page).locator('.study__item').first()).toBeVisible();
   // الميسّر افتراضيًّا، بلا مقاصد السورة (للمختصر وحده)
@@ -93,6 +93,8 @@ test('التبديل بين التبويبات الثلاثة ومصادر ال�
   await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'false');
   await tabs.nth(2).click();
   await expect(tabs.nth(2)).toHaveAttribute('aria-selected', 'true');
+  await tabs.nth(3).click();
+  await expect(tabs.nth(3)).toHaveAttribute('aria-selected', 'true');
 
   // يبقى بعد إعادة فتح التطبيق
   await page.reload();

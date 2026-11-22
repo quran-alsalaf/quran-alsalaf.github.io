@@ -28,7 +28,8 @@ import {
   useUserData,
 } from '../lib/userdata.js';
 import BookmarkForm, { bookmarkMeta, typeName } from './BookmarkForm.jsx';
-import { CopyIcon, NO_ACTIONS, ShareIcon, NO_MEANINGS, QuotedText, TafsirBody, UNAVAILABLE } from './StudySheet.jsx';
+import { CopyIcon, FaidaBody, NO_ACTIONS, ShareIcon, NO_MEANINGS, QuotedText, TafsirBody, UNAVAILABLE, useFawaid } from './StudySheet.jsx';
+import { NO_FAWAID_VERSE, faidaPlain, fawaidIn } from '../lib/fawaid.js';
 import TafsirPicker from './TafsirPicker.jsx';
 import './VerseMenu.css';
 import { useLayer } from '../lib/layers.js';
@@ -48,7 +49,7 @@ import { hafsKey, hafsOf, shownBookmarks } from '../lib/verseMap.js';
     فيها زرّا نسخ وإغلاق، ونسخ المعاني والعمل للمحتوى وحده.
     والتفسير (٢٠٢٦-١١-١٤) تفسير واحد هو المختار، وفي أعلاه قائمة التبديل (TafsirPicker) وأزرار نسخه ومشاركته.
   • ملاحظة ⇐ كتابة ملاحظة الآية أو تعديلها (واحدة لكل آية)، و«إدراج الآية» فيها، ومشاركتها (NoteCard).
-  • فوائد ⇐ بطاقة فيها أن الفوائد تُضاف لاحقًا (تنتظر ملفاتها).
+  • فوائد ⇐ (٢٠٢٦-١١-٢٢) فوائد الآية (ومنها ما كُتب على آيتين معها)، بلا الفوائد العامة عن السورة، وزرّ نسخها (src/lib/fawaid.js).
   • نسخ ⇐ ينسخ الآية فورًا ﴿…﴾ [السورة: رقم] ويغلق المربع.
   • علامة ⇐ (٢٠٢٦-١١-١٤) تختفي المربعات ويظهر في المربع نفسه (بزرّ رجوع): «علامة جديدة» (اسم ولون
     ونوع، فتُنشأ وتوضع على الآية)، ثم العلامات التي على الآية ولكلٍّ زرّ إزالة، ثم بقية العلامات:
@@ -364,6 +365,7 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
   const [source, setSource] = useTafsirSource();
   const [tafsirs, setTafsirs] = useState({});
   const [failed, setFailed] = useState(false);
+  const [fawaid, fawaidFailed] = useFawaid();
 
   useEffect(() => {
     if (kind !== 'tafsir' || tafsirs[source]) return undefined;
@@ -425,9 +427,23 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
       plain = words.map((w) => `${w.mushaf ?? w.word}: ${w.meaning}`).join('\n');
     }
   } else if (kind === 'fawaid') {
-    // تنتظر ملفاتها من صاحب المشروع
+    // فوائد الآية وحدها بلا نص الآية، ونسخها كلها بزرّ النسخ في رأس البطاقة
     title = 'الفوائد';
-    body = <p className="vcard__empty">تُضاف فوائد الآيات لاحقًا بإذن الله.</p>;
+    // ما يخصّ الآية وحده، بلا الفوائد العامة عن السورة (بطلب صاحب المشروع ٢٠٢٦-١١-٢٢)
+    const list = fawaid ? fawaidIn(quran, fawaid, [v], { own: true }) : [];
+    if (fawaidFailed) body = <p className="vcard__empty">تعذّر تحميل الفوائد.</p>;
+    else if (!fawaid) body = <p className="study__note">جارٍ تحميل الفوائد…</p>;
+    else if (!list.length) body = <p className="vcard__empty">{NO_FAWAID_VERSE}</p>;
+    else {
+      body = (
+        <div className="vcard__fawaid">
+          {list.map((f) => (
+            <FaidaBody key={f.id} f={f} theme={fawaid.themes[f.k]} />
+          ))}
+        </div>
+      );
+      plain = list.map(faidaPlain).join('\n\n');
+    }
   } else {
     title = 'العمل بالآيات';
     const list = idx.actionsOf.get(v) ?? [];
