@@ -140,12 +140,12 @@ describe('الختمة الأولى (صور، الجلسة ٢)', () => {
     expect(byId(1100)).toMatchObject({ k: 1, v: [h(28, 23), h(28, 23)] });
   });
 
-  it('الكلمات الملوّنة ⸨…⸩ في التصميم الكحلي وحده (وفي البيج زخرفة لا تُحفظ)', () => {
+  it('الكلمات الملوّنة ⸨…⸩ عناوين في التصميم الكحلي وما يشبهه، لا في البيج (زخرفة لا تُحفظ)', () => {
     const design = new Map(K1.images.map((x) => [x.id, x.design]));
     for (const f of F.items) {
       if (!/[⸨⸩]/.test(f.t)) continue;
       expect(f.k).toBe(1);
-      expect(design.get(f.id)).toBe('a');
+      expect(design.get(f.id)).not.toBe('b');
       // كل علامة فتح لها علامة غلق
       expect(f.t.match(/⸨/g).length).toBe(f.t.match(/⸩/g).length);
     }
