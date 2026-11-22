@@ -180,8 +180,9 @@ test('فوائد (٢٠٢٦-١١-٢٢): فوائد الآية وحدها وزرّ
   await page.getByRole('menuitem', { name: 'فوائد' }).click();
   const card = page.getByRole('dialog', { name: 'الفوائد' });
   await expect(card.locator('.vcard__head')).toContainText('الفاتحة: ٥');
-  // فوائد «إياك نعبد وإياك نستعين» (من الختمة الأولى ثم الثالثة)، لا فائدتا الفاتحة كلها، بلا نص الآية
-  await expect(card.locator('.faida')).toHaveCount(3);
+  // فوائد «إياك نعبد وإياك نستعين» (من الختمة الأولى، ثم الثانية: خمس من «آية اليوم» ٢٩٢٢–٢٩٢٦، ثم الثالثة)،
+  // لا فائدتا الفاتحة كلها، بلا نص الآية
+  await expect(card.locator('.faida')).toHaveCount(8);
   await expect(card).not.toContainText('قال ابن القيم رحمه الله:');
   await expect(card.locator('.faida__theme')).toHaveCount(0);
   await expect(card.locator('.faida__by').first()).toHaveText('قال السعدي رحمه الله:');
