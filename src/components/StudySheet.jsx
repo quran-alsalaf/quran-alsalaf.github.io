@@ -16,7 +16,7 @@ import {
   verseText,
 } from '../lib/study.js';
 import { copyText } from '../lib/userdata.js';
-import { NO_FAWAID, faidaPlain, fawaidBlocks, loadFawaid, wholeHeading } from '../lib/fawaid.js';
+import { NO_FAWAID, emphasisParts, faidaPlain, fawaidBlocks, loadFawaid, wholeHeading } from '../lib/fawaid.js';
 import { useLayer } from '../lib/layers.js';
 import RangeBar from './RangeBar.jsx';
 import TafsirPicker from './TafsirPicker.jsx';
@@ -426,7 +426,7 @@ function FawaidTab({ quran, verses, onToast }) {
             {!b.all && b.verses.map((v) => <VerseCard key={v} quran={quran} v={v} />)}
             <div className="study__box study__box--explain study__fawaid">
               {b.items.map((f) => (
-                <FaidaBody key={f.id} f={f} theme={data.themes[f.k]} />
+                <FaidaBody key={f.id} f={f} />
               ))}
             </div>
           </div>
@@ -435,23 +435,23 @@ function FawaidTab({ quran, verses, onToast }) {
   );
 }
 
-// فائدة واحدة: وسم موضوع ختمتها، وجزء الآية الذي تتكلم عنه، والعنوان، والقائل، والنص أسطرًا وبنودًا
-// (البنود بنقطة بلون التطبيق)، والآيات المقتبسة بلون التطبيق، والمصدر بخط أصغر
-export function FaidaBody({ f, theme }) {
+// فائدة واحدة: جزء الآية الذي تتكلم عنه، والعنوان، والقائل، والنص أسطرًا وبنودًا (البنود بنقطة بلون التطبيق)،
+// والآيات المقتبسة والكلمات الملوّنة في صورة الفائدة (⸨…⸩) بلون التطبيق، والمصدر بخط أصغر.
+// (بلا وسم موضوع الختمة منذ الجلسة ٢، ٢٠٢٦-١١-٢٢، بقرار صاحب المشروع)
+export function FaidaBody({ f }) {
   return (
     <article className="faida">
-      {theme && <span className="faida__theme">{theme}</span>}
       {f.title && <h4 className="faida__title">{f.title}</h4>}
       {f.q && <p className="faida__q study__ayah">﴿{f.q}﴾</p>}
       {f.by && <p className="faida__by">{f.by}</p>}
       {f.t.split('\n').map((line, i) =>
         line.startsWith('• ') ? (
           <p key={i} className="faida__item">
-            <QuotedText text={line.slice(2)} open="﴿" close="﴾" keepMarks className="study__ayah" />
+            <FaidaLine text={line.slice(2)} />
           </p>
         ) : (
           <p key={i}>
-            <QuotedText text={line} open="﴿" close="﴾" keepMarks className="study__ayah" />
+            <FaidaLine text={line} />
           </p>
         )
       )}
@@ -460,20 +460,19 @@ export function FaidaBody({ f, theme }) {
   );
 }
 
-// ---------- أجزاء مشتركة ----------
-function SuraTitle({ quran, sura }) {
-  return <h3 className="study__sura">سورة {quran.suras[sura - 1].name}</h3>;
-}
-
-export function VerseCard({ quran, v }) {
-  return (
-    <div className="study__box study__box--verse" lang="ar">
-      {verseText(quran, v)}
-    </div>
+// سطر فائدة: الكلمات الملوّنة ⸨…⸩ بلون التطبيق، وفي كلٍّ الآيات المقتبسة ﴿…﴾
+function FaidaLine({ text }) {
+  return emphasisParts(text).map(([em, part], i) =>
+    em ? (
+      <span key={i} className="faida__em">
+        <QuotedText text={part} open="﴿" close="﴾" keepMarks className="study__ayah" />
+      </span>
+    ) : (
+      <QuotedText key={i} text={part} open="﴿" close="﴾" keepMarks className="study__ayah" />
+    )
   );
 }
 
-// نصّ فيه اقتباسات قرآنية بين علامتين (العمل بالآيات): يُكتب المقتبس بخط المصحف
 export function QuotedText({ text, open, close, keepMarks, className = 'study__quote' }) {
   const parts = [];
   let rest = text;

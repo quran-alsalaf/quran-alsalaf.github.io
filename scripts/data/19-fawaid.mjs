@@ -16,7 +16,8 @@
 // والأولى والثانية صور تُستخرج نصوصها في جلستين لاحقتين.
 //
 // المخرج: public/data/fawaid.json
-//   { themes: { رقم الختمة: موضوعها }, items: [{ id, k, v: [أول آية، آخرها], title?, all?, q?, by?, t, src }] }
+//   { items: [{ id, k, v: [أول آية، آخرها], title?, all?, q?, by?, t, src }] }
+//   (بلا موضوعات الختمات: أُلغي وسم الموضوع في الجلسة ٢، ٢٠٢٦-١١-٢٢، بقرار صاحب المشروع)
 //   q جزء الآية المقتبس إن لم تُقتبس آياتها كاملة، وby سطر القائل إن كان، وall: 1 للفائدة العامة عن السورة
 //   أو مقطع منها (بلا آية في أولها)
 //   v بفهرس آيات حفص (quran.json)، وt النص أسطرًا (\n) والبنود موحّدة «• »، واقتباسات الآيات ﴿…﴾.
@@ -29,7 +30,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 export const OUT = 'public/data/fawaid.json';
-export const KHATMAS = [3];
+export const KHATMAS = [1, 3];
 
 // فوائد لا آية في أولها: تُربط بآياتها (السورة، أول آية، آخرها)
 export const FIXES = {
@@ -42,6 +43,9 @@ export const FIXES = {
   3094: { ref: [1, 1, 7], whole: true },
   // «قصة أصحاب الكهف»
   3443: { ref: [18, 9, 26], whole: true },
+  // الختمة الأولى: «الحال التي ينبغي أن يكون عليها صاحب القرآن» (ابن رجب) عن القرآن كله لا عن سورة أو آية،
+  // والفوائد تُعرض بآياتها، فتُترك
+  38: { skip: true },
 };
 
 const DIGITS = '٠١٢٣٤٥٦٧٨٩';
@@ -218,11 +222,14 @@ export function buildKhatma(quran, data) {
   const items = [];
   const problems = [];
   const fixed = [];
-  for (const m of data.messages) {
+  const seen = new Set();
+  // رسائل الختمة، ونصوص صورها (الختمة الأولى: كل فائدة صورة، نُسخ نصها بشكل الرسالة النصية نفسه)
+  for (const m of [...data.messages, ...(data.images ?? []).filter((x) => x.text)]) {
     const f = parseMessage(m);
     if (!f) continue;
     let v = null;
     const fix = FIXES[f.id];
+    if (fix?.skip) continue;
     if (fix?.ref) {
       const [s, a, b] = fix.ref;
       v = [at(s, a), at(s, b)];
@@ -249,6 +256,13 @@ export function buildKhatma(quran, data) {
       if (!v) problems.push(`${f.id}: لم تُعرف آية الاقتباس: ${f.quote.slice(0, 50)}`);
     } else problems.push(`${f.id}: فائدة بلا آية${f.title ? ` («${f.title}»)` : ''}`);
     if (!v) continue;
+    // صورة نُشرت مرتين (الختمة الأولى: 1116 و1117): تُترك الثانية
+    const key = `${v}|${skeleton(f.t)}`;
+    if (seen.has(key)) {
+      fixed.push(`${f.id}: مكررة فتُركت`);
+      continue;
+    }
+    seen.add(key);
     const item = { id: f.id, k: data.khatma, v };
     if (f.title) item.title = f.title;
     if (fix?.whole) item.all = 1;
@@ -263,13 +277,11 @@ export function buildKhatma(quran, data) {
 
 async function main() {
   const quran = JSON.parse(await readFile('public/data/quran.json', 'utf8'));
-  const themes = {};
   const items = [];
   const problems = [];
   const fixed = [];
   for (const k of KHATMAS) {
     const data = JSON.parse(await readFile(`scripts/data/fawaid/khatma${k}.json`, 'utf8'));
-    themes[k] = data.theme;
     const out = buildKhatma(quran, data);
     items.push(...out.items);
     problems.push(...out.problems);
@@ -280,9 +292,9 @@ async function main() {
     console.error(problems.join('\n'));
     throw new Error(`${problems.length} مشكلة في الفوائد`);
   }
-  // بترتيب المصحف، ثم بترتيب نشرها
-  items.sort((a, b) => a.v[0] - b.v[0] || a.v[1] - b.v[1] || a.id - b.id);
-  await writeFile(OUT, `${JSON.stringify({ themes, items })}\n`);
+  // بترتيب المصحف، ثم بترتيب الختمات (الأولى ثم الثالثة)، ثم بترتيب نشرها
+  items.sort((a, b) => a.v[0] - b.v[0] || a.v[1] - b.v[1] || a.k - b.k || a.id - b.id);
+  await writeFile(OUT, `${JSON.stringify({ items })}\n`);
   console.log(`✓ ${OUT}: ${items.length} فائدة`);
 }
 

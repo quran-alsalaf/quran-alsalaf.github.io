@@ -3,13 +3,14 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { FIXES, buildKhatma, parseMessage, quoteIn, skeleton } from '../../scripts/data/19-fawaid.mjs';
-import { NO_FAWAID, NO_FAWAID_VERSE, faidaPlain, faidaVerses, fawaidBlocks, fawaidIn, wholeHeading } from '../../src/lib/fawaid.js';
+import { NO_FAWAID, NO_FAWAID_VERSE, emphasisParts, faidaPlain, faidaVerses, fawaidBlocks, fawaidIn, wholeHeading } from '../../src/lib/fawaid.js';
 import { copyContent } from '../../src/lib/study.js';
 
 const load = (f) => JSON.parse(readFileSync(f, 'utf8'));
 const H = load('public/data/quran.json');
 const W = load('public/data/warsh/quran.json');
 const F = load('public/data/fawaid.json');
+const K1 = load('scripts/data/fawaid/khatma1.json');
 const K3 = load('scripts/data/fawaid/khatma3.json');
 const h = (s, a) => H.verses.findIndex((v) => v.s === s && v.a === a);
 const w = (s, a) => W.verses.findIndex((v) => v.s === s && v.a === a);
@@ -70,8 +71,8 @@ describe('مطابقة الاقتباس بالمصحف', () => {
 });
 
 describe('البيانات المبنية', () => {
-  it('الختمة الثالثة كلها (أكثر من ٦٠٠ فائدة) بموضوعها', () => {
-    expect(F.themes).toEqual({ 3: 'الإيمان بالله' });
+  it('الختمة الثالثة كلها (أكثر من ٦٠٠ فائدة)، بلا موضوعات الختمات (أُلغي الوسم في الجلسة ٢)', () => {
+    expect(F.themes).toBeUndefined();
     expect(F.items.length).toBeGreaterThan(600);
     expect(new Set(F.items.map((f) => f.id)).size).toBe(F.items.length);
   });
@@ -79,7 +80,7 @@ describe('البيانات المبنية', () => {
   it('كل فائدة: آيات موجودة، ونص ومصدر، والآية المقتبسة من آياتها', () => {
     const idx = H.verses.map((v) => skeleton(v.e));
     for (const f of F.items) {
-      expect(f.k).toBe(3);
+      expect([1, 3]).toContain(f.k);
       expect(f.v[0]).toBeGreaterThanOrEqual(0);
       expect(f.v[1]).toBeGreaterThanOrEqual(f.v[0]);
       expect(f.v[1]).toBeLessThan(H.verses.length);
@@ -91,14 +92,20 @@ describe('البيانات المبنية', () => {
     }
   });
 
-  it('بترتيب المصحف', () => {
-    for (let i = 1; i < F.items.length; i++) expect(F.items[i].v[0]).toBeGreaterThanOrEqual(F.items[i - 1].v[0]);
+  it('بترتيب المصحف، ثم الختمة الأولى قبل الثالثة على الآيات نفسها', () => {
+    for (let i = 1; i < F.items.length; i++) {
+      const [a, b] = [F.items[i - 1], F.items[i]];
+      expect(b.v[0]).toBeGreaterThanOrEqual(a.v[0]);
+      if (a.v.join() === b.v.join()) expect(b.k).toBeGreaterThanOrEqual(a.k);
+    }
   });
 
   it('البناء يعيد الملف نفسه، وبلا مشكلات', () => {
-    const { items, problems } = buildKhatma(H, K3);
-    expect(problems).toEqual([]);
-    expect(items.length).toBe(F.items.length);
+    const one = buildKhatma(H, K1);
+    const three = buildKhatma(H, K3);
+    expect(one.problems).toEqual([]);
+    expect(three.problems).toEqual([]);
+    expect(one.items.length + three.items.length).toBe(F.items.length);
   });
 
   it('الفوائد بلا آية في أولها مربوطة بآياتها (FIXES)', () => {
@@ -108,7 +115,8 @@ describe('البيانات المبنية', () => {
     // فوائد عامة عن السورة أو مقطع منها
     expect(F.items.filter((f) => f.all).map((f) => f.id)).toEqual([3093, 3094, 3443]);
     expect(byId(3634).v).toEqual([h(36, 38), h(36, 38)]);
-    for (const id of Object.keys(FIXES)) expect(byId(Number(id))).toBeTruthy();
+    // كل تصحيح يخصّ فائدة ظاهرة، إلا المتروكة (skip)
+    for (const [id, fix] of Object.entries(FIXES)) if (!fix.skip) expect(byId(Number(id))).toBeTruthy();
   });
 
   it('عزو الفاتحة بلا البسملة يُصحَّح بنص الآية: «الحمد لله رب العالمين» الآية ٢', () => {
@@ -119,6 +127,46 @@ describe('البيانات المبنية', () => {
     expect(skeleton(byId(3141).q)).toBe(skeleton('من ذا الذي يشفع عنده إلا بإذنه'));
     expect(msg(3141).text).toContain(byId(3141).q);
     expect(byId(3096).q).toBeUndefined();
+  });
+});
+
+describe('الختمة الأولى (صور، الجلسة ٢)', () => {
+  const image = (id) => K1.images.find((x) => x.id === id);
+
+  it('نصوص الصور بشكل الرسالة: الآية وعزوها، ثم النص، ثم المصدر', () => {
+    const f = parseMessage(image(1100));
+    expect(f.ref).toEqual({ sura: 'القصص', from: 23, to: 23 });
+    expect(f.src).toBe('تفسير الطبري');
+    expect(byId(1100)).toMatchObject({ k: 1, v: [h(28, 23), h(28, 23)] });
+  });
+
+  it('الكلمات الملوّنة ⸨…⸩ في التصميم الكحلي وحده (وفي البيج زخرفة لا تُحفظ)', () => {
+    const design = new Map(K1.images.map((x) => [x.id, x.design]));
+    for (const f of F.items) {
+      if (!/[⸨⸩]/.test(f.t)) continue;
+      expect(f.k).toBe(1);
+      expect(design.get(f.id)).toBe('a');
+      // كل علامة فتح لها علامة غلق
+      expect(f.t.match(/⸨/g).length).toBe(f.t.match(/⸩/g).length);
+    }
+    expect(image(1101).design).toBe('b');
+    expect(byId(1101).t).not.toMatch(/[⸨⸩]/);
+  });
+
+  it('جزء الآية في أعلى الصورة إن لم تكن الآية كاملة', () => {
+    expect(skeleton(byId(1101).q)).toBe(skeleton('فجاءته إحداهما تمشي على استحياء'));
+    expect(byId(1100).q).toBeUndefined();
+  });
+
+  it('الصورة المكررة مرة واحدة، والفائدة عن القرآن كله (بلا سورة) لا تظهر', () => {
+    expect(byId(1116)).toBeTruthy();
+    expect(byId(1117)).toBeUndefined();
+    expect(byId(38)).toBeUndefined();
+    expect(FIXES[38]).toEqual({ skip: true });
+  });
+
+  it('الصور التي ليست فوائد لا تظهر', () => {
+    for (const x of K1.images.filter((i) => i.skip)) expect(byId(x.id)).toBeUndefined();
   });
 });
 
@@ -174,6 +222,19 @@ describe('العرض', () => {
     expect(wholeHeading(W, vs)).toBe('سورة الفاتحة');
     // آية الكرسي تنقسم في ورش: الفائدة على جزئها الأول تظهر في الجزأين
     expect(fawaidIn(W, F, [w(2, 254)]).map((x) => x.id)).toContain(3141);
+  });
+
+  it('الكلمات الملوّنة في صورة الفائدة ⸨…⸩: تُفصل للعرض، وتُنسخ نصًّا بلا علامتيها', () => {
+    expect(emphasisParts('⸨والعبادة:⸩ اسم جامع ⸨لكل⸩ ما يحبه')).toEqual([
+      [true, 'والعبادة:'],
+      [false, ' اسم جامع '],
+      [true, 'لكل'],
+      [false, ' ما يحبه'],
+    ]);
+    expect(emphasisParts('بلا تلوين')).toEqual([[false, 'بلا تلوين']]);
+    expect(emphasisParts('⸨ناقص')).toEqual([[false, '⸨ناقص']]);
+    const f = { t: '⸨والاستعانة:⸩ هي الاعتماد على الله', src: 'تفسير السعدي' };
+    expect(faidaPlain(f)).toBe('والاستعانة: هي الاعتماد على الله\nتفسير السعدي');
   });
 
   it('رسالتا الغياب', () => {

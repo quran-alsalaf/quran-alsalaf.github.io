@@ -25,7 +25,7 @@ async function openTab(page) {
   await expect(study(page).getByRole('tab', { name: 'الفوائد' })).toHaveAttribute('aria-selected', 'true');
 }
 
-test('تبويب «الفوائد»: فوائد آيات الصفحة الظاهرة تحت آياتها، بموضوعها وقائلها ومصدرها', async ({ page }, testInfo) => {
+test('تبويب «الفوائد»: فوائد آيات الصفحة الظاهرة تحت آياتها، بقائلها ومصدرها وبلا وسم موضوع', async ({ page }, testInfo) => {
   await openApp(page, { 'hq.page': '1' });
   await openTab(page);
   const list = fawaidOf(shown(1, isLaptop(testInfo)));
@@ -37,7 +37,9 @@ test('تبويب «الفوائد»: فوائد آيات الصفحة الظاه
   await expect(first.locator('.faida')).toHaveCount(2);
   // واسم السورة مرة واحدة
   await expect(study(page).locator('.study__sura', { hasText: 'سورة الفاتحة' })).toHaveCount(1);
-  await expect(first.locator('.faida__theme').first()).toHaveText('الإيمان بالله');
+  // بلا وسم موضوع الختمة (أُلغي في الجلسة ٢ بقرار صاحب المشروع)
+  await expect(study(page).locator('.faida__theme')).toHaveCount(0);
+  await expect(study(page)).not.toContainText('الإيمان بالله');
   await expect(first.locator('.faida__by').first()).toHaveText('قال ابن القيم رحمه الله:');
   await expect(first.locator('.faida__src').first()).toHaveText('مدارج السالكين (١ / ٩٧)');
   // البنود بنقطة (لا برموز القناة)

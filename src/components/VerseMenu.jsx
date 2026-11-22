@@ -438,7 +438,7 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
       body = (
         <div className="vcard__fawaid">
           {list.map((f) => (
-            <FaidaBody key={f.id} f={f} theme={fawaid.themes[f.k]} />
+            <FaidaBody key={f.id} f={f} />
           ))}
         </div>
       );
