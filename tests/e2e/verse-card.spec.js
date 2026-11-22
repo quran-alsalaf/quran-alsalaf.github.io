@@ -175,23 +175,32 @@ test('تفسير ومعاني وعمل: البطاقة بالمحتوى وحده
   }
 });
 
-test('فوائد (٢٠٢٦-١١-٢٢): فوائد الآية بموضوعها، ومعها ما يشملها مع غيرها، وزرّ نسخها', async ({ page }) => {
-  await longPress(page, 2);
+test('فوائد (٢٠٢٦-١١-٢٢): فوائد الآية وحدها بموضوعها وزرّ نسخها، بلا الفوائد العامة عن السورة', async ({ page }) => {
+  await longPress(page, 4);
   await page.getByRole('menuitem', { name: 'فوائد' }).click();
   const card = page.getByRole('dialog', { name: 'الفوائد' });
-  await expect(card.locator('.vcard__head')).toContainText('الفاتحة: ٣');
-  // فائدتان عن الفاتحة كلها، بلا نص الآية
+  await expect(card.locator('.vcard__head')).toContainText('الفاتحة: ٥');
+  // فائدتا «إياك نعبد وإياك نستعين»، لا فائدتا الفاتحة كلها، بلا نص الآية
   await expect(card.locator('.faida')).toHaveCount(2);
+  await expect(card).not.toContainText('قال ابن القيم رحمه الله:');
   await expect(card.locator('.faida__theme').first()).toHaveText('الإيمان بالله');
-  await expect(card.locator('.faida').first()).toContainText('قال ابن القيم رحمه الله:');
-  await expect(card.locator('.faida__src').first()).toHaveText('مدارج السالكين (١ / ٩٧)');
+  await expect(card.locator('.faida__by').first()).toHaveText('قال السعدي رحمه الله:');
+  await expect(card.locator('.faida__src').first()).toHaveText('تفسير السعدي');
   await expect(card.locator('.study__box--verse')).toHaveCount(0);
   await card.getByRole('button', { name: 'نسخ' }).click();
   const text = await copied(page);
-  expect(text.startsWith('قال ابن القيم رحمه الله:\n')).toBe(true);
-  expect(text).toContain('\n\nقال السعدي رحمه الله:\n');
+  expect(text.startsWith('قال السعدي رحمه الله:\nذَكر الاستعانة')).toBe(true);
+  expect(text).toContain('\n\nقال الألوسي رحمه الله:\n');
   await page.keyboard.press('Escape');
   await expect(page.locator('.vmenu')).toHaveCount(0);
+});
+
+test('فوائد: آية فوائدها كلها عامة عن السورة ⇐ «لا فوائد لهذه الآية»', async ({ page }) => {
+  await longPress(page, 2);
+  await page.getByRole('menuitem', { name: 'فوائد' }).click();
+  const card = page.getByRole('dialog', { name: 'الفوائد' });
+  await expect(card).toContainText('لا فوائد لهذه الآية');
+  await expect(card.locator('.faida')).toHaveCount(0);
 });
 
 test.describe('الجوال الأفقي', () => {

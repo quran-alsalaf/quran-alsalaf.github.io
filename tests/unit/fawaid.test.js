@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { FIXES, buildKhatma, parseMessage, quoteIn, skeleton } from '../../scripts/data/19-fawaid.mjs';
-import { NO_FAWAID, NO_FAWAID_VERSE, faidaPlain, faidaVerses, fawaidBlocks, fawaidIn } from '../../src/lib/fawaid.js';
+import { NO_FAWAID, NO_FAWAID_VERSE, faidaPlain, faidaVerses, fawaidBlocks, fawaidIn, wholeHeading } from '../../src/lib/fawaid.js';
 import { copyContent } from '../../src/lib/study.js';
 
 const load = (f) => JSON.parse(readFileSync(f, 'utf8'));
@@ -105,6 +105,8 @@ describe('البيانات المبنية', () => {
     expect(byId(3093).v).toEqual([h(1, 1), h(1, 7)]);
     expect(byId(3443).v).toEqual([h(18, 9), h(18, 26)]);
     expect(byId(3443).title).toBe('قصة أصحاب الكهف');
+    // فوائد عامة عن السورة أو مقطع منها
+    expect(F.items.filter((f) => f.all).map((f) => f.id)).toEqual([3093, 3094, 3443]);
     expect(byId(3634).v).toEqual([h(36, 38), h(36, 38)]);
     for (const id of Object.keys(FIXES)) expect(byId(Number(id))).toBeTruthy();
   });
@@ -121,19 +123,29 @@ describe('البيانات المبنية', () => {
 });
 
 describe('العرض', () => {
-  it('فوائد الآية، ومعها ما يشملها مع غيرها', () => {
+  it('فوائد الآيات (في صفحات المحتوى) ومعها العامة عن السورة، وفي مربع الآية ما يخصّها وحده', () => {
     const ids = fawaidIn(H, F, [h(1, 3)]).map((f) => f.id);
-    expect(ids).toContain(3093);
-    expect(ids).toContain(3094);
-    expect(fawaidIn(H, F, [h(2, 255)]).map((f) => f.id)).toContain(3141);
+    expect(ids).toEqual([3093, 3094]);
+    expect(fawaidIn(H, F, [h(1, 3)], { own: true })).toEqual([]);
+    expect(fawaidIn(H, F, [h(1, 5)], { own: true }).map((f) => f.id)).toEqual([3096, 3097]);
+    expect(fawaidIn(H, F, [h(18, 10)], { own: true }).map((f) => f.id)).not.toContain(3443);
+    expect(fawaidIn(H, F, [h(2, 255)], { own: true }).map((f) => f.id)).toContain(3141);
+    // الفائدة المكتوبة على آيتين تظهر في مربع كلٍّ منهما
+    const two = F.items.find((f) => !f.all && f.v[1] > f.v[0]);
+    expect(fawaidIn(H, F, [two.v[1]], { own: true })).toContain(two);
   });
 
-  it('كتل صفحات المحتوى: آيات الفائدة ثم فوائدها، والمتتالية على الآيات نفسها معًا', () => {
-    const blocks = fawaidBlocks(H, F, [h(1, 1), h(1, 2), h(1, 3)]);
-    expect(blocks[0].verses).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  it('كتل صفحات المحتوى: العامة عن السورة أولًا بلا آياتها، ثم آيات كل فائدة ثم فوائدها', () => {
+    const blocks = fawaidBlocks(H, F, [h(1, 1), h(1, 2), h(1, 3), h(1, 4), h(1, 5)]);
+    expect(blocks[0]).toMatchObject({ all: true, verses: [0, 1, 2, 3, 4, 5, 6] });
     expect(blocks[0].items.map((f) => f.id)).toEqual([3093, 3094]);
-    expect(blocks[1].verses).toEqual([h(1, 2)]);
-    expect(blocks.flatMap((b) => b.items).length).toBe(fawaidIn(H, F, [0, 1, 2]).length);
+    expect(wholeHeading(H, blocks[0].verses)).toBe('سورة الفاتحة');
+    expect(blocks[1]).toEqual({ verses: [h(1, 2)], items: [byId(3095)] });
+    expect(blocks[2].verses).toEqual([h(1, 5)]);
+    expect(blocks[2].items.map((f) => f.id)).toEqual([3096, 3097]);
+    // فائدة المقطع تحت عنوانه
+    const kahf = fawaidBlocks(H, F, [h(18, 12)]).find((b) => b.all);
+    expect(wholeHeading(H, kahf.verses)).toBe('الكهف ٩–٢٦');
   });
 
   it('النسخ: جزء الآية، والقائل، والنص، والمصدر، وفي صفحات المحتوى الآيات قبلها', () => {
@@ -142,8 +154,12 @@ describe('العرض', () => {
     expect(t.endsWith('\nتفسير ابن كثير')).toBe(true);
     expect(faidaPlain(byId(3096)).split('\n')[0]).toBe('قال السعدي رحمه الله:');
     const blocks = fawaidBlocks(H, F, [h(1, 5)]);
-    const all = copyContent(H, 'الفوائد', blocks.map((b) => ({ verses: b.verses, text: b.items.map(faidaPlain).join('\n\n') })));
-    expect(all.startsWith('الفوائد\n\n')).toBe(true);
+    const all = copyContent(
+      H,
+      'الفوائد',
+      blocks.map((b) => ({ verses: b.verses, head: b.all ? wholeHeading(H, b.verses) : undefined, text: b.items.map(faidaPlain).join('\n\n') }))
+    );
+    expect(all.startsWith('الفوائد\n\nسورة الفاتحة\nقال ابن القيم رحمه الله:\n')).toBe(true);
     expect(all).toContain('ذَكر الاستعانة بعد العبادة');
   });
 
@@ -155,6 +171,7 @@ describe('العرض', () => {
     const vs = faidaVerses(W, f);
     expect(W.verses[vs[0]]).toMatchObject({ s: 1, a: 1 });
     expect(W.verses[vs.at(-1)]).toMatchObject({ s: 1, a: 7 });
+    expect(wholeHeading(W, vs)).toBe('سورة الفاتحة');
     // آية الكرسي تنقسم في ورش: الفائدة على جزئها الأول تظهر في الجزأين
     expect(fawaidIn(W, F, [w(2, 254)]).map((x) => x.id)).toContain(3141);
   });

@@ -16,7 +16,7 @@ import {
   verseText,
 } from '../lib/study.js';
 import { copyText } from '../lib/userdata.js';
-import { NO_FAWAID, faidaPlain, fawaidBlocks, loadFawaid } from '../lib/fawaid.js';
+import { NO_FAWAID, faidaPlain, fawaidBlocks, loadFawaid, wholeHeading } from '../lib/fawaid.js';
 import { useLayer } from '../lib/layers.js';
 import RangeBar from './RangeBar.jsx';
 import TafsirPicker from './TafsirPicker.jsx';
@@ -395,8 +395,23 @@ function FawaidTab({ quran, verses, onToast }) {
     copyContent(
       quran,
       'الفوائد',
-      blocks.map((b) => ({ verses: b.verses, text: b.items.map(faidaPlain).join('\n\n') }))
+      blocks.map((b) => ({
+        verses: b.verses,
+        head: b.all ? wholeHeading(quran, b.verses) : undefined,
+        text: b.items.map(faidaPlain).join('\n\n'),
+      }))
     );
+  // عنوان كل كتلة: اسم السورة مرة واحدة فوق أول ما يُعرض منها (فوائدها العامة أو آيتها الأولى)، والفوائد
+  // العامة عن مقطع من السورة تحت عنوانه («الكهف ٩–٢٦»)
+  const suraShown = new Set();
+  const headingOf = (b) => {
+    const v = quran.verses[b.verses[0]];
+    const head = b.all ? wholeHeading(quran, b.verses) : null;
+    if (head && !head.startsWith('سورة ')) return <h3 className="study__sura">{head}</h3>;
+    if (suraShown.has(v.s) || (!head && v.a !== 1)) return null;
+    suraShown.add(v.s);
+    return <SuraTitle quran={quran} sura={v.s} />;
+  };
   return (
     <>
       <CopyBar getText={blocks.length ? fawaidText : null} onToast={onToast} />
@@ -406,10 +421,9 @@ function FawaidTab({ quran, verses, onToast }) {
       {data &&
         blocks.map((b) => (
           <div key={b.items[0].id} className="study__item">
-            {quran.verses[b.verses[0]].a === 1 && <SuraTitle quran={quran} sura={quran.verses[b.verses[0]].s} />}
-            {b.verses.map((v) => (
-              <VerseCard key={v} quran={quran} v={v} />
-            ))}
+            {headingOf(b)}
+            {/* الفوائد العامة بلا سرد آياتها (٢٠٢٦-١١-٢٢، بطلب صاحب المشروع)، وغيرها تحت آياتها */}
+            {!b.all && b.verses.map((v) => <VerseCard key={v} quran={quran} v={v} />)}
             <div className="study__box study__box--explain study__fawaid">
               {b.items.map((f) => (
                 <FaidaBody key={f.id} f={f} theme={data.themes[f.k]} />

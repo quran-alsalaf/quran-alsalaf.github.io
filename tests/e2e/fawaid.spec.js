@@ -30,10 +30,13 @@ test('تبويب «الفوائد»: فوائد آيات الصفحة الظاه
   await openTab(page);
   const list = fawaidOf(shown(1, isLaptop(testInfo)));
   await expect(study(page).locator('.faida')).toHaveCount(list.length);
-  // أولاها عن الفاتحة كلها: تحت آياتها السبع، ومعها الثانية
+  // أولاها عامة عن الفاتحة كلها: تحت اسم السورة وحده بلا آياتها (٢٠٢٦-١١-٢٢)، ومعها الثانية
   const first = study(page).locator('.study__item').first();
-  await expect(first.locator('.study__box--verse')).toHaveCount(7);
+  await expect(first.locator('.study__sura')).toHaveText('سورة الفاتحة');
+  await expect(first.locator('.study__box--verse')).toHaveCount(0);
   await expect(first.locator('.faida')).toHaveCount(2);
+  // واسم السورة مرة واحدة
+  await expect(study(page).locator('.study__sura', { hasText: 'سورة الفاتحة' })).toHaveCount(1);
   await expect(first.locator('.faida__theme').first()).toHaveText('الإيمان بالله');
   await expect(first.locator('.faida__by').first()).toHaveText('قال ابن القيم رحمه الله:');
   await expect(first.locator('.faida__src').first()).toHaveText('مدارج السالكين (١ / ٩٧)');
@@ -60,10 +63,25 @@ test('نسخ المحتوى: العنوان، ثم آيات كل فائدة ثم
   await openTab(page);
   await study(page).getByRole('button', { name: 'نسخ المحتوى' }).click();
   const text = await copied(page);
-  expect(text.startsWith('الفوائد\n\n﴿')).toBe(true);
-  expect(text).toContain('[الفاتحة: ١–٧]\nقال ابن القيم رحمه الله:\n');
+  expect(text.startsWith('الفوائد\n\nسورة الفاتحة\nقال ابن القيم رحمه الله:\n')).toBe(true);
   expect(text).toContain('[الفاتحة: ٢]\nقال السعدي رحمه الله:\n');
   expect(text).toContain('\nمدارج السالكين (١ / ٩٧)\n\nقال السعدي رحمه الله:');
+});
+
+test('فائدة عامة عن مقطع («قصة أصحاب الكهف») تحت عنوانه بلا آياته، ولا تظهر في مربع آية منه', async ({ page }) => {
+  await openApp(page, { 'hq.page': String(QURAN.verses[h(18, 10)].p) });
+  await openTab(page);
+  const item = study(page).locator('.study__item').filter({ hasText: 'قصة أصحاب الكهف' });
+  await expect(item.locator('.study__sura')).toHaveText('الكهف ٩–٢٦');
+  await expect(item.locator('.study__box--verse')).toHaveCount(0);
+  await expect(item.locator('.faida__title')).toHaveText('قصة أصحاب الكهف');
+  await page.keyboard.press('Escape');
+  await expect(study(page)).not.toHaveClass(/study--open/);
+  // بعد اكتمال انزلاقها
+  await expect(study(page)).toBeHidden();
+  await longPress(page, h(18, 10));
+  await page.getByRole('menuitem', { name: 'فوائد' }).click();
+  await expect(page.getByRole('dialog', { name: 'الفوائد' })).not.toContainText('قصة أصحاب الكهف');
 });
 
 test('آيات بلا فوائد: «لا فوائد في هذه الآيات»، والنسخ معطّل', async ({ page }) => {

@@ -280,15 +280,16 @@ const versesRef = (quran, list) => (list.length === 1 ? copyVerse(quran, list[0]
 
 // «نسخ المحتوى» في صفحات المحتوى (٢٠٢٦-١١-١٤، بطلب صاحب المشروع): العنوان مرة واحدة، ثم الآية
 // ومحتواها، ثم الآية التالية ومحتواها… والكتل المتتالية بالآيات نفسها تُجمع تحت آياتها مرة واحدة.
-// blocks: [{ verses: [أرقام الآيات], text }]
+// blocks: [{ verses: [أرقام الآيات], text, head? }] — head عنوان بدل الآيات (الفوائد العامة عن السورة: «سورة الفاتحة»)
 export function copyContent(quran, title, blocks) {
   const merged = [];
+  const key = (b) => b.head ?? b.verses.join();
   for (const b of blocks) {
     const last = merged.at(-1);
-    if (last && last.verses.join() === b.verses.join()) last.texts.push(b.text);
-    else merged.push({ verses: b.verses, texts: [b.text] });
+    if (last && key(last) === key(b)) last.texts.push(b.text);
+    else merged.push({ verses: b.verses, head: b.head, texts: [b.text] });
   }
-  return [title, ...merged.map((b) => `${versesRef(quran, b.verses)}\n${b.texts.join('\n')}`)].join('\n\n');
+  return [title, ...merged.map((b) => `${b.head ?? versesRef(quran, b.verses)}\n${b.texts.join('\n')}`)].join('\n\n');
 }
 
 // كتل التفسير: الآيات المتتالية ذات التفسير الواحد (يجمع المختصر أحيانًا آيتين) تُكتب معًا ثم تفسيرها مرة.
