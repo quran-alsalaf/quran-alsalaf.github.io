@@ -1,6 +1,7 @@
 // فوائد الآيات (٢٠٢٦-١١-٢٢، «الفوائد» الجلسة ١): من قناة «ختمة التفسير والتدبر» لصاحب المشروع، تبنيها
 // الخطوة ١٩ (scripts/data/19-fawaid.mjs) في public/data/fawaid.json:
-//   { themes: { رقم الختمة: موضوعها }, items: [{ id, k, v: [أول آية، آخرها], title?, q?, by?, t, src }] }
+//   { items: [{ id, k, v: [أول آية، آخرها], title?, all?, q?, by?, t, src }] }
+// وفي t الكلمات الملوّنة في صورة الفائدة بين ⸨ و⸩ (الختمة الأولى، الجلسة ٢)
 // والآيات بترقيم حفص كسائر المحتوى، فتُعرض في ورش على ما يقابلها (src/lib/verseMap.js).
 // تُحمَّل عند أول فتح لها، ويحفظها عامل الخدمة مسبقًا فتعمل بلا إنترنت.
 import { hafsList, shownList } from './verseMap.js';
@@ -84,7 +85,29 @@ export function wholeHeading(quran, verses) {
   return `${sura.name} ${ar(first.a)}–${ar(last.a)}`;
 }
 
-// الفائدة نصًّا للنسخ: جزء الآية إن كان، والعنوان، والقائل، والنص، والمصدر
+// علامتا الكلمات الملوّنة في نص الفائدة
+export const EM_OPEN = '⸨';
+export const EM_CLOSE = '⸩';
+
+// السطر ⇐ [[ملوَّن؟، نص], …]
+export function emphasisParts(text) {
+  const out = [];
+  let rest = text;
+  while (rest) {
+    const a = rest.indexOf(EM_OPEN);
+    const b = a >= 0 ? rest.indexOf(EM_CLOSE, a + 1) : -1;
+    if (a < 0 || b < 0) {
+      out.push([false, rest]);
+      break;
+    }
+    if (a > 0) out.push([false, rest.slice(0, a)]);
+    out.push([true, rest.slice(a + 1, b)]);
+    rest = rest.slice(b + 1);
+  }
+  return out;
+}
+
+// الفائدة نصًّا للنسخ: جزء الآية إن كان، والعنوان، والقائل، والنص (بلا علامتي التلوين)، والمصدر
 export function faidaPlain(f) {
-  return [f.q && `﴿${f.q}﴾`, f.title, f.by, f.t, f.src].filter(Boolean).join('\n');
+  return [f.q && `﴿${f.q}﴾`, f.title, f.by, f.t.replace(/[⸨⸩]/g, ''), f.src].filter(Boolean).join('\n');
 }

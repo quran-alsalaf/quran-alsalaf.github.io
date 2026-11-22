@@ -470,17 +470,9 @@
   border-top: 1px solid var(--border);
 }
 
-/* وسم موضوع الختمة («الإيمان بالله») */
-.faida__theme {
-  display: inline-block;
-  margin-bottom: 4px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: var(--accent-soft);
+/* الكلمات الملوّنة في صورة الفائدة («والعبادة:»، الجلسة ٢) */
+.faida__em {
   color: var(--accent-text);
-  font-family: var(--font-ui);
-  font-size: var(--text-xs);
-  line-height: 1.9;
 }
 
 .faida__title {

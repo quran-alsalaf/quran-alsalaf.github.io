@@ -175,28 +175,32 @@ test('تفسير ومعاني وعمل: البطاقة بالمحتوى وحده
   }
 });
 
-test('فوائد (٢٠٢٦-١١-٢٢): فوائد الآية وحدها بموضوعها وزرّ نسخها، بلا الفوائد العامة عن السورة', async ({ page }) => {
+test('فوائد (٢٠٢٦-١١-٢٢): فوائد الآية وحدها وزرّ نسخها، بلا الفوائد العامة عن السورة ولا وسم الموضوع', async ({ page }) => {
   await longPress(page, 4);
   await page.getByRole('menuitem', { name: 'فوائد' }).click();
   const card = page.getByRole('dialog', { name: 'الفوائد' });
   await expect(card.locator('.vcard__head')).toContainText('الفاتحة: ٥');
-  // فائدتا «إياك نعبد وإياك نستعين»، لا فائدتا الفاتحة كلها، بلا نص الآية
-  await expect(card.locator('.faida')).toHaveCount(2);
+  // فوائد «إياك نعبد وإياك نستعين» (من الختمة الأولى ثم الثالثة)، لا فائدتا الفاتحة كلها، بلا نص الآية
+  await expect(card.locator('.faida')).toHaveCount(3);
   await expect(card).not.toContainText('قال ابن القيم رحمه الله:');
-  await expect(card.locator('.faida__theme').first()).toHaveText('الإيمان بالله');
+  await expect(card.locator('.faida__theme')).toHaveCount(0);
   await expect(card.locator('.faida__by').first()).toHaveText('قال السعدي رحمه الله:');
   await expect(card.locator('.faida__src').first()).toHaveText('تفسير السعدي');
   await expect(card.locator('.study__box--verse')).toHaveCount(0);
   await card.getByRole('button', { name: 'نسخ' }).click();
   const text = await copied(page);
-  expect(text.startsWith('قال السعدي رحمه الله:\nذَكر الاستعانة')).toBe(true);
+  // فائدة الختمة الأولى أولًا (صورة السعدي)، والكلمات الملوّنة فيها بلا علامتيها
+  expect(text.startsWith('أي: نخصّك وحدك بالعبادة والاستعانة')).toBe(true);
+  expect(text).not.toMatch(/[⸨⸩]/);
+  expect(text).toContain('\n\nقال السعدي رحمه الله:\nذَكر الاستعانة');
   expect(text).toContain('\n\nقال الألوسي رحمه الله:\n');
   await page.keyboard.press('Escape');
   await expect(page.locator('.vmenu')).toHaveCount(0);
 });
 
 test('فوائد: آية فوائدها كلها عامة عن السورة ⇐ «لا فوائد لهذه الآية»', async ({ page }) => {
-  await longPress(page, 2);
+  // البسملة: لا فائدة عليها وحدها، وفائدتا الفاتحة كلها عامتان
+  await longPress(page, 0);
   await page.getByRole('menuitem', { name: 'فوائد' }).click();
   const card = page.getByRole('dialog', { name: 'الفوائد' });
   await expect(card).toContainText('لا فوائد لهذه الآية');

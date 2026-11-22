@@ -1,4 +1,4 @@
-// فوائد الآيات (٢٠٢٦-١١-٢٢، «الفوائد» الجلسة ١): تبويب «الفوائد» في صفحات المحتوى، ومربع «فوائد» في مربع الآية،
+// فوائد الآيات (٢٠٢٦-١١-٢٢، «الفوائد» الجلستان ١ و٢): تبويب «الفوائد» في صفحات المحتوى، ومربع «فوائد» في مربع الآية،
 // والنسخ، وعرضها في مصحف ورش على ما يقابلها
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -25,7 +25,7 @@ async function openTab(page) {
   await expect(study(page).getByRole('tab', { name: 'الفوائد' })).toHaveAttribute('aria-selected', 'true');
 }
 
-test('تبويب «الفوائد»: فوائد آيات الصفحة الظاهرة تحت آياتها، بموضوعها وقائلها ومصدرها', async ({ page }, testInfo) => {
+test('تبويب «الفوائد»: فوائد آيات الصفحة الظاهرة تحت آياتها، بقائلها ومصدرها وبلا وسم موضوع', async ({ page }, testInfo) => {
   await openApp(page, { 'hq.page': '1' });
   await openTab(page);
   const list = fawaidOf(shown(1, isLaptop(testInfo)));
@@ -37,7 +37,9 @@ test('تبويب «الفوائد»: فوائد آيات الصفحة الظاه
   await expect(first.locator('.faida')).toHaveCount(2);
   // واسم السورة مرة واحدة
   await expect(study(page).locator('.study__sura', { hasText: 'سورة الفاتحة' })).toHaveCount(1);
-  await expect(first.locator('.faida__theme').first()).toHaveText('الإيمان بالله');
+  // بلا وسم موضوع الختمة (أُلغي في الجلسة ٢ بقرار صاحب المشروع)
+  await expect(study(page).locator('.faida__theme')).toHaveCount(0);
+  await expect(study(page)).not.toContainText('الإيمان بالله');
   await expect(first.locator('.faida__by').first()).toHaveText('قال ابن القيم رحمه الله:');
   await expect(first.locator('.faida__src').first()).toHaveText('مدارج السالكين (١ / ٩٧)');
   // البنود بنقطة (لا برموز القناة)
@@ -74,7 +76,8 @@ test('فائدة عامة عن مقطع («قصة أصحاب الكهف») تح�
   const item = study(page).locator('.study__item').filter({ hasText: 'قصة أصحاب الكهف' });
   await expect(item.locator('.study__sura')).toHaveText('الكهف ٩–٢٦');
   await expect(item.locator('.study__box--verse')).toHaveCount(0);
-  await expect(item.locator('.faida__title')).toHaveText('قصة أصحاب الكهف');
+  // فائدتان على المقطع: من الختمة الأولى والثالثة
+  await expect(item.locator('.faida__title')).toHaveText(['قصة أصحاب الكهف', 'قصة أصحاب الكهف']);
   await page.keyboard.press('Escape');
   await expect(study(page)).not.toHaveClass(/study--open/);
   // بعد اكتمال انزلاقها
@@ -112,4 +115,17 @@ test('ورش: الفوائد على الآيات المقابلة', async ({ pag
   const fatiha1 = W.verses.find((v) => v.s === 1 && v.a === 1);
   await expect(item.locator('.study__box--verse')).toContainText(fatiha1.t[0]);
   await expect(study(page).locator('.faida').filter({ hasText: 'قال ابن القيم رحمه الله:' })).toHaveCount(1);
+});
+
+test('الختمة الأولى: الكلمات الملوّنة في صورة الفائدة عناوين بلون التطبيق', async ({ page }) => {
+  await openApp(page, { 'hq.page': '1' });
+  await openTab(page);
+  const faida = study(page).locator('.faida').filter({ hasText: 'نخصّك وحدك بالعبادة والاستعانة' });
+  await expect(faida.locator('.faida__em')).toHaveCount(3);
+  await expect(faida.locator('.faida__em').first()).toHaveText('والعبادة:');
+  await expect(faida).not.toContainText('⸨');
+  const em = await faida.locator('.faida__em').first().evaluate((el) => getComputedStyle(el).color);
+  const plain = await faida.locator('p').nth(1).evaluate((el) => getComputedStyle(el).color);
+  expect(em).not.toBe(plain);
+  await expect(faida.locator('.faida__src')).toHaveText('تفسير السعدي');
 });
