@@ -144,9 +144,10 @@ test('بطاقة الآية: نسخ التفسير المختار والمعان
   await longPress(page, 1);
   await page.getByRole('menuitem', { name: 'تفسير' }).click();
   const card = page.getByRole('dialog', { name: 'التفسير' });
-  // زرّ نسخ واحد في رأس البطاقة، بلا «نسخ الآية» ولا «مشاركة» (للآية مربع «نسخ» خاص بها)
+  // زرّ نسخ واحد في رأس البطاقة بلا «نسخ الآية» (للآية مربع «نسخ» خاص بها)، وبجانبه «مشاركة» صورًا
+  // (٢٠٢٦-١١-٢٢، «المشاركة» الجلسة ١، بقرار صاحب المشروع؛ وكانت ملغاة منذ ٢٠٢٦-١١-١٤ — share-images.spec.js)
   await expect(card.getByRole('button', { name: 'نسخ الآية' })).toHaveCount(0);
-  await expect(card.getByRole('button', { name: 'مشاركة' })).toHaveCount(0);
+  await expect(card.getByRole('button', { name: 'مشاركة' })).toHaveCount(1);
   await card.getByRole('button', { name: 'نسخ', exact: true }).click();
   await expect(toast(page)).toHaveText('نُسخ النص');
   expect(await copied(page)).toBe(para(muyassar(1)));
