@@ -106,13 +106,16 @@ test('السحب يمينًا ويسارًا في صفحات المحتوى ين
   await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
   await f.swipe(80, 600, 300, 605);
   await expect(tabs.nth(2)).toHaveAttribute('aria-selected', 'true');
+  // التبويب الرابع «الفوائد» (٢٠٢٦-١١-٢٢) آخرها
+  await f.swipe(80, 600, 300, 605);
+  await expect(tabs.nth(3)).toHaveAttribute('aria-selected', 'true');
   await f.swipe(80, 600, 300, 605); // لا تبويب بعد الأخير
-  await expect(tabs.nth(2)).toHaveAttribute('aria-selected', 'true');
+  await expect(tabs.nth(3)).toHaveAttribute('aria-selected', 'true');
   await f.swipe(300, 600, 80, 605);
-  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+  await expect(tabs.nth(2)).toHaveAttribute('aria-selected', 'true');
   // السحب الرأسي تمرير لا انتقال
   await f.swipe(200, 700, 210, 300);
-  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+  await expect(tabs.nth(2)).toHaveAttribute('aria-selected', 'true');
   // والمصحف خلفها لم يُقلَّب
   expect(await shownPages(page)).toEqual([1]);
 });
