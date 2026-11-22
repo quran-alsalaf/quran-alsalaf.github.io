@@ -456,7 +456,7 @@ export function FaidaBody({ f }) {
           </p>
         )
       )}
-      {f.src && <p className="faida__src">{f.src}</p>}
+      <p className="faida__src">{f.src}</p>
       {f.tip && (
         <p className="faida__tip">
           <FaidaLine text={f.tip} />

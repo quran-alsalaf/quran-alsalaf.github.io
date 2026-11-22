@@ -15,8 +15,10 @@ const fawaidOf = (pages) => {
   const vs = new Set(pages.flatMap(pageVerses));
   return F.items.filter((f) => [...vs].some((v) => v >= f.v[0] && v <= f.v[1]));
 };
-// أول صفحة فردية لا فوائد فيها ولا في زوجها
-const EMPTY = Array.from({ length: 302 }, (_, i) => 2 * i + 1).find((p) => !fawaidOf([p, p + 1]).length);
+// أول صفحة لا فوائد في آياتها (ومنذ الختمة الثانية، الجلسة ٣، لا زوج صفحتين بلا فوائد، فيُعرض في صفحات
+// المحتوى مقدارٌ من آياتها وحدها: hq.contentRange)
+const EMPTY = Array.from({ length: 604 }, (_, i) => i + 1).find((p) => !fawaidOf([p]).length);
+const EMPTY_RANGE = [pageVerses(EMPTY)[0], pageVerses(EMPTY).at(-1)];
 
 async function openTab(page) {
   await clickDock(page, 'صفحات المحتوى');
@@ -66,7 +68,10 @@ test('نسخ المحتوى: العنوان، ثم آيات كل فائدة ثم
   await study(page).getByRole('button', { name: 'نسخ المحتوى' }).click();
   const text = await copied(page);
   expect(text.startsWith('الفوائد\n\nسورة الفاتحة\nقال ابن القيم رحمه الله:\n')).toBe(true);
-  expect(text).toContain('[الفاتحة: ٢]\nقال السعدي رحمه الله:\n');
+  // الفاتحة ٢: فائدة الختمة الثانية (٢٠٠٤) بتوجيهها، ثم الثالثة
+  const f2 = F.items.find((x) => x.id === 2004);
+  const plain2 = `${f2.t.replace(/[⸨⸩]/g, '')}\n${f2.src}\n${f2.tip}`;
+  expect(text).toContain(`[الفاتحة: ٢]\n${plain2}\n\nقال السعدي رحمه الله:\n`);
   expect(text).toContain('\nمدارج السالكين (١ / ٩٧)\n\nقال السعدي رحمه الله:');
 });
 
@@ -89,7 +94,7 @@ test('فائدة عامة عن مقطع («قصة أصحاب الكهف») تح�
 
 test('آيات بلا فوائد: «لا فوائد في هذه الآيات»، والنسخ معطّل', async ({ page }) => {
   expect(EMPTY).toBeTruthy();
-  await openApp(page, { 'hq.page': String(EMPTY) });
+  await openApp(page, { 'hq.page': String(EMPTY), 'hq.contentRange': EMPTY_RANGE });
   await openTab(page);
   await expect(study(page).locator('.study__note')).toHaveText('لا فوائد في هذه الآيات');
   await expect(study(page).locator('.faida')).toHaveCount(0);
@@ -128,4 +133,25 @@ test('الختمة الأولى: الكلمات الملوّنة في صورة �
   const plain = await faida.locator('p').nth(1).evaluate((el) => getComputedStyle(el).color);
   expect(em).not.toBe(plain);
   await expect(faida.locator('.faida__src')).toHaveText('تفسير السعدي');
+});
+
+test('الختمة الثانية: التوجيه الدعوي تحت الفائدة ومصدرها، منفصلًا بخط بلون التطبيق، وفي مربع الآية والنسخ', async ({ page }) => {
+  // «اهدنا الصراط المستقيم» الفاتحة ٦ (الصورة ١٩٩٢)
+  const f = F.items.find((x) => x.id === 1992);
+  await openApp(page, { 'hq.page': '1' });
+  await openTab(page);
+  const faida = study(page).locator('.faida').filter({ hasText: f.t.slice(0, 20) });
+  await expect(faida.locator('.faida__tip')).toHaveText(f.tip);
+  // بعد المصدر
+  await expect(faida.locator('.faida__src + .faida__tip')).toHaveCount(1);
+  const border = await faida.locator('.faida__tip').evaluate((el) => getComputedStyle(el).borderInlineStartWidth);
+  expect(border).toBe('3px');
+  // مربع الآية
+  await openApp(page, { 'hq.page': '1' });
+  await longPress(page, h(1, 6));
+  await page.getByRole('menuitem', { name: 'فوائد' }).click();
+  const card = page.getByRole('dialog', { name: 'الفوائد' });
+  await expect(card.locator('.faida__tip').filter({ hasText: f.tip })).toHaveCount(1);
+  await card.getByRole('button', { name: 'نسخ' }).click();
+  expect(await copied(page)).toContain(`${f.src}\n${f.tip}`);
 });
