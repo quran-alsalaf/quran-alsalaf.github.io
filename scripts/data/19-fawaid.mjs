@@ -15,11 +15,15 @@
 // https://t.me/s/tadabbor111)، فلا يحتاج البناء إلى تيليجرام. والجلسة ١ للختمة الثالثة (رسائلها نصوص).
 // والجلسة ٢ للختمة الأولى: فوائدها صور (١٥٥٢)، نُسخت نصوصها في khatma1.json ← images بشكل الرسالة النصية نفسه
 // (الآية وعزوها، ثم النص، ثم المصدر)، و⸨…⸩ الكلمة الملوّنة عنوانًا في أول الفقرة، وtitle عنوان الصورة بلا آية؛
-// وطوبقت بالتفاسير الستة في التطبيق، وعيّنة منها بالشاملة. والثانية في جلسة لاحقة.
+// وطوبقت بالتفاسير الستة في التطبيق، وعيّنة منها بالشاملة.
+// والجلسة ٣ للختمة الثانية «الدعوة إلى الله»: صورها (٦٨٥) بشكل صور الأولى، وtip التوجيه الدعوي تحت الخط في
+// الصورة («فاحرص على…»)؛ ورسائلها النصية من برنامج «تدبر آية كل يوم» في رمضان بعدها: رسالة «💎 آية اليوم»
+// بالآية، ثم فوائدها، وما لا آية في أوله منها (day) يُربط بآية اليوم قبله.
 //
 // المخرج: public/data/fawaid.json
-//   { items: [{ id, k, v: [أول آية، آخرها], title?, all?, q?, by?, t, src }] }
+//   { items: [{ id, k, v: [أول آية، آخرها], title?, all?, q?, by?, t, src, tip? }] }
 //   (بلا موضوعات الختمات: أُلغي وسم الموضوع في الجلسة ٢، ٢٠٢٦-١١-٢٢، بقرار صاحب المشروع)
+//   tip التوجيه الدعوي في صور الختمة الثانية، وsrc فارغ إن لم يكن للفائدة سطر مصدر
 //   q جزء الآية المقتبس إن لم تُقتبس آياتها كاملة، وby سطر القائل إن كان، وall: 1 للفائدة العامة عن السورة
 //   أو مقطع منها (بلا آية في أولها)
 //   v بفهرس آيات حفص (quran.json)، وt النص أسطرًا (\n) والبنود موحّدة «• »، واقتباسات الآيات ﴿…﴾.
@@ -32,7 +36,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 export const OUT = 'public/data/fawaid.json';
-export const KHATMAS = [1, 3];
+export const KHATMAS = [1, 2, 3];
 
 // فوائد لا آية في أولها: تُربط بآياتها (السورة، أول آية، آخرها)
 export const FIXES = {
@@ -192,14 +196,14 @@ function verseAt(quran) {
 const SURA_TITLE = /^(?:من أسماء\s+)?سورة\s*:?\s*[ء-ي ]+[:：]*\s*$/;
 const suraOfTitle = (title) => title.replace(/^(?:من أسماء\s+)?سورة\s*:?\s*/, '');
 
-// أسطر النص والمصدر (آخر سطر) ⇐ { t, src }
-const bodyOf = (rest) => ({
+// أسطر النص والمصدر (آخر سطر، إلا إن لم يكن لها مصدر nosrc) ⇐ { t, src }
+const bodyOf = (rest, nosrc = false) => ({
   t: rest
-    .slice(0, -1)
+    .slice(0, nosrc ? rest.length : -1)
     .map(([l]) => (BULLET.test(l) ? `• ${tidy(l.replace(BULLET, ''))}` : tidy(l)))
     .filter((l) => l !== '•')
     .join('\n'),
-  src: tidy(rest.at(-1)[0]).replace(/\.$/, '').replace(/^تفسيرال/, 'تفسير ال'),
+  src: nosrc ? '' : tidy(rest.at(-1)[0]).replace(/\.$/, '').replace(/^تفسيرال/, 'تفسير ال'),
 });
 
 // صورة بلا آية في أعلاها: بعنوان (title، «سورة الأنفال» أو «قصة أصحاب الكهف»)، أو آيتها مذكورة في FIXES
@@ -213,7 +217,7 @@ export function parseHeadless(m) {
   const title = m.title ?? null;
   // (والعنوان اسم السورة وحده لا يُكرَّر: الفوائد العامة تُعرض تحت اسم السورة)
   const plainSura = Boolean(title && SURA_TITLE.test(title) && /^سورة/.test(title));
-  return { id: m.id, quote: null, ref: null, title, plainSura, by: '', ...bodyOf(nonEmpty) };
+  return { id: m.id, quote: null, ref: null, title, plainSura, by: '', ...bodyOf(nonEmpty, m.nosrc) };
 }
 
 // الرسالة ⇐ فائدة، أو null إن لم تكن فائدة: في أولها سطر القائل، أو تبدأ بآية معزوّة ثم نصها ثم مصدرها
@@ -266,7 +270,19 @@ export function parseMessage(m) {
   };
 }
 
-// فوائد ختمة: [{ id, k, v, title?, by, t, src }]، ومعها المشكلات (لتوقف البناء)
+// رسالة «💎 آية اليوم:» ثم الآية وعزوها (برنامج رمضان بعد الختمة الثانية)
+const DAY = /^\s*💎?\s*آية اليوم\s*:/;
+function dayVerses(m, idx, sura, at) {
+  const line = m.text.replace(DAY, '').trim().split('\n')[0].trim();
+  const q = line.match(QUOTE);
+  const r = q && line.slice(q[0].length).trim().match(REF);
+  const s = r && sura(r[1].trim());
+  if (!s) return null;
+  const v = [at(s, num(r[2])), at(s, r[3] ? num(r[3]) : num(r[2]))];
+  return v[0] >= 0 && v[1] >= v[0] && quoteIn(idx, tidy(q[1]), v[0], v[1]) ? v : null;
+}
+
+// فوائد ختمة: [{ id, k, v, title?, by, t, src, tip? }]، ومعها المشكلات (لتوقف البناء)
 export function buildKhatma(quran, data) {
   const idx = verseIndex(quran);
   const sura = suraNames(quran);
@@ -275,14 +291,29 @@ export function buildKhatma(quran, data) {
   const problems = [];
   const fixed = [];
   const seen = new Set();
-  // رسائل الختمة، ونصوص صورها (الختمة الأولى: كل فائدة صورة، نُسخ نصها بشكل الرسالة النصية نفسه)
-  for (const m of [...data.messages, ...(data.images ?? []).filter((x) => x.text)]) {
-    const f = parseMessage(m) ?? (m.photo !== undefined && (m.title || FIXES[m.id]?.ref) ? parseHeadless(m) : null);
+  // آية اليوم (برنامج رمضان بعد الختمة الثانية): [أول، آخر] من آخر رسالة «💎 آية اليوم» قبل الرسالة
+  let day = null;
+  // رسائل الختمة، ونصوص صورها (الختمتان الأولى والثانية: كل فائدة صورة، نُسخ نصها بشكل الرسالة النصية نفسه)
+  for (let m of [...data.messages, ...(data.images ?? []).filter((x) => x.text)]) {
+    if (DAY.test(m.text)) {
+      day = dayVerses(m, idx, sura, at);
+      if (!day) problems.push(`${m.id}: آية اليوم غير معروفة`);
+      // (وفي ٣٠٦٤ جاءت الفائدة بعد الآية في رسالة «آية اليوم» نفسها: تُقرأ بلا السطر الأول)
+      const rest = m.text.replace(DAY, '').trim();
+      if (rest.split('\n').filter((l) => l.trim()).length < 3) continue;
+      m = { ...m, text: rest };
+    }
+    const f = m.day
+      ? parseHeadless(m)
+      : (parseMessage(m) ?? (m.photo !== undefined && (m.title || FIXES[m.id]?.ref) ? parseHeadless(m) : null));
     if (!f) continue;
     let v = null;
     const fix = FIXES[f.id];
     if (fix?.skip) continue;
-    if (fix?.ref) {
+    if (m.day) {
+      if (day) v = day;
+      else problems.push(`${f.id}: فائدة يوم بلا آية اليوم قبلها`);
+    } else if (fix?.ref) {
       const [s, a, b] = fix.ref;
       v = [at(s, a), at(s, b)];
     } else if (f.ref) {
@@ -327,6 +358,7 @@ export function buildKhatma(quran, data) {
     if (f.quote && !fix?.dropQuote && skeleton(f.quote).length < 0.9 * skeleton(idx.slice(v[0], v[1] + 1).join(' ')).length) item.q = f.quote;
     if (f.by) item.by = f.by;
     Object.assign(item, { t: f.t, src: f.src });
+    if (m.tip) item.tip = tidy(m.tip);
     items.push(item);
   }
   return { items, problems, fixed };
@@ -349,7 +381,7 @@ async function main() {
     console.error(problems.join('\n'));
     throw new Error(`${problems.length} مشكلة في الفوائد`);
   }
-  // بترتيب المصحف، ثم بترتيب الختمات (الأولى ثم الثالثة)، ثم بترتيب نشرها
+  // بترتيب المصحف، ثم بترتيب الختمات (الأولى ثم الثانية ثم الثالثة، بقرار صاحب المشروع ٢٠٢٦-١١-٢٢)، ثم بترتيب نشرها
   items.sort((a, b) => a.v[0] - b.v[0] || a.v[1] - b.v[1] || a.k - b.k || a.id - b.id);
   await writeFile(OUT, `${JSON.stringify({ items })}\n`);
   console.log(`✓ ${OUT}: ${items.length} فائدة`);
