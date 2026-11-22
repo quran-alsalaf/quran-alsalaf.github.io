@@ -511,3 +511,15 @@
 .vcard__content .faida .faida__src {
   margin-top: 0.5em;
 }
+
+/* التوجيه الدعوي (الختمة الثانية «الدعوة إلى الله»): تحت الفائدة ومصدرها، وفي أوله خط بلون التطبيق
+   كما يفصله الخط عن الفائدة في صورتها */
+.faida__tip {
+  padding-inline-start: 0.7em;
+  border-inline-start: 3px solid var(--accent);
+}
+
+.study__box--explain .faida .faida__tip,
+.vcard__content .faida .faida__tip {
+  margin-top: 0.6em;
+}
