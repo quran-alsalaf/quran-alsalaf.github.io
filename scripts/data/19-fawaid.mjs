@@ -43,6 +43,21 @@ export const FIXES = {
   3094: { ref: [1, 1, 7], whole: true },
   // «قصة أصحاب الكهف»
   3443: { ref: [18, 9, 26], whole: true },
+  // الختمة الأولى (صور): عزو لا يطابق الآية في أعلى الصورة، أو بلا آية في أعلاها
+  16: { ref: [1, 2, 4] }, // «الحمد لله… * الرحمن الرحيم * مالك يوم الدين» والعزو «٢-٣»
+  45: { ref: [2, 106, 107] }, // الآيتان في نصها
+  148: { ref: [3, 120, 120] }, // ثلاث آيات متفرقة (آل عمران ١٢٠ و١٢٥ و١٨٦): على أولاها
+  220: { ref: [4, 142, 142] }, // الآية في نصها
+  233: { ref: [5, 1, 120], whole: true }, // «سورة المائدة أجمع سورة…»
+  382: { ref: [7, 1, 206], whole: true }, // حديثا قراءة الأعراف في المغرب
+  402: { ref: [7, 33, 33] }, // الآية في نصها
+  430: { ref: [7, 205, 205] }, // آية الذكر (الأعراف ٢٠٥) وآية الدعاء (٥٥): على أولاهما
+  476: { ref: [8, 45, 45] }, // العزو «الأنفال: ٢٤»
+  575: { ref: [10, 39, 39] }, // العزو «يونس: ٦١»
+  799: { ref: [18, 9, 26], whole: true }, // «قصة أصحاب الكهف»
+  821: { ref: [18, 60, 82], whole: true }, // «قصة موسى والخضر»
+  1358: { ref: [39, 71, 73] }, // «وسيق الذين كفروا… وسيق الذين اتقوا» والعزو «٧٢-٧٣»
+  1857: { ref: [81, 1, 29], whole: true }, // «سورة التكوير والانفطار والانشقاق»: تحت أولاها
   // الختمة الأولى: «الحال التي ينبغي أن يكون عليها صاحب القرآن» (ابن رجب) عن القرآن كله لا عن سورة أو آية،
   // والفوائد تُعرض بآياتها، فتُترك
   38: { skip: true },
@@ -166,6 +181,34 @@ function verseAt(quran) {
   return (s, a) => (first[s] !== undefined && a >= 1 && a <= quran.suras[s - 1].count ? first[s] + a - 1 : -1);
 }
 
+// عنوان صورة باسم السورة: «سورة الأنفال»، «سورة: ق»، «من أسماء سورة التوبة»
+const SURA_TITLE = /^(?:من أسماء\s+)?سورة\s*:?\s*[ء-ي ]+[:：]*\s*$/;
+const suraOfTitle = (title) => title.replace(/^(?:من أسماء\s+)?سورة\s*:?\s*/, '');
+
+// أسطر النص والمصدر (آخر سطر) ⇐ { t, src }
+const bodyOf = (rest) => ({
+  t: rest
+    .slice(0, -1)
+    .map(([l]) => (BULLET.test(l) ? `• ${tidy(l.replace(BULLET, ''))}` : tidy(l)))
+    .filter((l) => l !== '•')
+    .join('\n'),
+  src: tidy(rest.at(-1)[0]).replace(/\.$/, '').replace(/^تفسيرال/, 'تفسير ال'),
+});
+
+// صورة بلا آية في أعلاها: بعنوان (title، «سورة الأنفال» أو «قصة أصحاب الكهف»)، أو آيتها مذكورة في FIXES
+export function parseHeadless(m) {
+  const nonEmpty = m.text
+    .split('\n')
+    .map((l) => l.trim())
+    .map((l, i) => [l, i])
+    .filter(([l]) => l);
+  if (nonEmpty.length < 2) return null;
+  const title = m.title ?? null;
+  // (والعنوان اسم السورة وحده لا يُكرَّر: الفوائد العامة تُعرض تحت اسم السورة)
+  const plainSura = Boolean(title && SURA_TITLE.test(title) && /^سورة/.test(title));
+  return { id: m.id, quote: null, ref: null, title, plainSura, by: '', ...bodyOf(nonEmpty) };
+}
+
 // الرسالة ⇐ فائدة، أو null إن لم تكن فائدة: في أولها سطر القائل، أو تبدأ بآية معزوّة ثم نصها ثم مصدرها
 // (بعض الفوائد بلا سطر قائل، فقائلها في نصها أو مصدرها وحده)
 export function parseMessage(m) {
@@ -175,7 +218,9 @@ export function parseMessage(m) {
   // سطر القائل أول الرسالة، أو بعد الآية أو العنوان
   const sayerAt = nonEmpty.slice(0, 2).find(([l]) => SAYER.test(l));
   const first = nonEmpty[0][0];
-  const verseFirst = QUOTE.test(first) && REF.test(first.replace(QUOTE, '').trim());
+  // (وفي نصوص الصور قد تأتي الآية بلا عزو، فتُعرف من نصها)
+  const afterQuote = first.replace(QUOTE, '').trim();
+  const verseFirst = QUOTE.test(first) && (REF.test(afterQuote) || (m.photo !== undefined && !afterQuote));
   if (!sayerAt && !verseFirst) return null;
   const by = sayerAt ? sayerAt[0] : '';
   const byLine = sayerAt ? sayerAt[1] : nonEmpty[0][1];
@@ -225,7 +270,7 @@ export function buildKhatma(quran, data) {
   const seen = new Set();
   // رسائل الختمة، ونصوص صورها (الختمة الأولى: كل فائدة صورة، نُسخ نصها بشكل الرسالة النصية نفسه)
   for (const m of [...data.messages, ...(data.images ?? []).filter((x) => x.text)]) {
-    const f = parseMessage(m);
+    const f = parseMessage(m) ?? (m.photo !== undefined && (m.title || FIXES[m.id]?.ref) ? parseHeadless(m) : null);
     if (!f) continue;
     let v = null;
     const fix = FIXES[f.id];
@@ -246,11 +291,16 @@ export function buildKhatma(quran, data) {
           // يُصحَّح بالنص)، وإلا مشكلة
           const near = nearQuote(quran, idx, f.quote, v[0], v[1]);
           if (near) {
-            fixed.push(`${f.id}: ${f.ref.sura} ${f.ref.from} ⇐ ${quran.verses[near[0]].a}`);
+            fixed.push(`${f.id}: عزو صُحّح بنص الآية: ${f.ref.sura} ${f.ref.from} ⇐ ${quran.verses[near[0]].a}`);
             v = near;
           } else problems.push(`${f.id}: الاقتباس لا يطابق ${f.ref.sura} ${f.ref.from}-${f.ref.to}: ${f.quote.slice(0, 50)}`);
         }
       }
+    } else if (f.title && SURA_TITLE.test(f.title) && sura(suraOfTitle(f.title))) {
+      // عن السورة كلها
+      const s = sura(suraOfTitle(f.title));
+      v = [at(s, 1), at(s, quran.suras[s - 1].count)];
+      f.whole = true;
     } else if (f.quote) {
       v = findQuote(idx, f.quote);
       if (!v) problems.push(`${f.id}: لم تُعرف آية الاقتباس: ${f.quote.slice(0, 50)}`);
@@ -264,8 +314,8 @@ export function buildKhatma(quran, data) {
     }
     seen.add(key);
     const item = { id: f.id, k: data.khatma, v };
-    if (f.title) item.title = f.title;
-    if (fix?.whole) item.all = 1;
+    if (f.title && !f.plainSura) item.title = f.title;
+    if (fix?.whole || f.whole) item.all = 1;
     // جزء الآية الذي تتكلم عنه الفائدة («﴿من ذا الذي يشفع عنده إلا بإذنه﴾»)، إن لم تقتبس آياتها كاملة
     if (f.quote && skeleton(f.quote).length < 0.9 * skeleton(idx.slice(v[0], v[1] + 1).join(' ')).length) item.q = f.quote;
     if (f.by) item.by = f.by;
@@ -287,7 +337,7 @@ async function main() {
     problems.push(...out.problems);
     fixed.push(...out.fixed);
   }
-  for (const x of fixed) console.log(`  عزو صُحّح بنص الآية: ${x}`);
+  for (const x of fixed) console.log(`  تصحيح: ${x}`);
   if (problems.length) {
     console.error(problems.join('\n'));
     throw new Error(`${problems.length} مشكلة في الفوائد`);
