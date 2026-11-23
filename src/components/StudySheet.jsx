@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   sharedNote,
   actionsInRange,
@@ -18,6 +19,9 @@ import {
 import { copyText } from '../lib/userdata.js';
 import { NO_FAWAID, emphasisParts, faidaPlain, fawaidBlocks, loadFawaid, wholeHeading } from '../lib/fawaid.js';
 import { useLayer } from '../lib/layers.js';
+import { isWarsh } from '../lib/riwayah.js';
+import { actionGroups, fawaidGroups, meaningGroups, rangeFileName, rangeNote, rangeSpec, tafsirGroups } from '../lib/shareContent.js';
+import ShareImages from './ShareImages.jsx';
 import RangeBar from './RangeBar.jsx';
 import TafsirPicker from './TafsirPicker.jsx';
 import './StudySheet.css';
@@ -34,6 +38,8 @@ import './StudySheet.css';
   المصحف: السحب نحو اليمين إلى التبويب الذي على اليسار). و«من فوائد الآيات» لصفحات النطاق،
   وفي كل تبويب زرّ «نسخ المحتوى» (٢٠٢٦-١١-١٤): الآية ثم محتواها، ثم التالية ثم محتواها، في المقدار كله.
   والتبويب الرابع «الفوائد» (٢٠٢٦-١١-٢٢): فوائد ختمات «التفسير والتدبر» لآيات المقدار (src/lib/fawaid.js).
+  وبجانب «نسخ المحتوى» زرّ «مشاركة» (٢٠٢٦-١١-٢٣، «المشاركة» الجلسة ٢): صور آيات المقدار ومحتواها كما تُنسخ
+  (src/lib/shareContent.js ← rangeSpec)، بمعاينة ShareImages نفسها.
 */
 const TABS = [
   { id: 'tafsir', name: 'تفسير' },
@@ -215,10 +221,15 @@ function TafsirTab({ quran, verses, pages, onToast }) {
       tafsirBlocks(verses, (v) => shownTafsirText(source, t, quran, v)).map((b) => ({ ...b, text: paragraphs(b.text).join('\n') }))
     );
 
+  const shareTafsir = () =>
+    rangeSpec(quran, 'tafsir', verses, tafsirGroups(tafsirBlocks(verses, (v) => shownTafsirText(source, t, quran, v))), {
+      credit: tafsirInfo(source).title,
+    });
+
   return (
     <>
-      {/* صفّ واحد: نسخ المحتوى يمينًا، واختيار التفسير في الوسط */}
-      <CopyBar getText={t ? copyTafsir : null} onToast={onToast}>
+      {/* صفّ واحد: نسخ المحتوى يمينًا، واختيار التفسير في الوسط، والمشاركة يسارًا */}
+      <CopyBar getText={t ? copyTafsir : null} getSpec={t && verses.length ? shareTafsir : null} quran={quran} kind="tafsir" verses={verses} onToast={onToast}>
         <TafsirPicker value={source} onChange={setSource} onToast={onToast} />
       </CopyBar>
 
@@ -279,10 +290,12 @@ export function TafsirBody({ text, source }) {
 function MeaningsTab({ quran, verses, onToast }) {
   const idx = memoIndex(quran);
   const covered = verses.filter((v) => idx.sectionOf.m[v] >= 0);
-  const copyBar = (getText) => <CopyBar getText={getText} onToast={onToast} />;
+  const copyBar = (getText, getSpec) => (
+    <CopyBar getText={getText} getSpec={getSpec} quran={quran} kind="meanings" verses={verses} onToast={onToast} />
+  );
   if (!covered.length) return (
     <>
-      {copyBar(null)}
+      {copyBar(null, null)}
       <p className="study__note">{UNAVAILABLE}</p>
     </>
   );
@@ -296,12 +309,19 @@ function MeaningsTab({ quran, verses, onToast }) {
         .map((v) => ({ verses: [v], text: idx.meaningsOf.get(v).map((w) => `${w.mushaf ?? w.word}: ${w.meaning}`).join('\n') }))
     );
   const hasWords = covered.some((v) => idx.meaningsOf.get(v)?.length);
+  const meaningsSpec = () =>
+    rangeSpec(
+      quran,
+      'meanings',
+      verses,
+      meaningGroups(covered.filter((v) => idx.meaningsOf.get(v)?.length).map((v) => ({ v, words: idx.meaningsOf.get(v) })))
+    );
 
   const shown = covered;
 
   return (
     <>
-      {copyBar(hasWords ? meaningsText : null)}
+      {copyBar(hasWords ? meaningsText : null, hasWords ? meaningsSpec : null)}
       {shown.map((v) => {
         const words = idx.meaningsOf.get(v) ?? [];
         return (
@@ -340,7 +360,17 @@ function ActionsTab({ quran, verses, onToast }) {
   // آيات كل توجيه ثم التوجيه (والتوجيهات المتتالية على الآيات نفسها تُجمع تحتها)
   const actionsText = () =>
     copyContent(quran, 'العمل بالآيات', list.map((i) => ({ verses: idx.actions[i].v, text: `• ${idx.actions[i].t}` })));
-  const copyBar = <CopyBar getText={list.length ? actionsText : null} onToast={onToast} />;
+  const actionsSpec = () => rangeSpec(quran, 'actions', verses, actionGroups(list.map((i) => idx.actions[i])));
+  const copyBar = (
+    <CopyBar
+      getText={list.length ? actionsText : null}
+      getSpec={list.length ? actionsSpec : null}
+      quran={quran}
+      kind="actions"
+      verses={verses}
+      onToast={onToast}
+    />
+  );
   if (!covered.length) return (
     <>
       {copyBar}
@@ -414,7 +444,14 @@ function FawaidTab({ quran, verses, onToast }) {
   };
   return (
     <>
-      <CopyBar getText={blocks.length ? fawaidText : null} onToast={onToast} />
+      <CopyBar
+        getText={blocks.length ? fawaidText : null}
+        getSpec={blocks.length ? () => rangeSpec(quran, 'fawaid', verses, fawaidGroups(blocks, (vs) => wholeHeading(quran, vs))) : null}
+        quran={quran}
+        kind="fawaid"
+        verses={verses}
+        onToast={onToast}
+      />
       {!data && !failed && <p className="study__note">جارٍ تحميل الفوائد…</p>}
       {failed && <p className="study__note">تعذّر تحميل الفوائد.</p>}
       {data && !blocks.length && <p className="study__note">{NO_FAWAID}</p>}
@@ -536,9 +573,11 @@ function Links({ quran, kind, verses }) {
 }
 
 // زرّ «نسخ المحتوى» الصغير أعلى كل تبويب يمينًا (٢٠٢٦-١١-١٤، أُلغي «نسخ الآيات» بطلب صاحب
-// المشروع)، وما بعده (اختيار التفسير) في الوسط
-function CopyBar({ getText, onToast, children }) {
+// المشروع)، وما بعده (اختيار التفسير) في الوسط، وزرّ «مشاركة» يسارًا (٢٠٢٦-١١-٢٣، «المشاركة» الجلسة ٢):
+// getSpec ⇐ مواصفة صور المقدار (rangeSpec)، ومعطَّل كالنسخ إن خلا المقدار من المحتوى
+function CopyBar({ getText, getSpec, quran, kind, verses, onToast, children }) {
   const copy = async (text) => onToast?.((await copyText(text)) ? 'نُسخ النص' : 'تعذّر النسخ');
+  const [sharing, setSharing] = useState(null);
   return (
     <div className="study__copy">
       <button type="button" disabled={!getText} onClick={() => copy(getText())}>
@@ -546,10 +585,35 @@ function CopyBar({ getText, onToast, children }) {
         نسخ المحتوى
       </button>
       {children ?? <span />}
-      <span />
+      {quran ? (
+        <button type="button" disabled={!getSpec} onClick={() => setSharing(getSpec())}>
+          <ShareIcon />
+          مشاركة
+        </button>
+      ) : (
+        <span />
+      )}
+      {/* في جسم الصفحة: حركة اللوحة والتبويبات (transform) تجعل الموضع الثابت نسبةً إليها */}
+      {sharing &&
+        createPortal(
+          <ShareImages
+            build={() => buildRangeImages(quran, sharing, verses)}
+            name={rangeFileName(quran, kind, verses)}
+            onClose={() => setSharing(null)}
+            onToast={onToast}
+          />,
+          document.body
+        )}
     </div>
   );
 }
+
+// صور المقدار، وتنبيه ما شُورك منه إن قُطع (من أصل آيات المقدار)
+const buildRangeImages = (quran, spec, verses) =>
+  import('../lib/shareImage.js')
+    .then((m) => m.buildShareImages(spec, { warsh: isWarsh(quran) }))
+    .then((r) => ({ ...r, note: r.truncated && !r.partial ? rangeNote(quran, spec, r.shown, verses.length) : null }));
+
 
 // أيقونة المشاركة: ثلاث دوائر موصولة
 export const ShareIcon = () => (

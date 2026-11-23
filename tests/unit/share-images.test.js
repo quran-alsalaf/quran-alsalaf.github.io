@@ -39,7 +39,9 @@ vi.mock('@capacitor/filesystem', () => ({
 }));
 
 const { MAX_IMAGES, SIZES, layoutShare, sentenceEnds, shareCaption, toWords } = await import('../../src/lib/shareLayout.js');
-const { actionUnits, cardSpec, fawaidUnits, meaningUnits, quotedRuns, tafsirUnits } = await import('../../src/lib/shareContent.js');
+const { actionGroups, actionUnits, cardSpec, fawaidGroups, fawaidUnits, meaningUnits, quotedRuns, rangeFileName, rangeNote, rangeSpec, tafsirGroups, tafsirUnits } = await import(
+  '../../src/lib/shareContent.js'
+);
 const { imageNames, saveImages, shareImages } = await import('../../src/lib/shareFiles.js');
 
 const QURAN = JSON.parse(readFileSync('public/data/quran.json', 'utf8'));
@@ -216,6 +218,121 @@ describe('محتوى البطاقات', () => {
 
   it('السطر المرافق للصور: اسم التطبيق ورابطه', () => {
     expect(shareCaption('https://example.org/')).toBe('من تطبيق قرآن السلف\nhttps://example.org/');
+  });
+});
+
+describe('صفحات المحتوى (الجلسة ٢): آيات المقدار ومحتواها', () => {
+  const v = (a) => vOf(2, a);
+  const groupsOf = (n, len) => Array.from({ length: n }, (_, i) => ({ verses: [v(i + 1)], units: [para(Array.from({ length: len }, () => sentence(10)).join(' '))] }));
+  const groupsIn = (page) => [...new Set(page.els.map((e) => e.group))];
+
+  it('كل مجموعة مربع آياتها ثم محتواها، والمتتالية على الآيات نفسها تُجمع بخط فاصل، والعامة تحت عنوانها', () => {
+    const spec = rangeSpec(QURAN, 'actions', [v(1), v(5)], [
+      { verses: [v(1), v(2)], units: [para('أولى.')] },
+      { verses: [v(1), v(2)], units: [para('ثانية.')] },
+      { verses: [v(3)], head: 'سورة البقرة', units: [para('عامة.')] },
+    ]);
+    expect(spec.title).toBe('العمل بالآيات');
+    expect(spec.ref).toBe('البقرة ١–٥');
+    expect(spec.units.map((u) => [u.type, u.group])).toEqual([
+      ['verse', 0],
+      ['para', 0],
+      ['rule', 0],
+      ['para', 0],
+      ['para', 1],
+      ['para', 1],
+    ]);
+    // الآيتان في مربع واحد بنصّيهما
+    expect(spec.units[0].text).toBe(`${QURAN.verses[v(1)].t.join(' ')} ${QURAN.verses[v(2)].t.join(' ')}`);
+    expect(spec.units[4]).toMatchObject({ runs: [{ t: 'سورة البقرة', s: 'bold' }], keepNext: true });
+    // عدة مجموعات: حجم خط ثابت (أصغر الأحجام)، والمجموعة الواحدة بأكبر خط يسعها
+    expect(spec.sizes).toEqual([SIZES.at(-1)]);
+    expect(rangeSpec(QURAN, 'tafsir', [v(1)], [{ verses: [v(1)], units: [para('قصير.')] }]).sizes).toBeUndefined();
+  });
+
+  it('الانتقال عند نهاية آية ومحتواها: المجموعة التي تسعها صورة كاملة لا تنقسم بين صورتين', () => {
+    const spec = rangeSpec(QURAN, 'tafsir', [v(1), v(4)], groupsOf(4, 3));
+    const r = layoutShare(spec, measure, { ...OPTS, sizes: spec.sizes });
+    expect(r.pages.length).toBeGreaterThan(1);
+    expect(r.truncated).toBe(false);
+    const seen = r.pages.map(groupsIn);
+    // لا مجموعة في صورتين، وكل صورة تبدأ بمربع آية
+    expect(seen.flat()).toEqual([0, 1, 2, 3]);
+    for (const p of r.pages) expect(p.els[0].kind).toBe('verse');
+  });
+
+  it('المجموعة الأطول من صورة كاملة تُقسم عند نهاية جملة', () => {
+    const spec = rangeSpec(QURAN, 'tafsir', [v(1), v(2)], [...groupsOf(1, 1), { verses: [v(2)], units: [para(Array.from({ length: 30 }, () => sentence(9)).join(' '))] }]);
+    const r = layoutShare(spec, measure, { ...OPTS, sizes: spec.sizes });
+    expect(r.pages.length).toBeGreaterThan(1);
+    // تبدأ في الصورة الأولى بعد الأولى، ولا يُترك باقيها فارغًا
+    expect(groupsIn(r.pages[0])).toEqual([0, 1]);
+    expect(textOf(lines(r.pages[0]).at(-1))).toMatch(/\.$/);
+  });
+
+  it('المقدار الأطول من ٤ صور: المجموعات التي تسعها كاملة، و«التتمة» في آخر الرابعة، وما شُورك منها', () => {
+    const spec = rangeSpec(QURAN, 'tafsir', [v(1), v(40)], groupsOf(40, 3));
+    const r = layoutShare(spec, measure, { ...OPTS, sizes: spec.sizes });
+    expect(r.pages).toHaveLength(MAX_IMAGES);
+    expect(r.truncated).toBe(true);
+    expect(r.partial).toBe(false);
+    expect(r.pages.at(-1).els.at(-1).kind).toBe('tail');
+    const shown = r.pages.flatMap(groupsIn).filter((g) => g != null);
+    expect(shown).toEqual(Array.from({ length: r.shown }, (_, i) => i));
+    expect(r.shown).toBeLessThan(40);
+    // وكل مجموعة مشارَكة كاملة: أسطرها كأسطرها وحدها
+    const alone = layoutShare(rangeSpec(QURAN, 'tafsir', [v(1), v(40)], groupsOf(r.shown, 3)), measure, { ...OPTS, sizes: spec.sizes });
+    expect(alone.truncated).toBe(false);
+    expect(alone.pages.flatMap(lines).length).toBe(r.pages.flatMap(lines).length);
+    for (const p of r.pages) expect(p.height).toBeLessThanOrEqual(OPTS.height);
+  });
+
+  it('أول مجموعة أطول من ٤ صور: يُشارك أولها (partial)', () => {
+    const spec = rangeSpec(QURAN, 'tafsir', [v(1), v(2)], [
+      { verses: [v(1)], units: Array.from({ length: 60 }, () => para(sentence(30))) },
+      ...groupsOf(1, 1),
+    ]);
+    const r = layoutShare(spec, measure, { ...OPTS, sizes: spec.sizes });
+    expect(r.pages).toHaveLength(MAX_IMAGES);
+    expect(r).toMatchObject({ truncated: true, partial: true, shown: 1 });
+  });
+
+  it('تنبيه المعاينة: ما شُورك من أصل آيات المقدار، والفوائد العامة لا تُحسب', () => {
+    const spec = rangeSpec(QURAN, 'tafsir', [v(1), v(60)], groupsOf(60, 1));
+    expect(rangeNote(QURAN, spec, 3, 60)).toBe(
+      'المقدار أطول من ٤ صور، فشُورك من البقرة ١ إلى ٣ من أصل ٦٠ آية، وفي آخر الأخيرة «التتمة في تطبيق قرآن السلف».'
+    );
+    expect(rangeNote(QURAN, spec, 1, 10)).toBe(
+      'المقدار أطول من ٤ صور، فشُورك البقرة ١ من أصل ١٠ آيات، وفي آخر الأخيرة «التتمة في تطبيق قرآن السلف».'
+    );
+    const across = rangeSpec(QURAN, 'tafsir', [vOf(1, 6), v(2)], [{ verses: [vOf(1, 6)], units: [] }, { verses: [v(1)], units: [] }]);
+    expect(rangeNote(QURAN, across, 2, 4)).toMatch(/فشُورك من الفاتحة ٦ إلى البقرة ١ من أصل ٤ آيات/);
+    const general = rangeSpec(QURAN, 'fawaid', [vOf(1, 1), vOf(1, 7)], [{ verses: [vOf(1, 1), vOf(1, 7)], head: 'سورة الفاتحة', units: [] }, { verses: [vOf(1, 2)], units: [] }]);
+    expect(rangeNote(QURAN, general, 1, 7)).toBeNull();
+    expect(rangeNote(QURAN, general, 2, 7)).toMatch(/فشُورك الفاتحة ٢ من أصل ٧ آيات/);
+  });
+
+  it('محتوى التبويبات: كتل التفسير، وآيات العمل من أولها إلى آخرها، والفوائد العامة بعنوانها', () => {
+    expect(tafsirGroups([{ verses: [v(1), v(2)], text: 'تفسير.' }])).toEqual([{ verses: [v(1), v(2)], units: tafsirUnits('تفسير.') }]);
+    const [a] = actionGroups([{ t: 'اعمل.', v: [v(2), v(4)] }]);
+    expect(a.verses).toEqual([v(2), v(3), v(4)]);
+    expect(a.units).toEqual([{ type: 'para', runs: [{ t: 'اعمل.', s: 'text' }], bullet: true }]);
+    const f = { id: 1, t: 'فائدة.', src: 'مصدر' };
+    const [g, h] = fawaidGroups(
+      [
+        { verses: [vOf(1, 1), vOf(1, 7)], all: true, items: [f] },
+        { verses: [vOf(1, 2)], items: [f] },
+      ],
+      () => 'سورة الفاتحة'
+    );
+    expect(g).toMatchObject({ head: 'سورة الفاتحة', units: fawaidUnits([f]) });
+    expect(h.head).toBeUndefined();
+  });
+
+  it('أسماء الملفات بالمقدار', () => {
+    expect(rangeFileName(QURAN, 'tafsir', [v(1), v(2), v(3), v(4), v(5)])).toBe('quran-alsalaf-tafsir-2-1-5');
+    expect(rangeFileName(QURAN, 'meanings', [v(7)])).toBe('quran-alsalaf-meanings-2-7');
+    expect(rangeFileName(QURAN, 'fawaid', [vOf(2, 286), vOf(3, 2)])).toBe('quran-alsalaf-fawaid-2-286-3-2');
   });
 });
 
