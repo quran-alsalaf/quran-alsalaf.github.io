@@ -58,6 +58,8 @@ dependencies {
     implementation "androidx.core:core:$androidxCoreVersion"
     // نافذة تقييم جوجل بلاي داخل التطبيق (feedback/QuranFeedbackPlugin)
     implementation "com.google.android.play:review:$playReviewVersion"
+    // تنبيه التحديث: تحديثات جوجل بلاي داخل التطبيق (update/QuranUpdatePlugin)
+    implementation "com.google.android.play:app-update:$playAppUpdateVersion"
     testImplementation "junit:junit:$junitVersion"
     // اختبار ترتيب التلاوة (SequencerTest) يقرأ حالاته من tests/fixtures/sequence.json
     testImplementation "org.json:json:$orgJsonVersion"

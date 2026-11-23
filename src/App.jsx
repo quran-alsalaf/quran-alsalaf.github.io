@@ -36,6 +36,7 @@ import { listenReminderOpen, remindersAvailable, syncReminders } from './lib/rem
 import { syncAyahWidget, syncWidgets } from './lib/widgets.js';
 import { parseAyahOpen } from './lib/ayahOfDay.js';
 import { useRatePrompt } from './lib/feedback.js';
+import { useAppUpdate } from './lib/appUpdate.js';
 import { hafsList, hafsRange, shownBookmarks, shownNotes, shownOf, shownRange } from './lib/verseMap.js';
 import './App.css';
 
@@ -794,6 +795,11 @@ export default function App() {
     ready: splashDone && !!quran && !choosing,
     busy: player.status === 'playing' || player.status === 'loading' || reading || reciting,
   });
+  // تنبيه التحديث (src/lib/appUpdate.js): نافذة جوجل إن نُشرت نسخة أحدث، ثم شريط «التحديث جاهز»
+  const update = useAppUpdate({
+    ready: splashDone && !!quran && !choosing,
+    busy: player.status === 'playing' || player.status === 'loading' || reading || reciting,
+  });
   const covered =
     studyOpen || settingsOpen || sideMenuOpen || searchOpen || !!pressed || !!picking || listenOpen || khatmaOpen || !!hifzOpen || choosing || mistakesOpen;
   const chromeShown = chromeOpen && !covered;
@@ -1041,6 +1047,17 @@ export default function App() {
       )}
       {quran && reciting && mistakesOpen && (
         <MistakesPicker quran={quran} pages={shownPages} state={recite} onClose={() => setMistakesOpen(false)} onToast={showToast} />
+      )}
+      {update.ready && (
+        <div className="toast toast--action update-bar" role="status">
+          <span>التحديث جاهز</span>
+          <button type="button" className="toast__action" onClick={update.install}>
+            تحديث الآن
+          </button>
+          <button type="button" className="update-bar__close" aria-label="إغلاق" onClick={update.dismiss}>
+            ✕
+          </button>
+        </div>
       )}
       {toast && (
         <div key={toast.n} className={`toast${toast.action ? ' toast--action' : ''}`} role="status">
