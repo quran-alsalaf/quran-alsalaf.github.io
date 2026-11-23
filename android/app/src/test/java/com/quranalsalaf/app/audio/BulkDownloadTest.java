@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -97,6 +98,10 @@ public class BulkDownloadTest {
     }
 
     private List<String> urls(int n) {
+        return urls(base, n);
+    }
+
+    private static List<String> urls(String base, int n) {
         List<String> l = new ArrayList<>();
         for (int i = 1; i <= n; i++) l.add(base + "/r/" + String.format("%03d", i) + ".mp3");
         return l;
@@ -144,10 +149,38 @@ public class BulkDownloadTest {
     @Test
     public void انقطاع_الاتصال() throws IOException {
         File root = tmp.newFolder("audio");
-        List<String> list = urls(3);
-        server.close();
-        assertEquals(BulkDownload.Result.NETWORK, new BulkDownload(fast()).run(root, list, null));
-        assertEquals(3, AudioFiles.missing(root, list).size());
+        // منفذ محجوز بمقبس مربوط لا يستمع: كل اتصال به يُرفض (connection refused) دائمًا.
+        // لا يصلح إغلاق الخادم (server.close()) ثم الاتصال بمنفذه: المنفذ يتحرر فيأخذه برنامج آخر، أو يختاره
+        // النظام منفذَ مصدرٍ للاتصال نفسه فيتصل المقبس بنفسه ويقرأ طلبه ردًّا، فتأتي النتيجة FAILED أحيانًا.
+        try (Socket hold = new Socket()) {
+            hold.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0));
+            List<String> list = urls("http://127.0.0.1:" + hold.getLocalPort(), 3);
+            assertEquals(BulkDownload.Result.NETWORK, new BulkDownload(fast()).run(root, list, null));
+            assertEquals(3, AudioFiles.missing(root, list).size());
+        }
+    }
+
+    @Test
+    public void انقطاع_الاتصال_في_وسط_الطلب() throws IOException {
+        File root = tmp.newFolder("audio");
+        // يقبل الخادم الاتصال ثم يقطعه (reset) قبل أن يرد
+        try (ServerSocket dropper = new ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))) {
+            Thread t = new Thread(() -> {
+                while (!dropper.isClosed()) {
+                    try (Socket s = dropper.accept()) {
+                        new BufferedReader(new InputStreamReader(s.getInputStream(), StandardCharsets.UTF_8)).readLine();
+                        s.setSoLinger(true, 0);
+                    } catch (IOException e) {
+                        if (dropper.isClosed()) return;
+                    }
+                }
+            });
+            t.setDaemon(true);
+            t.start();
+            List<String> list = urls("http://127.0.0.1:" + dropper.getLocalPort(), 3);
+            assertEquals(BulkDownload.Result.NETWORK, new BulkDownload(fast()).run(root, list, null));
+            assertEquals(3, AudioFiles.missing(root, list).size());
+        }
     }
 
     @Test
