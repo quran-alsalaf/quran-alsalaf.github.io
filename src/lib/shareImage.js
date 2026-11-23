@@ -77,7 +77,7 @@ async function loadFonts(spec, quran) {
     `400 40px ${FAMILY.ui}`,
     `700 40px ${FAMILY.ui}`,
   ].map((f) => document.fonts.load(f, text));
-  const quranText = [spec.verse ?? '', ...spec.units.filter((u) => u.type === 'pair').map((u) => u.word)].join(' ');
+  const quranText = [spec.verse ?? '', ...spec.units.map((u) => (u.type === 'pair' ? u.word : u.type === 'verse' ? u.text : ''))].join(' ');
   if (quranText.trim()) jobs.push(document.fonts.load(`400 40px ${FAMILY[quran]}`, quranText));
   await Promise.all(jobs.map((j) => j.catch(() => null)));
 }
@@ -254,7 +254,8 @@ const toBlob = (canvas) =>
   new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob'))), 'image/png'));
 
 /*
-  buildShareImages(spec, { warsh }) ⇐ { images: [Blob], truncated }
+  buildShareImages(spec, { warsh }) ⇐ { images: [Blob], truncated, shown?, partial? }
+  (shown: مجموعات صفحات المحتوى المشارَكة كاملة، وpartial إن قُطعت الأولى — src/lib/shareLayout.js)
   warsh: نص الآيات برسم ورش (خطّه)
 */
 export async function buildShareImages(spec, { warsh = false } = {}) {
@@ -269,12 +270,12 @@ export async function buildShareImages(spec, { warsh = false } = {}) {
     ctx.font = fontOf(style, px, quran);
     return ctx.measureText(text).width;
   };
-  const layout = layoutShare(spec, measure, { width: WIDTH - 2 * PAD_X, height: BODY_BOTTOM - BODY_TOP, tail: TAIL });
+  const layout = layoutShare(spec, measure, { width: WIDTH - 2 * PAD_X, height: BODY_BOTTOM - BODY_TOP, tail: TAIL, sizes: spec.sizes });
   const [colors, icon] = [themeColors(), await loadImage(`${BASE}icons/icon-192.png`)];
   const images = [];
   for (let i = 0; i < layout.pages.length; i++) {
     drawPage(ctx, { spec, layout, page: layout.pages[i], index: i, count: layout.pages.length, colors, quran, icon });
     images.push(await toBlob(canvas));
   }
-  return { images, truncated: layout.truncated };
+  return { images, truncated: layout.truncated, shown: layout.shown, partial: layout.partial };
 }

@@ -8,9 +8,10 @@ import './ShareImages.css';
 
 /*
   معاينة صور المشاركة (٢٠٢٦-١١-٢٢، «المشاركة» الجلسة ١، بقرار صاحب المشروع: معاينة أولًا):
-  تُصنع الصور (build ⇐ { images: [Blob], truncated }) ثم تظهر في نافذة تُقلَّب فيها بالسحب، وتحتها زرّان:
+  تُصنع الصور (build ⇐ { images: [Blob], truncated, note? }) ثم تظهر في نافذة تُقلَّب فيها بالسحب، وتحتها زرّان:
   «مشاركة» (قائمة مشاركة الجهاز بالصور وسطر «من تطبيق قرآن السلف» ورابطه) و«حفظ في الصور».
   name: أول اسم الملف (quran-alsalaf-tafsir-2-255)
+  note: تنبيه المقدار المقطوع في صفحات المحتوى («شُورك من البقرة ١ إلى ٣ من أصل ١٠ آيات…»)، بدل التنبيه العام
 */
 export default function ShareImages({ build, name, onClose, onToast }) {
   const [state, setState] = useState({ status: 'building' });
@@ -23,9 +24,9 @@ export default function ShareImages({ build, name, onClose, onToast }) {
     let alive = true;
     let urls = [];
     build().then(
-      ({ images, truncated }) => {
+      ({ images, truncated, note }) => {
         urls = images.map((b) => URL.createObjectURL(b));
-        if (alive) setState({ status: 'ready', images, truncated, urls });
+        if (alive) setState({ status: 'ready', images, truncated, note, urls });
         else urls.forEach((u) => URL.revokeObjectURL(u));
       },
       () => alive && setState({ status: 'failed' })
@@ -108,7 +109,8 @@ export default function ShareImages({ build, name, onClose, onToast }) {
                 ))}
               </div>
             )}
-            {state.truncated && (
+            {state.truncated && state.note && <p className="shareimg__note">{state.note}</p>}
+            {state.truncated && !state.note && (
               <p className="shareimg__note">
                 المحتوى أطول من {toArabicDigits(MAX_IMAGES)} صور، فتُشارك أوائله، وفي آخر الأخيرة «التتمة في تطبيق قرآن السلف».
               </p>

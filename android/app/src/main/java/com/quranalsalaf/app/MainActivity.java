@@ -8,6 +8,7 @@ import com.quranalsalaf.app.audio.QuranDownloadsPlugin;
 import com.quranalsalaf.app.feedback.QuranFeedbackPlugin;
 import com.quranalsalaf.app.gallery.QuranGalleryPlugin;
 import com.quranalsalaf.app.reminders.QuranRemindersPlugin;
+import com.quranalsalaf.app.update.QuranUpdatePlugin;
 import com.quranalsalaf.app.widgets.QuranWidgetsPlugin;
 
 public class MainActivity extends BridgeActivity {
@@ -23,6 +24,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(QuranFeedbackPlugin.class);
         // ويدجتات الشاشة الرئيسية: «ختمتي اليوم» (src/lib/widgets.js)
         registerPlugin(QuranWidgetsPlugin.class);
+        // تنبيه التحديث: تحديثات جوجل بلاي داخل التطبيق (src/lib/appUpdate.js)
+        registerPlugin(QuranUpdatePlugin.class);
         // حفظ صور المشاركة في معرض الجوال (src/lib/shareFiles.js)
         registerPlugin(QuranGalleryPlugin.class);
         super.onCreate(savedInstanceState);

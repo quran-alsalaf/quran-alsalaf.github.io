@@ -627,3 +627,15 @@
   color: var(--accent-ink);
   font-weight: 600;
 }
+
+/* شريط «التحديث جاهز» (src/lib/appUpdate.js): فوق موضع التنبيه القصير ليجتمعا، ويبقى حتى يُضغط */
+.update-bar {
+  bottom: calc(140px + var(--safe-bottom));
+  z-index: 59;
+}
+
+.update-bar__close {
+  padding: 4px 6px;
+  color: var(--bg);
+  opacity: 0.75;
+}

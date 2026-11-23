@@ -18,6 +18,14 @@
 //   • الانتقال إلى الصورة التالية عند نهاية فقرة أو نهاية جملة («.» «؟» «!» «؛» خارج ﴿…﴾)، لا في وسط جملة؛
 //     إلا جملة لا تسعها صورة كاملة فتُقسم عند آخر سطر يسعها.
 //   • الآية في أول الصورة الأولى، ولا تنفرد عن أول محتواها.
+//
+// صفحات المحتوى (الجلسة ٢، ٢٠٢٦-١١-٢٣): مقدار آيات، كلٌّ في مربعها ثم محتواها — وحدات بمجموعاتها (group):
+//   { type: 'verse', text, group }   مربع آية (أو آيات متتالية لها محتوى واحد) في أول مجموعتها
+//   وكل وحدة بعدها group مجموعتها. وقواعدها (بقرار صاحب المشروع):
+//   • الانتقال إلى الصورة التالية عند نهاية آية ومحتواها: المجموعة التي لا تسعها بقية الصورة وتسعها صورة كاملة
+//     تبدأ بها التالية، والأطول من صورة كاملة تُقسم كما سبق (عند نهاية جملة).
+//   • ما زاد على MAX_IMAGES لا يُشارَك: تُشارَك المجموعات التي تسعها الصور كاملة، وتُحذف المقطوعة (إلا الأولى
+//     فيُشارك أولها)؛ والنتيجة shown عدد المجموعات المشارَكة كاملة، وpartial إن قُطعت الأولى.
 
 export const MAX_IMAGES = 4;
 export const MORE_TEXT = 'التتمة في تطبيق قرآن السلف';
@@ -154,6 +162,7 @@ function layoutAt(spec, measure, s, { width, height, tail, maxPages = MAX_IMAGES
   if (spec.verse) units.push({ type: 'verse', words: toWords([{ t: spec.verse, s: 'verse' }]), keepNext: true });
   for (const u of spec.units) {
     if (u.type === 'para') units.push({ ...u, words: toWords(u.runs) });
+    else if (u.type === 'verse') units.push({ ...u, words: toWords([{ t: u.text, s: 'verse' }]), keepNext: true });
     else units.push(u);
   }
   if (spec.credit) units.push({ type: 'para', runs: [], words: toWords([{ t: spec.credit, s: 'muted' }]), size: 'small', align: 'center', credit: true });
@@ -189,6 +198,7 @@ function layoutAt(spec, measure, s, { width, height, tail, maxPages = MAX_IMAGES
   const gapBefore = (u, prev) => {
     if (!prev || u.type === 'rule' || prev.type === 'rule') return 0;
     if (prev.type === 'verse') return m.verseGap;
+    if (u.type === 'verse') return m.verseGap;
     if (u.type === 'pair' && prev.type === 'pair') return 0;
     return m.gap;
   };
@@ -220,7 +230,7 @@ function layoutAt(spec, measure, s, { width, height, tail, maxPages = MAX_IMAGES
     y += gap;
     if (u.type === 'verse') {
       const h = heightOf(u, lines);
-      page().els.push({ kind: 'verse', y, h, lines, lh: m.lh.verse, pad: m.versePad });
+      page().els.push({ kind: 'verse', y, h, lines, lh: m.lh.verse, pad: m.versePad, group: u.group });
       y += h;
       return;
     }
@@ -239,12 +249,30 @@ function layoutAt(spec, measure, s, { width, height, tail, maxPages = MAX_IMAGES
         // ضبط السطر بين الحافتين إلا آخر سطر الفقرة، أو سطرًا قصيرًا جدًّا
         justify: !(last) && u.align !== 'center' && line.width > (width - indentOf(u)) * 0.72,
         indent: indentOf(u),
+        group: u.group,
       });
       y += lh;
     });
   }
 
   const queue = [...units];
+
+  // ارتفاع المجموعة كلها من أولها (u) في صورة واحدة: وحداتها بفواصلها
+  function groupHeight(u) {
+    const end = queue.findIndex((x) => x.group !== u.group);
+    const list = [u, ...(end < 0 ? queue : queue.slice(0, end))];
+    let h = 0;
+    let p = null;
+    for (const x of list) {
+      h += p ? gapBefore(x, p) : 0;
+      if (x.type === 'rule') h += m.rule;
+      else if (x.type === 'pair') h += pairOf(x).h;
+      else h += heightOf(x, linesOf(x));
+      p = x;
+    }
+    return h;
+  }
+  let pending = null; // الوحدة التي وقف عندها الترتيب (لا صورة بعد الأخيرة)
 
   // u لا تسعها الصورة الجارية فتبدأ بها التالية، ومعها ما قبلها مما لا ينفرد عنها (عنوان الفائدة وقائلها)،
   // ما لم تفرغ منه الصورة الجارية. false: لا صورة بعد الأخيرة
@@ -269,9 +297,21 @@ function layoutAt(spec, measure, s, { width, height, tail, maxPages = MAX_IMAGES
   while (queue.length) {
     const u = queue.shift();
     const empty = page().els.length === 0;
+    // أول مجموعة (آية ومحتواها) لا تسعها بقية الصورة وتسعها صورة كاملة: تبدأ بها التالية
+    if (u.type === 'verse' && u.group != null && !u.continued && !empty) {
+      const g = groupHeight(u);
+      if (y + gapBefore(u, prev) + g > cap() && g <= height - (pages.length + 1 === maxPages ? tail : 0)) {
+        if (!newPage()) {
+          pending = u;
+          break;
+        }
+        queue.unshift(u);
+        continue;
+      }
+    }
     if (u.type === 'rule') {
       if (!empty && y + m.rule <= cap()) {
-        page().els.push({ kind: 'rule', y, h: m.rule });
+        page().els.push({ kind: 'rule', y, h: m.rule, group: u.group });
         y += m.rule;
         prev = u;
       }
@@ -285,12 +325,15 @@ function layoutAt(spec, measure, s, { width, height, tail, maxPages = MAX_IMAGES
       const p = pairOf(u);
       if (p.h + next <= room || empty) {
         y += gap;
-        page().els.push({ kind: 'pair', y, h: p.h, wordLines: p.wordLines, meaningLines: p.meaningLines, wordW: p.wordW, top: prev?.type !== 'pair', pad: m.pairPad, lhWord: m.lh.word, lhText: m.lh.text });
+        page().els.push({ kind: 'pair', y, h: p.h, wordLines: p.wordLines, meaningLines: p.meaningLines, wordW: p.wordW, top: prev?.type !== 'pair', pad: m.pairPad, lhWord: m.lh.word, lhText: m.lh.text, group: u.group });
         y += p.h;
         prev = u;
         continue;
       }
-      if (!moveOn(u)) break;
+      if (!moveOn(u)) {
+        pending = u;
+        break;
+      }
       continue;
     }
 
@@ -338,9 +381,34 @@ function layoutAt(spec, measure, s, { width, height, tail, maxPages = MAX_IMAGES
         continue;
       }
     }
-    if (!moveOn(u)) break;
+    if (!moveOn(u)) {
+      pending = u;
+      break;
+    }
   }
   if (!truncated) page().height = y;
+
+  // مجموعات: تُحذف المقطوعة (ما بقي منها شيء لم يُرتَّب) إن سبقتها مجموعة كاملة
+  const stop = truncated ? (pending ?? queue[0])?.group : undefined;
+  const first = units.find((u) => u.group != null)?.group;
+  let shown;
+  let partial = false;
+  if (first != null) {
+    const all = new Set(units.filter((u) => u.group != null).map((u) => u.group)).size;
+    shown = all;
+    if (stop != null && stop > first) {
+      for (const p of pages) p.els = p.els.filter((el) => !(el.group >= stop));
+      while (pages.length > 1 && !pages.at(-1).els.length) pages.pop();
+      const last = pages.at(-1);
+      while (last.els.at(-1)?.kind === 'rule') last.els.pop();
+      const end = last.els.at(-1);
+      last.height = end ? end.y + end.h : 0;
+      shown = [...new Set(units.filter((u) => u.group != null && u.group < stop).map((u) => u.group))].length;
+    } else if (stop != null) {
+      shown = 1;
+      partial = true;
+    }
+  }
 
   // «التتمة» في آخر الصورة الأخيرة إن بقي من المحتوى شيء
   if (truncated) {
@@ -348,7 +416,7 @@ function layoutAt(spec, measure, s, { width, height, tail, maxPages = MAX_IMAGES
     last.els.push({ kind: 'tail', y: last.height, h: tail });
     last.height += tail;
   }
-  return { pages, truncated };
+  return { pages, truncated, ...(shown != null ? { shown, partial } : {}) };
 }
 
 // ---------- النص المرافق للصور ----------

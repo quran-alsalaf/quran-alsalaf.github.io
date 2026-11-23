@@ -48,7 +48,7 @@ test('صفحات المحتوى: زر واحد «نسخ المحتوى» في ك
   await clickDock(page, 'صفحات المحتوى');
   for (const tab of ['تفسير', 'معاني الكلمات', 'العمل بالآيات']) {
     await study(page).getByRole('tab', { name: tab }).click();
-    await expect(study(page).locator('.study__copy > button')).toHaveText(['نسخ المحتوى']);
+    await expect(study(page).locator('.study__copy > button')).toHaveText(['نسخ المحتوى', 'مشاركة']);
     await expect(study(page).getByRole('button', { name: 'نسخ الآيات' })).toHaveCount(0);
   }
 });
