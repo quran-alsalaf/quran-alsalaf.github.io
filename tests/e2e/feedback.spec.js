@@ -48,7 +48,7 @@ test('«الإعدادات التخصيصية»: الرواية ومفتاحا �
   await expect(sub.getByRole('radiogroup', { name: 'الرواية' })).toBeVisible();
   await expect(sub.getByRole('switch', { name: 'تمييز مقررات الأسابيع' })).toBeVisible();
   await expect(sub.getByRole('switch', { name: 'التنبيه ببداية الربع' })).toBeVisible();
-  await expect(sub.getByRole('button', { name: 'النسخة الاحتياطية' })).toBeVisible();
+  await expect(sub.getByRole('button', { name: 'النسخ الاحتياطي' })).toBeVisible();
   await sub.getByRole('button', { name: 'رجوع' }).click();
   await expect(shown(page)).toHaveCount(0);
   await expect(mainPage(page).getByRole('button', { name: 'الإعدادات التخصيصية' })).toBeVisible();

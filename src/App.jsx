@@ -941,7 +941,7 @@ export default function App() {
                 مساحة فتحها، ويُفسح له الزرّ مكانه فيبقى اسمه في وسط ما بقي */}
             <div className={`dock__study${user.contentRange?.length ? ' dock__study--range' : ''}`}>
               <button className="dock__slot" type="button" disabled={!quran} onClick={openStudy}>
-                <span className="dock__label">صفحات المحتوى</span>
+                <span className="dock__label">التدبّر</span>
               </button>
               {quran && user.contentRange?.length > 0 && (
                 <button type="button" className="dock__clear" onClick={() => saveContentRange(null)} aria-label="إلغاء مقدار المحتوى" title="إلغاء المقدار">

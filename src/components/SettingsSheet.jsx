@@ -143,7 +143,7 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
             <SwitchRow label="التنبيه ببداية الربع" checked={rubAlert} onChange={toggleRubAlert} />
           </Section>
           <Section>
-            <LinkRow label="النسخة الاحتياطية" onClick={() => onPage('backup')} />
+            <LinkRow label="النسخ الاحتياطي" onClick={() => onPage('backup')} />
           </Section>
         </SubPage>
         <SubPage title="وضع القراءة" shown={page === 'reading'} onBack={back} onClose={onClose}>
@@ -152,7 +152,7 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
         <SubPage title="وضع التسميع" shown={page === 'recite'} onBack={back} onClose={onClose}>
           <ReciteInfo onStart={onStartRecite} />
         </SubPage>
-        <SubPage title="النسخة الاحتياطية" shown={page === 'backup'} onBack={back} onClose={onClose}>
+        <SubPage title="النسخ الاحتياطي" shown={page === 'backup'} onBack={back} onClose={onClose}>
           <BackupRows />
         </SubPage>
         <SubPage title="عن التطبيق" shown={page === 'about'} onBack={back} onClose={onClose}>

@@ -4,7 +4,7 @@ import { clickDock, copied, downloadedTafsir, isLaptop, openApp, pickVerse, stor
 
 const study = (page) => page.locator('section.study');
 const open = async (page) => {
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await expect(study(page)).toHaveClass(/study--open/);
 };
 const closed = (page) => expect(study(page)).not.toHaveClass(/study--open/);

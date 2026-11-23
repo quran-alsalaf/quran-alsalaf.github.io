@@ -45,7 +45,7 @@ test.beforeEach(async ({ page }) => {
 const ref = (list) => (list.length === 1 ? oneVerse(list[0]) : versesText(list));
 
 test('صفحات المحتوى: زر واحد «نسخ المحتوى» في كل تبويب، ولا «نسخ الآيات»', async ({ page }) => {
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   for (const tab of ['تفسير', 'معاني الكلمات', 'العمل بالآيات']) {
     await study(page).getByRole('tab', { name: tab }).click();
     await expect(study(page).locator('.study__copy > button')).toHaveText(['نسخ المحتوى', 'مشاركة']);
@@ -54,7 +54,7 @@ test('صفحات المحتوى: زر واحد «نسخ المحتوى» في ك
 });
 
 test('صفحات المحتوى: نسخ التفسير اسمه ثم كل آية وتفسيرها، للصفحة الظاهرة', async ({ page }, testInfo) => {
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await study(page).getByRole('button', { name: 'نسخ المحتوى' }).click();
   await expect(toast(page)).toHaveText('نُسخ النص');
   const shown = isLaptop(testInfo) ? [...pageVerses(1), ...pageVerses(2)] : pageVerses(1);
@@ -68,7 +68,7 @@ test('صفحات المحتوى: نسخ التفسير اسمه ثم كل آية
 test('صفحات المحتوى: نسخ التفسير (الميسّر والمختصر والسعدي) والمعاني والعمل للمقدار المحدد، آيةً ثم محتواها', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem('hq.contentRange', '[1,3]'));
   await downloadedTafsir(page, 'saadi');
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
 
   await study(page).getByRole('button', { name: 'نسخ المحتوى' }).click();
   await expect(toast(page)).toHaveText('نُسخ النص');
@@ -116,7 +116,7 @@ test('صفحات المحتوى: آية السعدي التي لا كلام خا
     localStorage.setItem('hq.tafsir', 'saadi');
   }, [a, c]);
   await downloadedTafsir(page, 'saadi');
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await study(page).getByRole('button', { name: 'نسخ المحتوى' }).click();
   expect(await copied(page)).toBe(
     ['تيسير الكريم الرحمن في تفسير كلام المنان (تفسير السعدي)', `${versesText([a, b])}\n${para(SAADI.verses[a])}`, `${oneVerse(c)}\n${para(SAADI.verses[c])}`].join('\n\n')
@@ -126,7 +126,7 @@ test('صفحات المحتوى: آية السعدي التي لا كلام خا
 test('خارج نطاق المذكرات: زر نسخ المحتوى معطّل', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem('hq.page', '300'));
   await page.reload();
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await study(page).getByRole('tab', { name: 'معاني الكلمات' }).click();
   await expect(study(page).getByRole('button', { name: 'نسخ المحتوى' })).toBeDisabled();
 });
@@ -193,7 +193,7 @@ test('بلا واجهة الحافظة: يُنسخ بالطريقة البديل
     window.__execOk = true;
     document.execCommand = (cmd) => cmd === 'copy' && window.__execOk;
   });
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await study(page).getByRole('button', { name: 'نسخ المحتوى' }).click();
   await expect(toast(page)).toHaveText('نُسخ النص');
   await page.evaluate(() => (window.__execOk = false));

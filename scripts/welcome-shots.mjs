@@ -42,7 +42,7 @@ const SHOTS = {
     await longPress(page, 14);
   },
   async study(page) {
-    await clickDock(page, 'صفحات المحتوى');
+    await clickDock(page, 'التدبّر');
     await expect(page.locator('.study .study__item').first()).toBeVisible();
     await page.locator('.dock').evaluate((el) => el.classList.remove('dock--open'));
   },

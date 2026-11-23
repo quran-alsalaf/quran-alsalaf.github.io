@@ -5,7 +5,7 @@ import { clickTopbar, drag, isLaptop, openApp, prepare, waitMushaf } from './hel
 
 const guide = (page) => page.getByRole('dialog', { name: 'دليل التطبيق' });
 const slide = (page) => guide(page).locator('.welcome__slide:not([aria-hidden="true"])');
-const TITLES = ['أهلًا بك في قرآن السلف', 'المصحف', 'صفحات المحتوى', 'القائمة اليمنى', 'الاستماع', 'الإعدادات'];
+const TITLES = ['أهلًا بك في قرآن السلف', 'الضغط المطوّل', 'التدبّر', 'القائمة اليمنى', 'الاستماع', 'الإعدادات'];
 
 // مستخدم جديد حقًّا: لا مفتاح «hq.» عنده عند أول فتح (يُمحى ما جهّزه prepare مرة واحدة)
 async function openFresh(page, storage = {}) {

@@ -15,7 +15,7 @@ test('بعد أول فتح: يعمل بلا اتصال على آخر صفحة، 
   await page.reload();
   await waitMushaf(page);
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await expect(page.locator('.study .study__item').first()).toBeVisible();
   await page.keyboard.press('Escape');
 
@@ -23,7 +23,7 @@ test('بعد أول فتح: يعمل بلا اتصال على آخر صفحة، 
   await page.reload();
   await waitMushaf(page);
   expect(await savedPage(page)).toBe(10);
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await expect(page.locator('.study .study__item').first()).toBeVisible();
   await page.keyboard.press('Escape');
 
