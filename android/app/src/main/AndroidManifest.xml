@@ -107,4 +107,6 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- تذكير الختمة اليومي: إعادة جدولته بعد إعادة تشغيل الجوال (وإذن الإشعارات أعلاه يُطلب عند تفعيله) -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- حفظ صور المشاركة في معرض الجوال (gallery/QuranGalleryPlugin.java): يُطلب في أندرويد ٩ فأقدم وحده، وأحدث منه بلا إذن -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 </manifest>
