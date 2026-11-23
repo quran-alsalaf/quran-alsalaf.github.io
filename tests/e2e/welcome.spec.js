@@ -26,18 +26,6 @@ async function openGuide(page) {
   await page.locator('.settings .about__body').getByRole('button', { name: 'دليل التطبيق' }).click();
 }
 
-// انتهت كل حركة جارية في الدليل (حركة الظهور وانتقال الشرائح)
-const still = (page) =>
-  page.waitForFunction(() => !document.querySelector('.welcome')?.getAnimations({ subtree: true }).some((a) => a.playState === 'running'));
-
-async function settle(page) {
-  await page.evaluate(() => document.fonts.ready);
-  // اللقطة الظاهرة حُمِّلت ورُسمت، وانتهت حركة التقليب
-  await expect.poll(() => slide(page).locator('img').evaluate((img) => img.complete && img.naturalWidth > 0)).toBe(true);
-  await still(page);
-  await page.mouse.move(0, 0);
-}
-
 test('مستخدم جديد: الدليل أول فتح، يُقلَّب حتى «ابدأ»، ثم اختيار الرواية، ولا يعود بعدها', async ({ page }) => {
   await openFresh(page);
   await expect(guide(page)).toBeVisible();
@@ -155,20 +143,4 @@ test('على الخلفية الفاتحة: اللقطات الفاتحة', asyn
   await expect(slide(page).locator('img')).toHaveAttribute('src', new RegExp(`mushaf-${isLaptop(testInfo) ? 'laptop' : 'mobile'}-light\\.webp$`));
 });
 
-// اللقطات المرجعية: الأولى والثانية، على الفاتحة والداكنة
-for (const [theme, bg] of [
-  ['light', 'beige'],
-  ['dark', 'gray'],
-]) {
-  test(`لقطة الدليل ${theme}`, async ({ page }) => {
-    await openApp(page, { 'hq.page': '3', 'hq.bg': bg, 'hq.accent': 'blue' });
-    await openGuide(page);
-    await expect(guide(page)).toBeVisible();
-    await page.mouse.move(0, 0);
-    await still(page);
-    await expect(page).toHaveScreenshot(`welcome-1-${theme}.png`);
-    await guide(page).getByRole('button', { name: 'التالي' }).click();
-    await settle(page);
-    await expect(page).toHaveScreenshot(`welcome-2-${theme}.png`);
-  });
-}
+// ولقطتاه المرجعيتان في tests/e2e/screens.spec.js (مع لقطات الشاشات الرئيسية، ليحدّثها snapshots.yml)

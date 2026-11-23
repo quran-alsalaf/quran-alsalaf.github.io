@@ -73,6 +73,28 @@ for (const [theme, bg] of THEMES) {
     await settle(page);
     await expect(page).toHaveScreenshot(`warsh-${theme}.png`);
   });
+
+  // الشاشة الترحيبية «دليل التطبيق» (٢٠٢٦-١١-٢٣): الشريحة الأولى (أيقونة التطبيق) والثانية (لقطة المصحف)،
+  // مفتوحة من الإعدادات ← «عن التطبيق» — tests/e2e/welcome.spec.js
+  test(`دليل التطبيق ${theme}`, async ({ page }) => {
+    await openApp(page, { 'hq.page': '3', 'hq.bg': bg, 'hq.accent': 'blue' });
+    await clickTopbar(page, 'الإعدادات');
+    await page.locator('.settings').getByRole('button', { name: 'عن التطبيق' }).click();
+    await page.locator('.settings .about__body').getByRole('button', { name: 'دليل التطبيق' }).click();
+    const guide = page.getByRole('dialog', { name: 'دليل التطبيق' });
+    // انتهت حركة الظهور وانتقال الشرائح، ورُسمت اللقطة الظاهرة
+    const still = () =>
+      page.waitForFunction(() => !document.querySelector('.welcome')?.getAnimations({ subtree: true }).some((a) => a.playState === 'running'));
+    await expect(guide).toBeVisible();
+    await settle(page);
+    await still();
+    await expect(page).toHaveScreenshot(`welcome-1-${theme}.png`);
+    await guide.getByRole('button', { name: 'التالي' }).click();
+    const shot = guide.locator('.welcome__slide:not([aria-hidden="true"]) img');
+    await expect.poll(() => shot.evaluate((img) => img.complete && img.naturalWidth > 0)).toBe(true);
+    await still();
+    await expect(page).toHaveScreenshot(`welcome-2-${theme}.png`);
+  });
 }
 
 // اختيار الرواية عند أول فتح (٢٠٢٦-١١-١٥)
