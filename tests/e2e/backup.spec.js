@@ -28,7 +28,7 @@ const DEVICE_A = {
 async function openSettings(page) {
   await openCustomSettings(page);
   await expect(settings(page)).toHaveClass(/settings--open/);
-  await settings(page).getByRole('button', { name: 'النسخة الاحتياطية' }).click();
+  await settings(page).getByRole('button', { name: 'النسخ الاحتياطي' }).click();
   await expect(saveButton(page)).toBeVisible();
 }
 
@@ -42,9 +42,9 @@ test('النسخة الاحتياطية سطر واحد في «الإعدادا�
   await openApp(page, DEVICE_A);
   await clickTopbar(page, 'الإعدادات');
   // ليست في الإعدادات نفسها
-  await expect(settings(page).locator('.settings__page').first().getByRole('button', { name: 'النسخة الاحتياطية' })).toHaveCount(0);
+  await expect(settings(page).locator('.settings__page').first().getByRole('button', { name: 'النسخ الاحتياطي' })).toHaveCount(0);
   await settings(page).getByRole('button', { name: 'الإعدادات التخصيصية' }).click();
-  const row = settings(page).getByRole('button', { name: 'النسخة الاحتياطية' });
+  const row = settings(page).getByRole('button', { name: 'النسخ الاحتياطي' });
   await expect(row).toBeVisible();
   // الخياران داخل الصفحة الفرعية لا في الإعدادات نفسها
   await expect(saveButton(page)).not.toBeVisible();
@@ -52,7 +52,7 @@ test('النسخة الاحتياطية سطر واحد في «الإعدادا�
   await row.click();
   // الصفحة الأمامية (التخصيصية خلفها)
   const sub = settings(page).locator('.settings__page--in:not(.settings__page--behind)');
-  await expect(sub.getByRole('heading', { name: 'النسخة الاحتياطية' })).toBeVisible();
+  await expect(sub.getByRole('heading', { name: 'النسخ الاحتياطي' })).toBeVisible();
   await expect(sub.getByRole('button', { name: /حفظ نسخة احتياطية/ })).toBeVisible();
   await expect(sub.getByRole('button', { name: 'استعادة من نسخة' })).toBeVisible();
   await sub.getByRole('button', { name: 'رجوع' }).click();

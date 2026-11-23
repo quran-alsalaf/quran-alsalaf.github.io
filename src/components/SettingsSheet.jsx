@@ -24,7 +24,7 @@ import { RIWAYAT, setRiwayah, useRiwayah } from '../lib/riwayah.js';
 
   ترتيب الإعدادات (٢٠٢٦-١١-٢٠، الجلسة ٣ ب، بقرار صاحب المشروع): المظهر والقراءة ثابتان في أولها، ثم سطر
   «الإعدادات التخصيصية» يفتح صفحة فيها الرواية ومفتاحا القراءة والنسخة الاحتياطية (وهذه صفحة داخلها، سهمها
-  يرجع إليها)، ثم فراغ، وفي أسفل اللوحة أربعة أسطر بلا عنوان: عن التطبيق، وللشكاوى والاقتراحات، وقيّم التطبيق
+  يرجع إليها)، ثم فراغ، وفي أسفل اللوحة أربعة أسطر بلا عنوان: عن التطبيق (وفيها زرّ «دليل التطبيق»، الشاشة الترحيبية ٢٠٢٦-١١-٢٣)، وللشكاوى والاقتراحات، وقيّم التطبيق
   (في التطبيق الأصلي وحده)، وشارك التطبيق (src/lib/feedback.js). (الاسم والترتيب ٢٠٢٦-١١-٢١ بقرار صاحب المشروع؛
   كان «تواصل معنا» آخرها)
   الصفحات الفرعية وآباؤها في PARENT: سهم الرجوع وEsc وزرّ الرجوع في أندرويد ترجع من كل صفحة إلى أبيها.
@@ -44,7 +44,7 @@ const FLING_SPEED = 0.5; // px/ms
 export const PARENT = { backup: 'custom' };
 export const settingsParent = (page) => (page === 'main' ? null : PARENT[page] ?? 'main');
 
-export default function SettingsSheet({ open, panel, page = 'main', onPage, onClose, onStartReading, onStartRecite, onToast }) {
+export default function SettingsSheet({ open, panel, page = 'main', onPage, onClose, onStartReading, onStartRecite, onToast, onGuide }) {
   const [look, setLook] = useState(readAppearance);
   const [weeks, setWeeks] = useState(readWeeksTint);
   const [rubAlert, setRubAlertOn] = useState(readRubAlert);
@@ -143,7 +143,7 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
             <SwitchRow label="التنبيه ببداية الربع" checked={rubAlert} onChange={toggleRubAlert} />
           </Section>
           <Section>
-            <LinkRow label="النسخة الاحتياطية" onClick={() => onPage('backup')} />
+            <LinkRow label="النسخ الاحتياطي" onClick={() => onPage('backup')} />
           </Section>
         </SubPage>
         <SubPage title="وضع القراءة" shown={page === 'reading'} onBack={back} onClose={onClose}>
@@ -152,11 +152,11 @@ export default function SettingsSheet({ open, panel, page = 'main', onPage, onCl
         <SubPage title="وضع التسميع" shown={page === 'recite'} onBack={back} onClose={onClose}>
           <ReciteInfo onStart={onStartRecite} />
         </SubPage>
-        <SubPage title="النسخة الاحتياطية" shown={page === 'backup'} onBack={back} onClose={onClose}>
+        <SubPage title="النسخ الاحتياطي" shown={page === 'backup'} onBack={back} onClose={onClose}>
           <BackupRows />
         </SubPage>
         <SubPage title="عن التطبيق" shown={page === 'about'} onBack={back} onClose={onClose}>
-          <AboutContent />
+          <AboutContent onGuide={onGuide} />
         </SubPage>
         <SubPage title="للشكاوى والاقتراحات" shown={page === 'contact'} onBack={back} onClose={onClose}>
           <ContactPage riwayah={riwayah} />

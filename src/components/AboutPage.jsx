@@ -7,8 +7,9 @@ import './AboutPage.css';
   «المصادر» (بقي نصّ المصدر نفسه).
   ٢٠٢٦-١١-٢١ (بطلب صاحب المشروع): أُلغي زرّ قناة تليجرام، وصار النص عامًّا لا يعدّد ما في التطبيق من مواد
   (لا التفسير ولا المعاني ولا العمل ولا الفوائد)، فلا يحتاج تعديلًا كلما أُضيفت مادة.
+  ٢٠٢٦-١١-٢٣: زرّ «دليل التطبيق» يفتح الشاشة الترحيبية (هنا لا سطرًا في الإعدادات، لئلا تطول اللوحة عن شاشة الجوال).
 */
-export default function AboutContent() {
+export default function AboutContent({ onGuide }) {
   return (
     <div className="about__body">
       <img className="about__logo" src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" />
@@ -19,6 +20,13 @@ export default function AboutContent() {
         يتجاوزونها حتى يتعلموا ما فيها من العلم والعمل.
       </p>
       <p>يقدّم التطبيق المصحف كاملًا للقراءة والاستماع، مع ما يعين على تدبّر القرآن من مواد علمية.</p>
+
+      {/* الشاشة الترحيبية (٢٠٢٦-١١-٢٣): تُفتح من هنا متى شاء المستخدم (src/components/Welcome.jsx) */}
+      {onGuide && (
+        <button type="button" className="about__guide" onClick={onGuide}>
+          دليل التطبيق
+        </button>
+      )}
 
       <div className="about__source">
         <BookIcon />

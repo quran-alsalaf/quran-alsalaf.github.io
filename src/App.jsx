@@ -28,6 +28,8 @@ import { onOfflineNotice, verifyDownloads } from './lib/offline.js';
 import { verifyTafsirDownloads } from './lib/tafsirDownload.js';
 import { readRiwayah, setRiwayah, useRiwayah } from './lib/riwayah.js';
 import RiwayahChooser from './components/RiwayahChooser.jsx';
+import Welcome from './components/Welcome.jsx';
+import { markWelcomeSeen, shouldShowWelcome } from './lib/welcome.js';
 import { MistakesPicker, ReciteBar } from './components/Recite.jsx';
 import { hideFrom, reveal } from './lib/recite.js';
 import { closeTopLayer, hasMouse, hasOpenLayer } from './lib/layers.js';
@@ -62,6 +64,8 @@ export default function App() {
   const [failed, setFailed] = useState(false);
   const [splashLeaving, setSplashLeaving] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
+  // الشاشة الترحيبية «دليل التطبيق» (src/lib/welcome.js): تلقائيًّا للمستخدم الجديد، ومن الإعدادات متى شاء
+  const [guideOpen, setGuideOpen] = useState(shouldShowWelcome);
   // الأزرار العائمة (الشريط العلوي والخانتان السفليتان) مخفية أصلًا، فيملأ المصحف الشاشة؛
   // وتظهر معًا بلمسة على الصفحة وتختفي بأخرى (بطلب صاحب المشروع)
   const [chromeOpen, setChromeOpen] = useState(false);
@@ -787,21 +791,30 @@ export default function App() {
   }, [flash]);
 
   // ما دامت فوق المصحف صفحة أو قائمة أو بطاقة، فهو خارج التركيز ولوحة المفاتيح (inert)
-  // شاشة اختيار الرواية عند أول فتح (بعد الافتتاح، وما لم تُختر رواية)
-  const choosing = splashDone && !!hafs && riwayah === null;
+  // الشاشة الترحيبية بعد الافتتاح، ثم اختيار الرواية عند أول فتح (وما لم تُختر رواية)
+  const guiding = splashDone && !!hafs && guideOpen;
+  const finishGuide = useCallback(() => {
+    markWelcomeSeen();
+    setGuideOpen(false);
+  }, []);
+  const openGuide = useCallback(() => {
+    closeSettings();
+    setGuideOpen(true);
+  }, [closeSettings]);
+  const choosing = splashDone && !!hafs && riwayah === null && !guiding;
   // نافذة تقييم جوجل بلاي التلقائية (التطبيق الأصلي وحده): مرة واحدة، بعد إتمام مهمة ختمة أو بعد ٧ أيام من أول
   // استعمال؛ لا أثناء التلاوة ولا وضع القراءة أو التسميع — src/lib/feedback.js
   useRatePrompt({
-    ready: splashDone && !!quran && !choosing,
+    ready: splashDone && !!quran && !choosing && !guiding,
     busy: player.status === 'playing' || player.status === 'loading' || reading || reciting,
   });
   // تنبيه التحديث (src/lib/appUpdate.js): نافذة جوجل إن نُشرت نسخة أحدث، ثم شريط «التحديث جاهز»
   const update = useAppUpdate({
-    ready: splashDone && !!quran && !choosing,
+    ready: splashDone && !!quran && !choosing && !guiding,
     busy: player.status === 'playing' || player.status === 'loading' || reading || reciting,
   });
   const covered =
-    studyOpen || settingsOpen || sideMenuOpen || searchOpen || !!pressed || !!picking || listenOpen || khatmaOpen || !!hifzOpen || choosing || mistakesOpen;
+    studyOpen || settingsOpen || sideMenuOpen || searchOpen || !!pressed || !!picking || listenOpen || khatmaOpen || !!hifzOpen || choosing || guiding || mistakesOpen;
   const chromeShown = chromeOpen && !covered;
 
   return (
@@ -928,7 +941,7 @@ export default function App() {
                 مساحة فتحها، ويُفسح له الزرّ مكانه فيبقى اسمه في وسط ما بقي */}
             <div className={`dock__study${user.contentRange?.length ? ' dock__study--range' : ''}`}>
               <button className="dock__slot" type="button" disabled={!quran} onClick={openStudy}>
-                <span className="dock__label">صفحات المحتوى</span>
+                <span className="dock__label">التدبّر</span>
               </button>
               {quran && user.contentRange?.length > 0 && (
                 <button type="button" className="dock__clear" onClick={() => saveContentRange(null)} aria-label="إلغاء مقدار المحتوى" title="إلغاء المقدار">
@@ -953,8 +966,10 @@ export default function App() {
         onStartReading={startReading}
         onStartRecite={startRecite}
         onToast={showToast}
+        onGuide={openGuide}
       />
       {choosing && <RiwayahChooser />}
+      {guiding && <Welcome laptop={spread} onDone={finishGuide} />}
       {quran && (
         <SideMenu
           quran={quran}

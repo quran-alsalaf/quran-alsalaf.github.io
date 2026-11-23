@@ -25,7 +25,7 @@ async function mockShare(page) {
 
 test('في التبويبات الأربعة «مشاركة» بجانب «نسخ المحتوى»، وتفتح معاينة صور المقدار بمقاسها', async ({ page }) => {
   await openApp(page, { 'hq.page': '1', 'hq.contentRange': '[1,3]' });
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   for (const tab of ['تفسير', 'معاني الكلمات', 'العمل بالآيات', 'الفوائد']) {
     await study(page).getByRole('tab', { name: tab }).click();
     await expect(study(page).locator('.study__copy > button')).toHaveText(['نسخ المحتوى', 'مشاركة']);
@@ -42,7 +42,7 @@ test('في التبويبات الأربعة «مشاركة» بجانب «نس�
 test('المشاركة بقائمة الجهاز: الصور باسم المقدار ومعها سطر «من تطبيق قرآن السلف»', async ({ page }) => {
   await mockShare(page);
   await openApp(page, { 'hq.page': '1', 'hq.contentRange': '[1,3]' });
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await shareBtn(page).click();
   await expect(preview(page).locator('img').first()).toBeVisible();
   await preview(page).getByRole('button', { name: 'مشاركة' }).click();
@@ -56,7 +56,7 @@ test('المشاركة بقائمة الجهاز: الصور باسم المقد
 test('المقدار الأطول من ٤ صور: أربع صور وتنبيه ما شُورك منه من أصل آيات المقدار', async ({ page }) => {
   const range = [vOf(2, 1), vOf(2, 60)];
   await openApp(page, { 'hq.page': '2', 'hq.contentRange': JSON.stringify(range) });
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await shareBtn(page).click();
   await expect(preview(page).locator('img')).toHaveCount(4);
   await expect(preview(page).locator('.shareimg__note')).toHaveText(
@@ -66,7 +66,7 @@ test('المقدار الأطول من ٤ صور: أربع صور وتنبيه �
 
 test('تبويب بلا محتوى للمقدار (معاني آيات لم تُشرح): «مشاركة» معطّل كالنسخ', async ({ page }) => {
   await openApp(page, { 'hq.page': '300' });
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await study(page).getByRole('tab', { name: 'معاني الكلمات' }).click();
   await expect(shareBtn(page)).toBeDisabled();
   await expect(study(page).getByRole('button', { name: 'نسخ المحتوى' })).toBeDisabled();
@@ -74,7 +74,7 @@ test('تبويب بلا محتوى للمقدار (معاني آيات لم تُ
 
 test('في رواية ورش: صور المقدار بآيات ورش', async ({ page }) => {
   await openApp(page, { 'hq.page': '1', 'hq.riwayah': 'warsh' });
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await shareBtn(page).click();
   await expect(preview(page).locator('img').first()).toBeVisible();
   for (const s of await sizes(page)) expect(s).toEqual([1080, 1350]);

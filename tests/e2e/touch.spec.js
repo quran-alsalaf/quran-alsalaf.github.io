@@ -94,7 +94,7 @@ test('الضغط المطوّل بالإصبع يفتح بطاقة الآية، 
 
 test('السحب يمينًا ويسارًا في صفحات المحتوى ينتقل بين التبويبات', async ({ page }) => {
   await openApp(page, { 'hq.page': '1' });
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   const tabs = page.locator('.study').getByRole('tab');
   await expect(page.locator('.study .study__item').first()).toBeVisible();
   // بعد اكتمال انزلاقها: لو بدأ السحب أثناءه لوقع الإصبع خارجها

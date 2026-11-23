@@ -145,7 +145,7 @@ test.describe('✕ إلغاء مقدار صفحات المحتوى من الزر
   test('بلا مقدار: لا ✕', async ({ page }) => {
     await openApp(page, { 'hq.page': '1' });
     await showChrome(page);
-    await expect(page.locator('.dock').getByRole('button', { name: 'صفحات المحتوى' })).toBeVisible();
+    await expect(page.locator('.dock').getByRole('button', { name: 'التدبّر' })).toBeVisible();
     await expect(clearBtn(page)).toHaveCount(0);
   });
 
@@ -163,7 +163,7 @@ test.describe('✕ إلغاء مقدار صفحات المحتوى من الزر
   test('باقي الزر يفتح صفحات المحتوى، و✕ شريط المقدار داخلها يعمل', async ({ page }) => {
     await openApp(page, { 'hq.page': '1', 'hq.contentRange': [1, 3] });
     await showChrome(page);
-    const slot = page.locator('.dock').getByRole('button', { name: 'صفحات المحتوى' });
+    const slot = page.locator('.dock').getByRole('button', { name: 'التدبّر' });
     await slot.click(); // وسط الزر
     await expect(study(page)).toHaveClass(/study--open/);
     expect(await stored(page, 'hq.contentRange')).toEqual([1, 3]);
@@ -176,7 +176,7 @@ test.describe('✕ إلغاء مقدار صفحات المحتوى من الزر
     await showChrome(page);
     await page.waitForTimeout(300); // يكتمل انزلاق الأزرار
     const x = await clearBtn(page).boundingBox();
-    const slot = await page.locator('.dock').getByRole('button', { name: 'صفحات المحتوى' }).boundingBox();
+    const slot = await page.locator('.dock').getByRole('button', { name: 'التدبّر' }).boundingBox();
     const label = await page.locator('.dock__study .dock__label').boundingBox();
     expect(x.width).toBeGreaterThanOrEqual(44);
     expect(Math.round(x.height)).toBe(Math.round(slot.height));

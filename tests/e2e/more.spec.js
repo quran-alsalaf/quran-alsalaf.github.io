@@ -139,7 +139,7 @@ test('تعذّر تحميل التفسير: رسالته في صفحات الم�
   await page.route('**/data/tafsir-*.json', (r) => r.abort());
   await page.goto('/');
   await waitMushaf(page);
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await expect(page.locator('.study .study__note')).toContainText('تعذّر تحميل التفسير');
 });
 
@@ -255,7 +255,7 @@ test('الأزرار الظاهرة بالفأرة تختفي بعد توقفه�
   // فوق زر: تبقى
   await page.mouse.move(700, 450);
   await page.mouse.move(720, 460);
-  const btn = page.locator('.dock').getByRole('button', { name: 'صفحات المحتوى' });
+  const btn = page.locator('.dock').getByRole('button', { name: 'التدبّر' });
   await expect(page.locator('.dock')).toHaveClass(/dock--open/);
   await page.waitForTimeout(500); // يكتمل انزلاقها
   const b = await btn.boundingBox();

@@ -26,11 +26,11 @@ async function setRange(container, page, a, b) {
   await pickVerse(page, b);
 }
 
-test.describe('صفحات المحتوى', () => {
+test.describe('التدبّر', () => {
   test('اكتمال المقدار ينقل المصحف خلفها إلى أول آية فيه، واختيار البداية وحده لا يحرّكه', async ({ page }, testInfo) => {
     const laptop = isLaptop(testInfo);
     await openApp(page, { 'hq.page': '1' });
-    await clickDock(page, 'صفحات المحتوى');
+    await clickDock(page, 'التدبّر');
     const start = KAHF_EVEN;
     const end = start + 3;
 
@@ -56,7 +56,7 @@ test.describe('صفحات المحتوى', () => {
   test('تعديل البداية بعد اكتمال المقدار: ينتقل عند اختيار النهاية الجديدة', async ({ page }, testInfo) => {
     const laptop = isLaptop(testInfo);
     await openApp(page, { 'hq.page': '1', 'hq.contentRange': [0, 2] });
-    await clickDock(page, 'صفحات المحتوى');
+    await clickDock(page, 'التدبّر');
     const later = at(18, 30);
     await study(page).getByRole('button', { name: /البداية/ }).click();
     await pickVerse(page, later);
@@ -72,7 +72,7 @@ test.describe('صفحات المحتوى', () => {
   test('المقدار داخل الصفحة الظاهرة: لا انتقال', async ({ page }, testInfo) => {
     await openApp(page, { 'hq.page': '3' });
     const verses = QURAN.verses.map((x, i) => i).filter((i) => pageOf(i) === 3);
-    await clickDock(page, 'صفحات المحتوى');
+    await clickDock(page, 'التدبّر');
     await setRange(study(page), page, verses[2], verses[4]);
     await page.waitForTimeout(400);
     expect(await shownPages(page)).toEqual(expectedShown(3, isLaptop(testInfo)));
@@ -82,7 +82,7 @@ test.describe('صفحات المحتوى', () => {
     test.skip(!isLaptop(testInfo), 'الزوج للابتوب');
     await openApp(page, { 'hq.page': '3' });
     const left = QURAN.verses.map((x, i) => i).filter((i) => pageOf(i) === 4);
-    await clickDock(page, 'صفحات المحتوى');
+    await clickDock(page, 'التدبّر');
     await setRange(study(page), page, left[0], left[2]);
     await page.waitForTimeout(400);
     expect(await shownPages(page)).toEqual([3, 4]);

@@ -21,7 +21,7 @@ const EMPTY = Array.from({ length: 604 }, (_, i) => i + 1).find((p) => !fawaidOf
 const EMPTY_RANGE = [pageVerses(EMPTY)[0], pageVerses(EMPTY).at(-1)];
 
 async function openTab(page) {
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await expect(study(page)).toHaveClass(/study--open/);
   await study(page).getByRole('tab', { name: 'الفوائد' }).click();
   await expect(study(page).getByRole('tab', { name: 'الفوائد' })).toHaveAttribute('aria-selected', 'true');

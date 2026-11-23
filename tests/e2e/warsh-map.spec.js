@@ -15,7 +15,7 @@ const wword = (page, v) => page.locator(`.sheet--current .mushaf-page--warsh .w[
 const hword = (page, v) => page.locator(`.sheet--current .mushaf-page:not(.mushaf-page--warsh) .w[data-v="${v}"]`).first();
 const toast = (page) => page.locator('.toast');
 const side = (page) => page.locator('.sidemenu');
-const study = (page) => page.getByRole('dialog', { name: 'صفحات المحتوى' });
+const study = (page) => page.getByRole('dialog', { name: 'التدبّر' });
 
 async function openWarsh(page, storage = {}) {
   await openApp(page, { 'hq.riwayah': 'warsh', 'hq.page': '1', ...storage });
@@ -154,7 +154,7 @@ test('التفسير والمعاني والعمل في مربع الآية بت
 
 test('صفحات المحتوى في ورش: آيات الصفحة بنص ورش، والمقدار يُحفظ بترقيم حفص ويُخفت ما خارجه', async ({ page }) => {
   await openWarsh(page);
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await expect(study(page)).toBeVisible();
   const items = study(page).locator('.study__item');
   await expect(items.first().locator('.study__box--verse')).toHaveText(W.verses[w(1, 1)].t.join(' '));

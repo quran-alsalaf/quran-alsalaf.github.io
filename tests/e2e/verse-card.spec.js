@@ -105,7 +105,7 @@ test('تفسير: التفسير المختار وحده للآية، والتب
   await expect(page.locator('.vmenu')).toHaveCount(0);
 
   // الاختيار نفسه في صفحات المحتوى، والمرة القادمة تُفتح البطاقة عليه
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await expect(page.locator('section.study .tpick__btn')).toHaveText('السعدي');
 });
 

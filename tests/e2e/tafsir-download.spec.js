@@ -13,7 +13,7 @@ const KATHEER = tafsirData('katheer');
 const TABARY = tafsirData('tabary');
 
 const openStudy = async (page) => {
-  await clickDock(page, 'صفحات المحتوى');
+  await clickDock(page, 'التدبّر');
   await expect(study(page)).toHaveClass(/study--open/);
 };
 const option = (scope, name) => scope.getByRole('option', { name: new RegExp(name) });
