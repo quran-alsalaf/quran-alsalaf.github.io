@@ -110,6 +110,17 @@ export default defineConfig({
         // لا يُعاد التطبيق بدل صفحة المعاينة إذا كُتب مسارها مباشرة (بشرطة أخيرة أو بدونها)
         navigateFallbackDenylist: [/\/preview(\/|\/index\.html)?$/],
         runtimeCaching: [
+          // لقطات «دليل التطبيق» (الشاشة الترحيبية، ٢٠٢٦-١١-٢٣): لا تُخزَّن مسبقًا (webp خارج globPatterns)،
+          // وتُحفظ عند أول عرض لها فيُفتح الدليل بعدها بلا إنترنت
+          {
+            urlPattern: /\/welcome\/[\w-]+\.webp$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'welcome-shots',
+              expiration: { maxEntries: 40 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           {
             urlPattern: /\/fonts\/qcf4\/p\d+\.woff2$/,
             handler: 'CacheFirst',
