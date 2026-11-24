@@ -43,7 +43,7 @@ for (const [theme, bg] of THEMES) {
       await page.locator('.settings').getByRole('button', { name: 'ابدأ وضع التسميع' }).click();
       const bar = page.getByRole('toolbar', { name: 'التحكم في وضع التسميع' });
       await bar.getByRole('button', { name: 'كشف الآية' }).click();
-      await bar.getByRole('button', { name: 'كشف كلمتين' }).click();
+      await bar.getByRole('button', { name: 'كشف كلمة' }).click();
       await expect(page.locator('.sheet--current .w[data-wi]:not(.w--hidden)').first()).toBeVisible();
       await settle(page);
       await expect(page).toHaveScreenshot(`recite-${theme}.png`);

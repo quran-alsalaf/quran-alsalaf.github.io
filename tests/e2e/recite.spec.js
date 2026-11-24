@@ -1,5 +1,5 @@
 // التسميع بالكشف (٢٠٢٦-١١-١٦، «القائمة الثالثة» البند ٣): الدخول من الإعدادات، وإخفاء الآيات مع بقاء رؤوسها،
-// والكشف كلمتين كلمتين أو بقية الآية، وبقاء ما كُشف عند الرجوع، والإخفاء من كلمة ملموسة، و«أخطائي»، والخروج
+// والكشف كلمةً كلمةً (والضغط المطوّل يتابعه) أو بقية الآية، وبقاء ما كُشف عند الرجوع، والإخفاء من كلمة ملموسة، و«أخطائي»، والخروج
 import { test, expect } from '@playwright/test';
 import { QURAN, clickTopbar, isLaptop, openApp, pageVerses, stored } from './helpers.js';
 
@@ -22,7 +22,7 @@ async function turn(page, dir) {
   await page.waitForTimeout(450);
 }
 
-test('الدخول يخفي كلمات الصفحة وتبقى رؤوس الآيات، والكشف كلمتين ثم بقية الآية، والخروج يرجع المصحف', async ({ page }, testInfo) => {
+test('الدخول يخفي كلمات الصفحة وتبقى رؤوس الآيات، والكشف كلمة ثم بقية الآية، والخروج يرجع المصحف', async ({ page }, testInfo) => {
   await openApp(page, { 'hq.page': '1' });
   await startRecite(page);
   const total = await words(page).count();
@@ -36,7 +36,9 @@ test('الدخول يخفي كلمات الصفحة وتبقى رؤوس الآي
   // الشريط السفلي بدل الخانتين، ولا شريط علوي
   await expect(page.locator('.dock')).toHaveCount(0);
 
-  await bar(page).getByRole('button', { name: 'كشف كلمتين' }).click();
+  await bar(page).getByRole('button', { name: 'كشف كلمة' }).click();
+  await expect(shown(page)).toHaveCount(1);
+  await bar(page).getByRole('button', { name: 'كشف كلمة' }).click();
   await expect(shown(page)).toHaveCount(2);
   await bar(page).getByRole('button', { name: 'كشف الآية' }).click();
   await expect(shown(page)).toHaveCount(4); // البسملة أربع كلمات
@@ -84,8 +86,8 @@ test('لمس كلمة مكشوفة يخفيها وما بعدها، ولمس ا�
   await right.locator('.w[data-wi="5"]').click();
   await expect(shown(page)).toHaveCount(5);
   // الكشف بعدها يكمل من الكلمة التي أُخفيت
-  await bar(page).getByRole('button', { name: 'كشف كلمتين' }).click();
-  await expect(shown(page)).toHaveCount(7);
+  await bar(page).getByRole('button', { name: 'كشف كلمة' }).click();
+  await expect(shown(page)).toHaveCount(6);
   // لمس الأولى يخفي الصفحة كلها
   await right.locator('.w[data-wi="0"]').click();
   await expect(shown(page)).toHaveCount(0);
@@ -110,23 +112,22 @@ test('اكتمال الصفحة: الضغط على زرّ الكشف يقلّب 
   expect(await right.count()).toBe(rightCount);
   let next = 2;
   if (isLaptop(testInfo)) {
-    // أول البقرة «الٓمٓ» كلمة واحدة: تُكشف وحدها، ثم الآية التي بعدها
+    // بعد آخر اليمنى أول كلمة من اليسرى («الٓمٓ»)، ثم التي بعدها
     const left = page.locator('.sheet--current .mushaf-page[data-page="2"] .w[data-wi]:not(.w--hidden)');
-    await bar(page).getByRole('button', { name: 'كشف كلمتين' }).click();
+    await bar(page).getByRole('button', { name: 'كشف كلمة' }).click();
     await expect(left).toHaveCount(1);
-    await bar(page).getByRole('button', { name: 'كشف كلمتين' }).click();
-    await expect(left).toHaveCount(3);
+    await bar(page).getByRole('button', { name: 'كشف كلمة' }).click();
+    await expect(left).toHaveCount(2);
     for (let i = 0; i < 4; i++) await bar(page).getByRole('button', { name: 'كشف الآية' }).click();
     await expect(page.locator('.sheet--current .mushaf-page[data-page="2"] .w--hidden')).toHaveCount(0);
     next = 3;
   }
   // الصفحة (أو الزوج) كلها مكشوفة: الضغط التالي يقلّب، والجديدة مخفية، والضغط بعده يكشف فيها
-  await bar(page).getByRole('button', { name: 'كشف كلمتين' }).click();
+  await bar(page).getByRole('button', { name: 'كشف كلمة' }).click();
   await expect(cur(page).first()).toHaveAttribute('data-page', String(next));
   await expect(shown(page)).toHaveCount(0);
-  await bar(page).getByRole('button', { name: 'كشف كلمتين' }).click();
-  // الصفحة ٢ أولها «الٓمٓ» كلمة واحدة، والثالثة «إِنَّ ٱلَّذِينَ»
-  await expect(shown(page)).toHaveCount(next === 2 ? 1 : 2);
+  await bar(page).getByRole('button', { name: 'كشف كلمة' }).click();
+  await expect(shown(page)).toHaveCount(1);
 });
 
 test('آخر المصحف: بعد كشفه كله لا تقليب، ورسالة ببلوغ آخره', async ({ page }) => {
@@ -202,4 +203,67 @@ test('التسميع في مصحف ورش', async ({ page }) => {
   // تُحفظ بترقيم حفص: الحمد لله في ورش تقابل الآية الثانية من الفاتحة في حفص
   const list = await stored(page, 'hq.bookmarks');
   expect(QURAN.verses[list[0].verses[0].v]).toMatchObject({ s: 1, a: 2 });
+});
+
+// «كشف كلمة» بالضغط المطوّل (٢٠٢٦-١١-٢٤، بطلب صاحب المشروع): كلمة فورًا، ثم كلمة كل نصف ثانية عبر الآيات
+// ما دام الزر مضغوطًا، ويقف برفع الإصبع وعند آخر الصفحة بلا تقليب. بساعة محاكاة (page.clock)
+// الساعة تمشي وحدها بعد install، فتُوقَف ليُقدَّم الوقت بيد الاختبار وحده
+const pauseClock = (page) => page.evaluate(() => Date.now()).then((t) => page.clock.pauseAt(t + 1000));
+
+async function holdWord(page) {
+  const box = await bar(page).getByRole('button', { name: 'كشف كلمة' }).boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+}
+
+test('الضغط المطوّل على «كشف كلمة» يكشف كلمة كل نصف ثانية عبر الآيات، ويقف برفع الإصبع', async ({ page }) => {
+  await page.clock.install();
+  await openApp(page, { 'hq.page': '1' });
+  await startRecite(page);
+  await pauseClock(page);
+  await holdWord(page);
+  await expect(shown(page)).toHaveCount(1);
+  await page.clock.runFor(499);
+  await expect(shown(page)).toHaveCount(1);
+  await page.clock.runFor(1);
+  await expect(shown(page)).toHaveCount(2);
+  // البسملة أربع كلمات: بعد ثلاث ثوانٍ سبع كلمات، فعبر إلى آية الحمد
+  await page.clock.runFor(2500);
+  await expect(shown(page)).toHaveCount(7);
+  await page.mouse.up();
+  await page.clock.runFor(3000);
+  await expect(shown(page)).toHaveCount(7);
+  expect(await shown(page).evaluateAll((els) => els.map((e) => +e.dataset.wi))).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  // الضغطة القصيرة بعده كلمة واحدة
+  await bar(page).getByRole('button', { name: 'كشف كلمة' }).click();
+  await expect(shown(page)).toHaveCount(8);
+});
+
+test('الضغط المطوّل يقف عند آخر الصفحة (أو الزوج) ولا يقلّبها، وخروج الإصبع من الزر يوقفه', async ({ page }, testInfo) => {
+  await page.clock.install();
+  await openApp(page, { 'hq.page': '1' });
+  await startRecite(page);
+  const total = await words(page).count();
+  await pauseClock(page);
+  await holdWord(page);
+  await page.clock.runFor(500 * (total + 10));
+  await expect(hidden(page)).toHaveCount(0);
+  await expect(cur(page).first()).toHaveAttribute('data-page', '1');
+  await page.mouse.up();
+  await expect(cur(page).first()).toHaveAttribute('data-page', '1');
+  // ضغطة جديدة تقلّب، والضغط المطوّل الذي قلّب لا يكشف في الجديدة حتى تُرفع الإصبع
+  const next = isLaptop(testInfo) ? '3' : '2';
+  await holdWord(page);
+  await page.clock.runFor(1000);
+  await expect(cur(page).first()).toHaveAttribute('data-page', next);
+  await page.clock.runFor(2000);
+  await expect(shown(page)).toHaveCount(0);
+  await page.mouse.up();
+  // خروج الإصبع من الزر يوقف الكشف
+  await holdWord(page);
+  await expect(shown(page)).toHaveCount(1);
+  await page.mouse.move(10, 10);
+  await page.clock.runFor(2000);
+  await expect(shown(page)).toHaveCount(1);
+  await page.mouse.up();
 });

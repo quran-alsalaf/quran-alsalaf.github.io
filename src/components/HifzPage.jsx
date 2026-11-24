@@ -100,14 +100,19 @@ export default function HifzPage({ quran, kind, segments, title, onClose, onComp
   const complete = reciting && last && allRevealed(quran, segPages, state, scope);
   // الكشف في أول صفحة من القطعة بقي فيها مخفي؛ فإن لم تكن ظاهرة انتقل إليها أولًا (لا «قلب» بعد قلب: الضغط
   // السريع أثناء حركة القلب كان يقلب صفحتين فتُتخطى صفحة). فإذا كُشفت القطعة كلها انتقل إلى التي بعدها
-  const revealNext = (max) => {
+  // وأثناء الضغط المطوّل على «كشف كلمة» (hold) لا انتقال إلى صفحة ولا قطعة: يقف. النتيجة: أكُشف شيء؟
+  const revealNext = (max, hold = false) => {
     const pending = segPages.find((p) => !allRevealed(quran, [p], state, scope));
     if (pending != null) {
-      if (!shown.includes(pending)) return setGoto({ page: pending, n: Date.now() });
+      if (!shown.includes(pending)) {
+        if (!hold) setGoto({ page: pending, n: Date.now() });
+        return false;
+      }
       const next = reveal(quran, [pending], state, max, scope);
       if (next) setState(next);
-      return;
+      return !!next;
     }
+    if (hold) return false;
     if (!last) {
       // القارئ يُبنى من جديد للقطعة التالية، فلا يبقى له طلب انتقال سابق
       setGoto(null);
@@ -179,7 +184,7 @@ export default function HifzPage({ quran, kind, segments, title, onClose, onComp
             {kind === 'learn' ? 'أتممت حفظ الورد ✓' : 'أتممت المراجعة ✓'}
           </button>
         ) : reciting ? (
-          <ReciteBar inline onWords={() => revealNext(2)} onVerse={() => revealNext(Infinity)} onMistakes={() => setMistakes(true)} />
+          <ReciteBar inline onWord={(hold) => revealNext(1, hold)} onVerse={() => revealNext(Infinity)} onMistakes={() => setMistakes(true)} />
         ) : (
           <div className="hpage__learn">
             <div className="hpage__repeats">

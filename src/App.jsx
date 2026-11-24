@@ -304,13 +304,19 @@ export default function App() {
     () => ({ ...marks, bookmarks: null, range: null, selected: null, playing: null, flash: null, rubFlash: null, recite }),
     [marks, recite]
   );
-  // «كشف كلمتين» (max = 2) و«كشف الآية» (بقيتها): في الصفحة الظاهرة، أو في الزوج اليمنى ثم اليسرى.
-  // وإن كُشفت كلها قُلّبت إلى التالية (بطلب صاحب المشروع)، فتظهر مخفية ويكشفها الضغط التالي
-  const revealNext = (max) => {
+  // «كشف كلمة» (max = 1) و«كشف الآية» (بقيتها): في الصفحة الظاهرة، أو في الزوج اليمنى ثم اليسرى.
+  // وإن كُشفت كلها قُلّبت إلى التالية (بطلب صاحب المشروع)، فتظهر مخفية ويكشفها الضغط التالي. إلا أثناء
+  // الضغط المطوّل على «كشف كلمة» (hold): يقف عند آخر الصفحة. النتيجة: أكُشف شيء؟
+  const revealNext = (max, hold = false) => {
     const next = reveal(quran, shownPages, recite, max);
-    if (next) setRecite(next);
-    else if (shownPages.at(-1) >= 604) showToast('بلغت آخر المصحف');
+    if (next) {
+      setRecite(next);
+      return true;
+    }
+    if (hold) return false;
+    if (shownPages.at(-1) >= 604) showToast('بلغت آخر المصحف');
     else setGotoPage({ turn: 1, n: Date.now() });
+    return false;
   };
   // لمس كلمة مكشوفة: تُخفى هي وما بعدها في الصفحة الظاهرة (وفي الزوج: واليسرى إن كانت في اليمنى)
   const onWordTap = useCallback((p, wi) => {
@@ -893,7 +899,7 @@ export default function App() {
             صفحته بعرض سطرها كاملًا (App.css) */}
         {reciting && quran && (
           <ReciteBar
-            onWords={() => revealNext(2)}
+            onWord={(hold) => revealNext(1, hold)}
             onVerse={() => revealNext(Infinity)}
             onMistakes={() => setMistakesOpen(true)}
             onExit={exitRecite}
