@@ -1,4 +1,4 @@
-// أسطر أسفل الإعدادات داخل تطبيق أندرويد (٢٠٢٦-١١-٢١، بقرار صاحب المشروع): عن التطبيق، ثم للشكاوى والاقتراحات،
+// أسطر أسفل الإعدادات داخل تطبيق أندرويد (٢٠٢٦-١١-٢١، بقرار صاحب المشروع): عن التطبيق، ثم المساعدة والتواصل (كان «للشكاوى والاقتراحات»، ٢٠٢٦-١١-٢٤)،
 // ثم قيّم التطبيق، ثم شارك التطبيق — وترتيبها في الموقع (بلا «قيّم التطبيق») في tests/e2e/feedback.spec.js
 import React, { createElement as h, act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -31,10 +31,11 @@ describe('أسفل الإعدادات داخل التطبيق', () => {
     await act(async () => root.render(h(SettingsSheet, { open: true, onPage() {}, onClose() {} })));
     const foot = host.querySelector('.settings__page .settings__section--foot');
     const labels = [...foot.querySelectorAll('.settings__label')].map((e) => e.textContent);
-    expect(labels).toEqual(['عن التطبيق', 'للشكاوى والاقتراحات', 'قيّم التطبيق', 'شارك التطبيق']);
+    expect(labels).toEqual(['عن التطبيق', 'المساعدة والتواصل', 'قيّم التطبيق', 'شارك التطبيق']);
     // الاسم القديم لا يبقى سطرًا ولا عنوان صفحة (ويبقى في جملة رسالة التنبيه داخل الصفحة نفسها)
     const names = [...host.querySelectorAll('.settings__label, h2')].map((e) => e.textContent);
-    expect(names).toContain('للشكاوى والاقتراحات');
+    expect(names).toContain('المساعدة والتواصل');
+    expect(names).not.toContain('للشكاوى والاقتراحات');
     expect(names).not.toContain('تواصل معنا');
   });
 });

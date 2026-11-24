@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { CONTACT_NOTE, WHATSAPP_SHOWN, contactMessage, deviceInfo, openExternal, whatsappUrl } from '../lib/feedback.js';
+import { faqFor } from '../lib/faq.js';
 import { isNative } from '../lib/native.js';
 import './ContactPage.css';
 
 /*
-  «للشكاوى والاقتراحات» (كان «تواصل معنا») (٢٠٢٦-١١-٢٠، الجلسة ٣ ب): صفحة فرعية في الإعدادات، نصّها بقرار صاحب المشروع: رسالة تنبّه إلى أن
+  «المساعدة والتواصل» (كان «للشكاوى والاقتراحات»، وقبله «تواصل معنا») (٢٠٢٦-١١-٢٠، الجلسة ٣ ب): صفحة فرعية في الإعدادات، نصّها بقرار صاحب المشروع: رسالة تنبّه إلى أن
   التطبيق أُنشئ بمساعدة الذكاء الاصطناعي، ورقم الواتساب ظاهرًا، وزرّ يفتح المحادثة برسالة جاهزة في آخرها سطر
   بنسخة التطبيق والجهاز والرواية (لمعرفة سبب الخطأ) — src/lib/feedback.js
+  وفي أولها الأسئلة الشائعة (٢٠٢٦-١١-٢٤، بقرار صاحب المشروع) — src/lib/faq.js: أقسام، وكل سؤال يُفتح ويُطوى
+  وحده (<details>)، ثم «لم تجد جوابك؟ راسلنا» فالواتساب.
 */
 export default function ContactPage({ riwayah }) {
   const [device, setDevice] = useState({ native: isNative() });
@@ -28,6 +31,8 @@ export default function ContactPage({ riwayah }) {
 
   return (
     <div className="contact">
+      <Faq native={device.native} />
+      <h3 className="contact__title">لم تجد جوابك؟ راسلنا</h3>
       <p className="contact__note">{CONTACT_NOTE}</p>
       <div className="contact__number">
         <WhatsAppIcon />
@@ -36,6 +41,33 @@ export default function ContactPage({ riwayah }) {
       <a className="contact__button" href={url} target="_blank" rel="noopener noreferrer" onClick={onClick}>
         مراسلة على واتساب
       </a>
+    </div>
+  );
+}
+
+// الأسئلة الشائعة: أقسام بعناوين، وتحت كل قسم أسئلته مطويّة
+function Faq({ native }) {
+  return (
+    <div className="faq">
+      <h3 className="contact__title">الأسئلة الشائعة</h3>
+      {faqFor(native).map((s) => (
+        <section className="faq__section" key={s.title}>
+          <h4 className="faq__sectionTitle">{s.title}</h4>
+          <div className="faq__group">
+            {s.items.map((i) => (
+              <details className="faq__item" key={i.q}>
+                <summary className="faq__q">
+                  <span>{i.q}</span>
+                  <svg className="faq__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </summary>
+                <p className="faq__a">{i.a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
