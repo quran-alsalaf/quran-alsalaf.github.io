@@ -1,5 +1,5 @@
 // ترتيب الإعدادات و«رأيك يهمنا» (الجلسة ٣ ب، ٢٠٢٦-١١-٢٠): المظهر والقراءة ثابتان، ثم «الإعدادات التخصيصية»،
-// وفي أسفل اللوحة: عن التطبيق، وللشكاوى والاقتراحات (كان «تواصل معنا»، ٢٠٢٦-١١-٢١)، وقيّم التطبيق (في التطبيق
+// وفي أسفل اللوحة: عن التطبيق، والمساعدة والتواصل (كان «للشكاوى والاقتراحات» حتى ٢٠٢٦-١١-٢٤، وقبله «تواصل معنا»، ٢٠٢٦-١١-٢١)، وقيّم التطبيق (في التطبيق
 // الأصلي وحده)، وشارك التطبيق
 import { test, expect } from '@playwright/test';
 import { clickTopbar, copied, isLaptop, openApp, openCustomSettings } from './helpers.js';
@@ -21,10 +21,11 @@ test('الإعدادات: أربعة أسطر ثابتة، ثم «الإعداد
     'وضع التسميع',
     'الإعدادات التخصيصية',
     'عن التطبيق',
-    'للشكاوى والاقتراحات',
+    'المساعدة والتواصل',
     'شارك التطبيق',
   ]);
   await expect(main.getByRole('button', { name: 'تواصل معنا' })).toHaveCount(0);
+  await expect(main.getByRole('button', { name: 'للشكاوى والاقتراحات' })).toHaveCount(0);
   // في الموقع لا متجر: لا «قيّم التطبيق»
   await expect(page.getByRole('button', { name: 'قيّم التطبيق' })).toHaveCount(0);
   // ما نُقل ليس في الإعدادات نفسها
@@ -99,12 +100,12 @@ test('شارك التطبيق حيث لا قائمة مشاركة: يُنسخ ا
   expect(await copied(page)).toBe('قرآن السلف — المصحف على نهج السلف في تلقّي القرآن.\nhttps://quran-alsalaf.github.io/');
 });
 
-test('للشكاوى والاقتراحات: الرسالة والرقم وزرّ واتساب برسالة جاهزة، والرجوع إلى الإعدادات', async ({ page }) => {
+test('المساعدة والتواصل: الرسالة والرقم وزرّ واتساب برسالة جاهزة، والرجوع إلى الإعدادات', async ({ page }) => {
   await openApp(page);
   await clickTopbar(page, 'الإعدادات');
-  await mainPage(page).getByRole('button', { name: 'للشكاوى والاقتراحات' }).click();
+  await mainPage(page).getByRole('button', { name: 'المساعدة والتواصل' }).click();
   const sub = shown(page);
-  await expect(sub.getByRole('heading', { name: 'للشكاوى والاقتراحات' })).toBeVisible();
+  await expect(sub.getByRole('heading', { name: 'المساعدة والتواصل' })).toBeVisible();
   await expect(sub.locator('.contact__note')).toHaveText(
     'هذا التطبيق تم إنشاؤه بمساعدة الذكاء الاصطناعي، فإذا وجدت أي أخطاء أو كانت لديك اقتراحات فتواصل معنا من فضلك.'
   );
@@ -123,10 +124,45 @@ test('للشكاوى والاقتراحات: الرسالة والرقم وزر�
   await expect(settings(page)).toHaveClass(/settings--open/);
 });
 
-test('للشكاوى والاقتراحات في مصحف ورش: الرواية في الرسالة', async ({ page }) => {
+test('المساعدة والتواصل: الأسئلة الشائعة مطويّة أولًا، وكل سؤال يُفتح ويُطوى وحده، ثم «لم تجد جوابك؟ راسلنا»', async ({ page }) => {
+  await openApp(page);
+  await clickTopbar(page, 'الإعدادات');
+  await mainPage(page).getByRole('button', { name: 'المساعدة والتواصل' }).click();
+  const sub = shown(page);
+  await expect(sub.locator('.contact__title')).toHaveText(['الأسئلة الشائعة', 'لم تجد جوابك؟ راسلنا']);
+  await expect(sub.locator('.faq__sectionTitle')).toHaveText(['القراءة والمصحف', 'الاستماع', 'الختمة والحفظ', 'بياناتي', 'عامة']);
+  // في الموقع ١٣ سؤالًا (سؤال التذكير في التطبيق الأصلي وحده)، كلها مطويّة
+  const items = sub.locator('.faq__item');
+  await expect(items).toHaveCount(13);
+  await expect(sub.getByText('كيف أضبط تذكيرًا يوميًّا بالورد؟')).toHaveCount(0);
+  await expect(sub.locator('.faq__a').first()).toBeHidden();
+  await expect(sub.locator('.faq__item[open]')).toHaveCount(0);
+
+  // الضغط على السؤال يفتح جوابه، وفتح غيره لا يطويه، والضغط ثانيةً يطويه
+  const first = sub.locator('.faq__item', { hasText: 'كيف أغيّر الرواية بين حفص وورش؟' });
+  await first.locator('summary').click();
+  await expect(first.locator('.faq__a')).toHaveText('من الإعدادات ← الإعدادات التخصيصية ← الرواية.');
+  await expect(first.locator('.faq__a')).toBeVisible();
+  const second = sub.locator('.faq__item', { hasText: 'هل يحتاج التطبيق إلى حساب أو تسجيل؟' });
+  await second.locator('summary').click();
+  await expect(second.locator('.faq__a')).toBeVisible();
+  await expect(first.locator('.faq__a')).toBeVisible();
+  await first.locator('summary').click();
+  await expect(first.locator('.faq__a')).toBeHidden();
+  await expect(second.locator('.faq__a')).toBeVisible();
+
+  // الأسئلة قبل التواصل، والواتساب تحتها كما كان
+  const faq = await sub.locator('.faq').boundingBox();
+  const note = await sub.locator('.contact__note').boundingBox();
+  expect(note.y).toBeGreaterThan(faq.y + faq.height - 1);
+  await sub.getByRole('link', { name: 'مراسلة على واتساب' }).scrollIntoViewIfNeeded();
+  await expect(sub.getByRole('link', { name: 'مراسلة على واتساب' })).toBeVisible();
+});
+
+test('المساعدة والتواصل في مصحف ورش: الرواية في الرسالة', async ({ page }) => {
   await openApp(page, { 'hq.riwayah': 'warsh' });
   await clickTopbar(page, 'الإعدادات');
-  await mainPage(page).getByRole('button', { name: 'للشكاوى والاقتراحات' }).click();
+  await mainPage(page).getByRole('button', { name: 'المساعدة والتواصل' }).click();
   const href = await shown(page).getByRole('link', { name: 'مراسلة على واتساب' }).getAttribute('href');
   expect(new URL(href).searchParams.get('text')).toContain('رواية ورش');
 });
