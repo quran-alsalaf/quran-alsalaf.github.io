@@ -224,8 +224,18 @@ test('صفحة الحفظ: الورد وحده، وتشغيله بالتكرار
   // الإخلاص خارج الورد: ظاهرة غير مخفية
   await expect(hpage(page).locator(`.sheet--current .w--hidden[data-v="${at(112, 1)}"]`)).toHaveCount(0);
   await expect.poll(() => hpage(page).locator(`.sheet--current .w--hidden[data-v="${at(113, 1)}"]`).count()).toBeGreaterThan(0);
-  await hpage(page).getByRole('button', { name: 'كشف كلمتين' }).click();
-  await expect(hpage(page).locator(`.sheet--current .w[data-wi][data-v="${at(113, 1)}"]:not(.w--hidden)`)).toHaveCount(2);
+  await hpage(page).getByRole('button', { name: 'كشف كلمة' }).click();
+  await expect(hpage(page).locator(`.sheet--current .w[data-wi][data-v="${at(113, 1)}"]:not(.w--hidden)`)).toHaveCount(1);
+  // الضغط المطوّل على «كشف كلمة» يتابع الكشف حتى الآية التالية، ويقف برفع الإصبع
+  const box = await hpage(page).getByRole('button', { name: 'كشف كلمة' }).boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  const second = hpage(page).locator(`.sheet--current .w[data-wi][data-v="${at(113, 2)}"]:not(.w--hidden)`);
+  await expect.poll(() => second.count(), { timeout: 8000 }).toBeGreaterThan(0);
+  await page.mouse.up();
+  const after = await hpage(page).locator('.sheet--current .w[data-wi]:not(.w--hidden)').count();
+  await page.waitForTimeout(1200);
+  await expect(hpage(page).locator('.sheet--current .w[data-wi]:not(.w--hidden)')).toHaveCount(after);
 
   await revealAll(page, 'أتممت حفظ الورد ✓');
   await expect(hidden).toHaveCount(0);

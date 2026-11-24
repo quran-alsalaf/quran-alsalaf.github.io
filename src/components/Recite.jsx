@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { toArabicDigits } from '../data/quran.js';
+import { createHold } from '../lib/hold.js';
 import { useLayer } from '../lib/layers.js';
 import { addMistake, inMistakes, revealedVerses } from '../lib/recite.js';
 import { useUserData } from '../lib/userdata.js';
@@ -8,8 +10,9 @@ import './Recite.css';
 /*
   التسميع بالكشف (٢٠٢٦-١١-١٦، «القائمة الثالثة» البند ٣) — المنطق في src/lib/recite.js، والحال في App.jsx.
   • ReciteInfo: صفحة «التسميع» داخل الإعدادات (كصفحة «وضع القراءة»)، وزرّ «ابدأ التسميع».
-  • ReciteBar: الشريط السفلي طوال الوضع، من اليمين: كشف كلمتين · كشف الآية · أخطائي · ✕ للخروج (بعيدًا عن
-    زرّي الكشف، فلا يُضغط بالخطأ فيضيع ما كُشف).
+  • ReciteBar: الشريط السفلي طوال الوضع، من اليمين: كشف كلمة · كشف الآية · أخطائي · ✕ للخروج (بعيدًا عن
+    زرّي الكشف، فلا يُضغط بالخطأ فيضيع ما كُشف). و«كشف كلمة» (٢٠٢٦-١١-٢٤، بدل «كشف كلمتين»): الضغطة كلمة،
+    والضغط المطوّل عليه يكشف كلمة كل نصف ثانية عبر الآيات حتى يُرفع الإصبع أو تنتهي الصفحة (src/lib/hold.js).
   • MistakesPicker: «أخطائي» يفتح قائمة آيات الصفحة المكشوفة، أولها الآية الجارية، فيُختار منها موضع الخطأ
     ولو كان في آية سابقة (بطلب صاحب المشروع): رقمها وبدايتها، والاختيار يسجّلها في علامة «أخطائي».
 */
@@ -23,7 +26,8 @@ export function ReciteInfo({ onStart }) {
       </p>
 
       <ul className="readinfo__list">
-        <li>«كشف كلمتين» يكشف الكلمتين التاليتين من الآية الجارية، و«كشف الآية» يكشف بقيتها.</li>
+        <li>«كشف كلمة» يكشف الكلمة التالية، و«كشف الآية» يكشف بقية الآية الجارية.</li>
+        <li>اضغط مطوّلًا على «كشف كلمة» فتنكشف الكلمات واحدة بعد واحدة حتى ترفع إصبعك أو تنتهي الصفحة.</li>
         <li>إذا انتهت الصفحة فالضغط على زرّ الكشف يقلّبها إلى التالية.</li>
         <li>قلّب الصفحات يمينًا ويسارًا كالعادة، وكل صفحة تقلب إليها تظهر مخفية، وما كشفته يبقى مكشوفًا إذا رجعت إليه.</li>
         <li>إذا لمست كلمة مكشوفة أُخفيت هي وما بعدها في الصفحة، فتعيد التسميع منها.</li>
@@ -43,13 +47,52 @@ export function ReciteInfo({ onStart }) {
   );
 }
 
+// «كشف كلمة» بالضغط المطوّل: onWord(hold) يكشف كلمة ويُرجع true إن كُشفت. hold = false للضغطة نفسها (وفيها
+// التقليب إن اكتملت الصفحة)، وtrue لما يتكرر أثناء الضغط (لا تقليب: يقف عند آخر الصفحة)
+function WordButton({ onWord }) {
+  const fn = useRef(onWord);
+  fn.current = onWord;
+  const hold = useRef(null);
+  if (!hold.current) hold.current = createHold();
+  useEffect(() => {
+    const stop = hold.current.stop;
+    window.addEventListener('blur', stop);
+    document.addEventListener('visibilitychange', stop);
+    return () => {
+      stop();
+      window.removeEventListener('blur', stop);
+      document.removeEventListener('visibilitychange', stop);
+    };
+  }, []);
+  const down = (e) => {
+    if (e.button !== 0) return;
+    // اللمس يأسر الإصبع للزر، فيُفلت ليقف الكشف إذا خرج الإصبع منه (pointerleave)
+    if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    hold.current.start(() => fn.current(false), () => fn.current(true));
+  };
+  const stop = () => hold.current.stop();
+  return (
+    <button
+      type="button"
+      className="recitebar__main recitebar__word"
+      onPointerDown={down}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      onContextMenu={(e) => e.preventDefault()}
+      // لوحة المفاتيح (Enter والمسافة) بلا مؤشر: كلمة واحدة
+      onClick={(e) => e.detail === 0 && fn.current(false)}
+    >
+      كشف كلمة
+    </button>
+  );
+}
+
 // inline: داخل صفحة (ختمة الحفظ) لا عائمًا فوق المصحف، وبلا ✕ إن لم يُعطَ onExit
-export function ReciteBar({ onWords, onVerse, onMistakes, onExit, inline }) {
+export function ReciteBar({ onWord, onVerse, onMistakes, onExit, inline }) {
   return (
     <div className={`recitebar${inline ? ' recitebar--inline' : ''}`} role="toolbar" aria-label="التحكم في وضع التسميع">
-      <button type="button" className="recitebar__main" onClick={onWords}>
-        كشف كلمتين
-      </button>
+      <WordButton onWord={onWord} />
       <button type="button" className="recitebar__main" onClick={onVerse}>
         كشف الآية
       </button>

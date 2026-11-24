@@ -1,4 +1,4 @@
-// التسميع بالكشف (٢٠٢٦-١١-١٦): كلمات الصفحة ورؤوس آياتها، والكشف كلمتين كلمتين أو بقية الآية، والإخفاء من
+// التسميع بالكشف (٢٠٢٦-١١-١٦): كلمات الصفحة ورؤوس آياتها، والكشف كلمةً كلمةً (أو كلمتين) أو بقية الآية، والإخفاء من
 // كلمة ملموسة، وآيات «أخطائي» وتسجيلها — src/lib/recite.js
 import { beforeEach, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -74,6 +74,21 @@ describe('الكشف', () => {
     expect(s[1]).toBe(13); // «الدين» وحدها آخر «مالك يوم الدين»
     s = reveal(H, [1], s, 2);
     expect(pageWords(H, 1)[s[1] - 1]).toBe(h(1, 5));
+  });
+
+  it('«كشف كلمة» (max = 1): كلمة واحدة في كل مرة، وتتابعها يعبر الآيات حتى آخر الصفحة ثم يقف (null)', () => {
+    const total = pageWords(H, 1).length;
+    let s = {};
+    for (let k = 1; k <= total; k++) {
+      s = reveal(H, [1], s, 1);
+      expect(s[1]).toBe(k);
+    }
+    // عبر الآيات: البسملة ٤ كلمات ثم الحمد، فالخامسة أول آية الحمد
+    expect(pageWords(H, 1)[4]).toBe(h(1, 2));
+    expect(reveal(H, [1], s, 1)).toBeNull();
+    // وفي الزوج: بعد آخر اليمنى أول كلمة من اليسرى
+    const right = pageWords(H, 3).length;
+    expect(reveal(H, [3, 4], { 3: right }, 1)).toEqual({ 3: right, 4: 1 });
   });
 
   it('«كشف الآية» يكشف بقية الآية الجارية وحدها', () => {

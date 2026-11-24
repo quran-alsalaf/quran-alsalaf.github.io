@@ -37,6 +37,14 @@
   white-space: nowrap;
 }
 
+/* «كشف كلمة» يُضغط مطوّلًا: بلا قائمة نسخ أو تحديد ولا تمرير من الجوال أثناءه */
+.recitebar__word {
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
 .recitebar__main:active {
   filter: brightness(0.92);
 }
