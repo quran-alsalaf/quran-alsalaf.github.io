@@ -21,6 +21,10 @@
 //   sections — أقسام التفسير/المعاني/العمل بمقاطع آياتها ورابط يوتيوب كل قسم
 //   meanings — [رقم الآية، الكلمة، المعنى، رقم القسم، (من، إلى: موضعها في كلمات الآية)] · actions — { t نص التوجيه، v آياته، s قسمه }
 //   weeks    — مقررات الأسابيع مقاطعَ بترتيب المصحف (للتمييز بالتناوب، src/lib/weeks.js)
+//
+// ويُضاف إليه gharib (يبنيه scripts/data/20-muyassar-gharib.mjs، ٢٠٢٦-١١-٢٥) — معاني الكلمات من «الميسّر في غريب
+// القرآن الكريم» (مجمع الملك فهد) للسور التي لا معاني لها في المذكرات:
+//   suras — أرقام السور · meanings — [رقم الآية، الكلمة، المعنى، (من، إلى)] · source — اسم الكتاب
 
 let pending = null;
 
@@ -31,8 +35,8 @@ const getJson = (name) =>
   });
 
 export function loadQuran() {
-  pending ??= Promise.all([getJson('quran.json'), getJson('qcf4.json'), getJson('memos.json')])
-    .then(([quran, qcf, memos]) => ({ ...quran, qcf, memos }))
+  pending ??= Promise.all([getJson('quran.json'), getJson('qcf4.json'), getJson('memos.json'), getJson('muyassar.json')])
+    .then(([quran, qcf, memos, gharib]) => ({ ...quran, qcf, memos, gharib }))
     .catch((err) => {
       pending = null; // تُتاح إعادة المحاولة
       throw err;
@@ -42,12 +46,12 @@ export function loadQuran() {
 
 // مصحف ورش (٢٠٢٦-١١-١٥): ملف واحد بالبنية نفسها ومعه qcf (يبنيه scripts/data/12-warsh.mjs)، وفيه riwayah: 'warsh'،
 // وhafs: آيات حفص المقابلة لكل آية (scripts/data/13-warsh-map.mjs، src/lib/verseMap.js). ومعه محتوى المذكرات
-// بترقيم ورش (warsh/memos.json، بالبنية نفسها). لا يحفظهما عامل الخدمة مسبقًا (vite.config.js): يُنزَّلان أول مرة
+// بترقيم ورش (warsh/memos.json، بالبنية نفسها)، ومعاني الميسّر بترقيم ورش (warsh/muyassar.json). لا يحفظهما عامل الخدمة مسبقًا (vite.config.js): يُنزَّلان أول مرة
 // يختار فيها المستخدم ورش، ثم يعملان بلا إنترنت
 let warshPending = null;
 export function loadWarsh() {
-  warshPending ??= Promise.all([getJson('warsh/quran.json'), getJson('warsh/memos.json')])
-    .then(([quran, memos]) => ({ ...quran, memos }))
+  warshPending ??= Promise.all([getJson('warsh/quran.json'), getJson('warsh/memos.json'), getJson('warsh/muyassar.json')])
+    .then(([quran, memos, gharib]) => ({ ...quran, memos, gharib }))
     .catch((err) => {
       warshPending = null;
       throw err;

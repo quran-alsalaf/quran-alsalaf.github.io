@@ -123,11 +123,12 @@ test('صفحات المحتوى: آية السعدي التي لا كلام خا
   );
 });
 
+// (والمعاني صارت للمصحف كله بالميسّر، ٢٠٢٦-١١-٢٥، فالتبويب الخالي «العمل بالآيات»)
 test('خارج نطاق المذكرات: زر نسخ المحتوى معطّل', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem('hq.page', '300'));
   await page.reload();
   await clickDock(page, 'التدبّر');
-  await study(page).getByRole('tab', { name: 'معاني الكلمات' }).click();
+  await study(page).getByRole('tab', { name: 'العمل بالآيات' }).click();
   await expect(study(page).getByRole('button', { name: 'نسخ المحتوى' })).toBeDisabled();
 });
 

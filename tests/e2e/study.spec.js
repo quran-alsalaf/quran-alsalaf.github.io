@@ -150,6 +150,30 @@ test('السعدي: الآية التي لا كلام خاصًّا بها تنب
   expect(text).not.toContain('لم يُفرد');
 });
 
+// معاني الكلمات من الميسّر للسور التي لا مذكرات فيها (٢٠٢٦-١١-٢٥): الأعراف ١–١١ في الصفحة ١٥١
+test('معاني الكلمات في الأعراف من الميسّر، ومصدرها تحتها، والنسخ يشملها', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('hq.page', '151'));
+  await page.reload();
+  await open(page);
+  await study(page).getByRole('tab', { name: 'معاني الكلمات' }).click();
+  await expect(study(page).locator('.study__words tr').first()).toBeVisible();
+  await expect(study(page).locator('.study__note')).toHaveCount(0);
+  await expect(study(page).locator('.study__credit')).toHaveText('المصدر: الميسّر في غريب القرآن الكريم — مجمع الملك فهد');
+  // الأعراف ٢: «حَرَجٞ» ← ضِيقٌ وشكٌّ
+  await expect(study(page).locator('.study__words').getByText(/ضِيقٌ/).first()).toBeVisible();
+  await study(page).getByRole('button', { name: 'نسخ المحتوى' }).click();
+  const text = await copied(page);
+  expect(text).toMatch(/^معاني الكلمات\n/);
+  expect(text).toContain('ضِيقٌ منه لتبليغِه.');
+});
+
+test('معاني الكلمات في سور المذكرات بلا سطر الميسّر (الفاتحة)', async ({ page }) => {
+  await open(page);
+  await study(page).getByRole('tab', { name: 'معاني الكلمات' }).click();
+  await expect(study(page).locator('.study__words tr').first()).toBeVisible();
+  await expect(study(page).getByText('الميسّر في غريب القرآن')).toHaveCount(0);
+});
+
 test('بلا مقدار: المحتوى لآيات الصفحة أو الصفحتين الظاهرتين', async ({ page }, testInfo) => {
   await open(page);
   // الصفحة ١ سبع آيات (الفاتحة)، والصفحتان ١–٢ اثنتا عشرة

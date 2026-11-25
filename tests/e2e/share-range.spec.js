@@ -64,10 +64,11 @@ test('المقدار الأطول من ٤ صور: أربع صور وتنبيه �
   );
 });
 
-test('تبويب بلا محتوى للمقدار (معاني آيات لم تُشرح): «مشاركة» معطّل كالنسخ', async ({ page }) => {
+// (والمعاني صارت للمصحف كله بالميسّر، ٢٠٢٦-١١-٢٥، فالتبويب الخالي «العمل بالآيات»)
+test('تبويب بلا محتوى للمقدار (العمل بآيات لم تُشرح): «مشاركة» معطّل كالنسخ', async ({ page }) => {
   await openApp(page, { 'hq.page': '300' });
   await clickDock(page, 'التدبّر');
-  await study(page).getByRole('tab', { name: 'معاني الكلمات' }).click();
+  await study(page).getByRole('tab', { name: 'العمل بالآيات' }).click();
   await expect(shareBtn(page)).toBeDisabled();
   await expect(study(page).getByRole('button', { name: 'نسخ المحتوى' })).toBeDisabled();
 });

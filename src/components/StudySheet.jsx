@@ -55,6 +55,8 @@ const TAB_SWIPE_PX = 60;
 export const UNAVAILABLE =
   'هذا المحتوى غير متوفر لهذه الآيات حاليًّا، وقد يُضاف في أي وقت. وهو متوفر الآن من سورة الفاتحة إلى سورة الأنعام، ومن سورة الملك إلى سورة الناس.';
 export const NO_MEANINGS = 'لا توجد معاني كلمات ذُكرت في هذه الآية';
+// مصدر معاني السور التي لا مذكرات فيها (٢٠٢٦-١١-٢٥، src/lib/study.js ← gharibOf)
+export const GHARIB_CREDIT = 'المصدر: الميسّر في غريب القرآن الكريم — مجمع الملك فهد';
 export const NO_ACTIONS = 'لا يوجد عمل بالآيات ذُكر في هذه الآية';
 
 // panel: لوحة متمركزة (نسخة اللابتوب) بدل صفحة كاملة. onClose: الإغلاق بزرّه وبمفتاح Esc.
@@ -290,7 +292,7 @@ export function TafsirBody({ text, source }) {
 // ---------- معاني الكلمات: جدول لكل آية — الكلمة بلفظها من المصحف، ومعناها ----------
 function MeaningsTab({ quran, verses, onToast }) {
   const idx = memoIndex(quran);
-  const covered = verses.filter((v) => idx.sectionOf.m[v] >= 0);
+  const covered = verses.filter((v) => idx.meaningsCovered[v]);
   const copyBar = (getText, getSpec) => (
     <CopyBar getText={getText} getSpec={getSpec} quran={quran} kind="meanings" verses={verses} onToast={onToast} />
   );
@@ -349,6 +351,7 @@ function MeaningsTab({ quran, verses, onToast }) {
         );
       })}
       <Links quran={quran} kind="m" verses={verses} />
+      {shown.some((v) => idx.gharibOf[v]) && <p className="study__credit">{GHARIB_CREDIT}</p>}
     </>
   );
 }

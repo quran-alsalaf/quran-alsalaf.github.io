@@ -124,12 +124,21 @@ test('معاني الكلمات والعمل بالآيات (متوفران لل
   await expect(page.locator('.vmenu')).toHaveCount(0);
 });
 
-test('خارج نطاق المذكرات تظهر رسالة عدم التوفر', async ({ page }) => {
+// خارج نطاق المذكرات (٢٠٢٦-١١-٢٥): المعاني من الميسّر ومصدره تحتها، والعمل بالآيات برسالة عدم التوفر
+test('خارج نطاق المذكرات: معاني الميسّر، والعمل بالآيات غير متوفر', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem('hq.page', '300'));
   await page.reload();
   const v = await page.locator('.sheet--current .w[data-v]').first().getAttribute('data-v');
   await longPress(page, Number(v));
   await page.getByRole('menuitem', { name: 'معاني' }).click();
+  const meanings = page.getByRole('dialog', { name: 'معاني الكلمات' });
+  await expect(meanings.locator('.study__words tr').first()).toBeVisible();
+  await expect(meanings.locator('.vcard__credit')).toHaveText('المصدر: الميسّر في غريب القرآن الكريم — مجمع الملك فهد');
+  await expect(meanings.locator('.vcard__empty')).toHaveCount(0);
+  await meanings.getByRole('button', { name: 'إغلاق' }).click();
+
+  await longPress(page, Number(v));
+  await page.getByRole('menuitem', { name: 'عمل' }).click();
   await expect(page.locator('.vcard__empty')).toContainText('غير متوفر');
 });
 

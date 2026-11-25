@@ -125,9 +125,10 @@ test('حيث لا مشاركة صور (الحاسوب): «مشاركة» و«ح�
   expect((await download).suggestedFilename()).toBe('quran-alsalaf-actions-1-2.png');
 });
 
-test('بطاقة بلا محتوى (آية لم تُشرح معانيها) بلا «مشاركة» ولا نسخ', async ({ page }) => {
+// (والمعاني صارت للمصحف كله بالميسّر، ٢٠٢٦-١١-٢٥، فالبطاقة الخالية «عمل»)
+test('بطاقة بلا محتوى (آية لم يُشرح العمل بها) بلا «مشاركة» ولا نسخ', async ({ page }) => {
   await openApp(page, { 'hq.page': '300' });
-  await openCard(page, pageVerses(300)[0], 'معاني');
+  await openCard(page, pageVerses(300)[0], 'عمل');
   await expect(card(page).locator('.vcard__empty')).toBeVisible();
   await expect(card(page).getByRole('button', { name: 'مشاركة' })).toHaveCount(0);
   await expect(card(page).getByRole('button', { name: 'نسخ' })).toHaveCount(0);

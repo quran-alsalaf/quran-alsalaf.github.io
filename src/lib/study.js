@@ -171,12 +171,25 @@ export function memoIndex(quran) {
     for (const [a, b] of s.r) for (let v = a; v <= b; v++) sectionOf[s.k][v] = i;
   });
   const meaningsOf = new Map();
-  for (const [v, word, meaning, , from, to] of meanings) {
+  const addMeaning = (v, word, meaning, from, to, src) => {
     if (!meaningsOf.has(v)) meaningsOf.set(v, []);
-    // الكلمة بلفظها من المصحف إن عُرف موضعها في الآية، وإلا كما كُتبت في المذكرة
+    // الكلمة بلفظها من المصحف إن عُرف موضعها في الآية، وإلا كما كُتبت في المذكرة أو الكتاب
     const mushaf = from === undefined ? null : quran.verses[v].t.slice(from, to + 1).join(' ');
-    meaningsOf.get(v).push({ word, meaning, mushaf });
+    meaningsOf.get(v).push({ word, meaning, mushaf, src });
+  };
+  for (const [v, word, meaning, , from, to] of meanings) addMeaning(v, word, meaning, from, to, 'memos');
+  // معاني الميسّر (٢٠٢٦-١١-٢٥) لسور لا معاني لها في المذكرات: تُغطّى آيات هذه السور كلها، وما فيه مذكرات لا يُمسّ
+  const gharibSuras = new Set(quran.gharib?.suras ?? []);
+  const gharibOf = new Uint8Array(n);
+  quran.verses.forEach((verse, v) => {
+    if (gharibSuras.has(verse.s) && sectionOf.m[v] < 0) gharibOf[v] = 1;
+  });
+  for (const [v, word, meaning, from, to] of quran.gharib?.meanings ?? []) {
+    if (gharibOf[v]) addMeaning(v, word, meaning, from, to, 'muyassar');
   }
+  // الآيات التي لها مصدر معانٍ (المذكرات أو الميسّر)، وإن لم تُذكر فيها كلمة
+  const meaningsCovered = new Uint8Array(n);
+  for (let v = 0; v < n; v++) meaningsCovered[v] = sectionOf.m[v] >= 0 || gharibOf[v] ? 1 : 0;
   const actionsOf = new Map();
   actions.forEach((a, i) => {
     for (const v of a.v) {
@@ -184,7 +197,7 @@ export function memoIndex(quran) {
       actionsOf.get(v).push(i);
     }
   });
-  idx = { sections, actions, sectionOf, meaningsOf, actionsOf };
+  idx = { sections, actions, sectionOf, meaningsOf, meaningsCovered, gharibOf, actionsOf };
   indexes.set(quran, idx);
   return idx;
 }
