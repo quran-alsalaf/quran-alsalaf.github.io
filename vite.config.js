@@ -139,9 +139,9 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
-          // بيانات مصحف ورش: تُحدَّث من الشبكة إن أمكن، وإلا فالمحفوظة (بلا إنترنت)
+          // بيانات مصحف ورش (ومعاني الميسّر بترقيمه): تُحدَّث من الشبكة إن أمكن، وإلا فالمحفوظة (بلا إنترنت)
           {
-            urlPattern: /\/data\/warsh\/(quran|memos)\.json$/,
+            urlPattern: /\/data\/warsh\/(quran|memos|muyassar)\.json$/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'warsh-data',

@@ -28,7 +28,7 @@ import {
   useUserData,
 } from '../lib/userdata.js';
 import BookmarkForm, { bookmarkMeta, typeName } from './BookmarkForm.jsx';
-import { CopyIcon, FaidaBody, NO_ACTIONS, ShareIcon, NO_MEANINGS, QuotedText, TafsirBody, UNAVAILABLE, useFawaid } from './StudySheet.jsx';
+import { CopyIcon, FaidaBody, GHARIB_CREDIT, NO_ACTIONS, ShareIcon, NO_MEANINGS, QuotedText, TafsirBody, UNAVAILABLE, useFawaid } from './StudySheet.jsx';
 import { NO_FAWAID_VERSE, faidaPlain, fawaidIn } from '../lib/fawaid.js';
 import TafsirPicker from './TafsirPicker.jsx';
 import ShareImages from './ShareImages.jsx';
@@ -431,20 +431,23 @@ function DetailCard({ quran, v, kind, onClose, onBack, onToast }) {
   } else if (kind === 'meanings') {
     title = 'معاني الكلمات';
     const words = idx.meaningsOf.get(v) ?? [];
-    if (idx.sectionOf.m[v] < 0) body = <p className="vcard__empty">{UNAVAILABLE}</p>;
+    if (!idx.meaningsCovered[v]) body = <p className="vcard__empty">{UNAVAILABLE}</p>;
     else if (!words.length) body = <p className="vcard__empty">{NO_MEANINGS}</p>;
     else {
       body = (
-        <table className="study__words">
-          <tbody>
-            {words.map((w, i) => (
-              <tr key={i}>
-                <th scope="row">{w.mushaf ?? w.word}</th>
-                <td>{w.meaning}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          <table className="study__words">
+            <tbody>
+              {words.map((w, i) => (
+                <tr key={i}>
+                  <th scope="row">{w.mushaf ?? w.word}</th>
+                  <td>{w.meaning}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {idx.gharibOf[v] ? <p className="vcard__credit">{GHARIB_CREDIT}</p> : null}
+        </>
       );
       plain = words.map((w) => `${w.mushaf ?? w.word}: ${w.meaning}`).join('\n');
       share = { units: meaningUnits(words) };
