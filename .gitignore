@@ -40,7 +40,8 @@ glyphs-test.html
 مواصفة-التطبيق.md
 شعار حفظ القرآن بطريقة السلف.jpg
 لقطة شاشة *.png
-.claude/
+.claude/*
+!.claude/commands/
 
 # ملفات الويب المنسوخة لتطبيق أندرويد (scripts/native-web.mjs) — تُولَّد من البناء
 native-web/
